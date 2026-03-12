@@ -49,6 +49,10 @@ Example:
 
 ```csharp
 [ProvidesContract("thread-safe")]
+public interface ICacheStore
+{
+}
+
 public class RedisCacheStore : ICacheStore
 {
 }
@@ -82,6 +86,8 @@ public class CacheCoordinator
     }
 }
 ```
+
+For DI-agnostic analysis, declare the contract on the consumed abstraction when a dependency is typed as an interface or base class.
 
 ## 4. Analysis rule
 
@@ -177,8 +183,11 @@ src/
    │  └ RequiresDependencyContractAttribute.cs
    ├ Diagnostics
    │  └ DiagnosticDescriptors.cs
-   └ Helpers
-      └ DependencyGraphBuilder.cs
+   ├ Helpers
+   │  ├ ContractNameNormalizer.cs
+   │  └ DependencyCollector.cs
+   └ Utilities
+      └ SymbolExtensions.cs
 ```
 
 ## 10. Analyzer flow

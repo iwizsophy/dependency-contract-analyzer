@@ -51,6 +51,10 @@
 
 ```csharp
 [ProvidesContract("thread-safe")]
+public interface ICacheStore
+{
+}
+
 public sealed class RedisCacheStore : ICacheStore
 {
 }
@@ -75,6 +79,8 @@ public sealed class CacheCoordinator
 - メッセージ: `Dependency '{DependencyType}' does not provide required contract '{ContractName}'.`
 
 契約名は前後空白を除去し、`StringComparison.OrdinalIgnoreCase` で比較します。
+
+この Analyzer は DI 解析を行わないため、必要契約は「実際に依存している型」自身、またはその基底型・実装インタフェースから取得できる必要があります。インタフェース依存を検証したい場合は、そのインタフェース側に契約を付けてください。
 
 ## 非対象
 

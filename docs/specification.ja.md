@@ -49,6 +49,10 @@ public sealed class ProvidesContractAttribute : Attribute
 
 ```csharp
 [ProvidesContract("thread-safe")]
+public interface ICacheStore
+{
+}
+
 public class RedisCacheStore : ICacheStore
 {
 }
@@ -82,6 +86,8 @@ public class CacheCoordinator
     }
 }
 ```
+
+DI 解析を行わないため、依存がインタフェースや基底型で表現されている場合は、契約もその抽象側に宣言してください。
 
 ## 4. 解析ルール
 
@@ -177,8 +183,11 @@ src/
    │  └ RequiresDependencyContractAttribute.cs
    ├ Diagnostics
    │  └ DiagnosticDescriptors.cs
-   └ Helpers
-      └ DependencyGraphBuilder.cs
+   ├ Helpers
+   │  ├ ContractNameNormalizer.cs
+   │  └ DependencyCollector.cs
+   └ Utilities
+      └ SymbolExtensions.cs
 ```
 
 ## 10. Analyzer 処理フロー

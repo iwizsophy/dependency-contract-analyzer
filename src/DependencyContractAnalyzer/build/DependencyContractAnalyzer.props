@@ -1,0 +1,6 @@
+<Project>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\ProvidesContractAttribute.cs" Link="DependencyContractAnalyzer.Attributes\ProvidesContractAttribute.cs" Visible="false" />
+    <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\RequiresDependencyContractAttribute.cs" Link="DependencyContractAnalyzer.Attributes\RequiresDependencyContractAttribute.cs" Visible="false" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj" />
+  </Folder>
+</Solution>

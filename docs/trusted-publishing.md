@@ -14,6 +14,7 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 4. Ensure the publish workflow keeps `permissions.id-token: write`.
 5. Create and push a version tag such as `v0.1.0`.
 6. Publish packages from a dedicated release workflow, typically `.github/workflows/publish.yml`.
+7. Package and assembly versions are resolved from git tags by `RelaxVersioner`.
 
 ## Workflow expectations
 

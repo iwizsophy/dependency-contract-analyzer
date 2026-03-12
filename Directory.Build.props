@@ -1,0 +1,5 @@
+<Project>
+  <ItemGroup>
+    <PackageReference Include="RelaxVersioner" Version="3.21.0" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

@@ -13,9 +13,15 @@
 ソースプロジェクトが揃っている状態で、リポジトリルートから次を実行します。
 
 ```powershell
-dotnet restore
-dotnet build -c Release --no-restore
-dotnet test -c Release --no-build
+dotnet restore DependencyContractAnalyzer.slnx
+dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
+dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
+```
+
+ローカルでの pack:
+
+```powershell
+dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
 ```
 
 ## 想定プロジェクト構成

@@ -51,6 +51,10 @@ Declare contracts on provided types:
 
 ```csharp
 [ProvidesContract("thread-safe")]
+public interface ICacheStore
+{
+}
+
 public sealed class RedisCacheStore : ICacheStore
 {
 }
@@ -75,6 +79,8 @@ If the matching dependency does not provide the required contract, the analyzer 
 - Message: `Dependency '{DependencyType}' does not provide required contract '{ContractName}'.`
 
 Contract names are normalized with `Trim()` and compared using `StringComparison.OrdinalIgnoreCase`.
+
+Because the analyzer is DI-agnostic, the required contract must be discoverable from the consumed type itself, its base types, or its implemented interfaces. If a class depends on an interface, put the contract on that interface when you want the requirement to pass without DI analysis.
 
 ## Non-goals
 

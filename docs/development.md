@@ -13,9 +13,15 @@ This document is for maintainers and contributors.
 Run from the repository root once source projects are present:
 
 ```powershell
-dotnet restore
-dotnet build -c Release --no-restore
-dotnet test -c Release --no-build
+dotnet restore DependencyContractAnalyzer.slnx
+dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
+dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
+```
+
+Local package output:
+
+```powershell
+dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
 ```
 
 ## Planned project layout

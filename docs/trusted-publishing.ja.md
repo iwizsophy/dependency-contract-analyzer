@@ -14,6 +14,7 @@
 4. publish ワークフローで `permissions.id-token: write` を維持します。
 5. `v0.1.0` のようなバージョンタグを作成して push します。
 6. パッケージ公開は専用ワークフローで実施します。ファイル名は `.github/workflows/publish.yml` を推奨します。
+7. パッケージ/アセンブリ バージョンは `RelaxVersioner` により git タグから解決します。
 
 ## ワークフロー要件
 
