@@ -139,7 +139,7 @@ public sealed class SnapshotCache
 
 この定義がある場合、`snapshot-cache` は `immutable` と `thread-safe` の両方を満たすものとして扱われます。alias と hierarchy を混在した多段解決に対応し、循環する包含定義は `DCA202` として報告します。
 
-`ContractAlias` は後方互換のための包含辺として維持し、`ContractHierarchy` が明示的な階層 API です。多親階層は属性の繰り返しで表現できます。target / scope では明示属性を優先しつつ、type-level metadata がない場合は namespace 最終セグメントから fallback 名を推定します。`ReadModel` は `read-model` として扱われます。scope は assembly-level `ContractScope` がある場合、それを明示定義として優先し namespace 推定は行いません。
+`ContractAlias` は後方互換のための包含辺として維持し、`ContractHierarchy` が明示的な階層 API です。多親階層は属性の繰り返しで表現できます。target / scope では明示属性を優先します。既定では type-level metadata がない場合に namespace 最終セグメントから fallback 名を推定し、`ReadModel` は `read-model` として扱われます。`dependency_contract_analyzer.namespace_inference_max_segments = 2` を設定すると、`ReadModels.Query` -> `read-models-query` のような trailing 2-segment fallback も推定します。scope は assembly-level `ContractScope` がある場合、それを明示定義として優先し namespace 推定は行いません。
 
 ## 既定 Severity
 
@@ -159,10 +159,11 @@ public sealed class SnapshotCache
 - `dependency_contract_analyzer.analyze_static_members`
 - `dependency_contract_analyzer.excluded_namespaces`
 - `dependency_contract_analyzer.excluded_types`
+- `dependency_contract_analyzer.namespace_inference_max_segments`
 
 すべての `analyze_*` option は既定で `true` です。コンストラクタ引数は常に解析対象です。
 
-`excluded_namespaces` は列挙した namespace とその subnamespace 配下の owner type 解析をスキップします。`excluded_types` は fully qualified owner type 名を指定して解析をスキップします。
+`excluded_namespaces` は列挙した namespace とその subnamespace 配下の owner type 解析をスキップします。`excluded_types` は fully qualified owner type 名を指定して解析をスキップします。`namespace_inference_max_segments` は global option で、`1` と `2` をサポートし、既定値は `1`、不正値は既定値へフォールバックします。
 
 ## 推奨 CI 運用
 

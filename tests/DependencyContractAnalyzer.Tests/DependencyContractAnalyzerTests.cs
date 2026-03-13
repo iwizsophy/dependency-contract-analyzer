@@ -1610,6 +1610,35 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task InfersScopeFromTrailingTwoNamespaceSegmentsWhenConfigured()
+    {
+        const string source = """
+            namespace MyCompany.ReadModels.Query;
+
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class ServiceClock
+            {
+            }
+
+            [RequiresContractOnScope("read-models-query", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(ServiceClock clock)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.namespace_inference_max_segments", "2"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public async Task PrefersAssemblyScopeOverNamespaceInference()
     {
         const string source = """
@@ -1638,6 +1667,40 @@ public sealed class DependencyContractAnalyzerTests
             DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredScope)
                 .WithLocation(0)
                 .WithArguments("repository"));
+    }
+
+    [Fact]
+    public async Task PrefersAssemblyScopeOverConfiguredTrailingNamespaceInference()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractScope("application")]
+
+            namespace MyCompany.ReadModels.Query;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnScope("read-models-query", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.namespace_inference_max_segments", "2"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UndeclaredRequiredScope, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("read-models-query", diagnostic.GetMessage());
     }
 
     [Fact]
@@ -1986,6 +2049,96 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task DoesNotInferTrailingTwoNamespaceSegmentsByDefault()
+    {
+        const string source = """
+            namespace MyCompany.ReadModels.Query;
+
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [{|#0:RequiresContractOnTarget("read-models-query", "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredTarget)
+                .WithLocation(0)
+                .WithArguments("read-models-query"));
+    }
+
+    [Fact]
+    public async Task InfersTargetFromTrailingTwoNamespaceSegmentsWhenConfigured()
+    {
+        const string source = """
+            namespace MyCompany.ReadModels.Query;
+
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnTarget("read-models-query", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.namespace_inference_max_segments", "2"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task FallsBackToLeafNamespaceInferenceWhenConfiguredValueIsInvalid()
+    {
+        const string source = """
+            namespace MyCompany.ReadModels.Query;
+
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnTarget("read-models-query", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.namespace_inference_max_segments", "invalid"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UndeclaredRequiredTarget, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("read-models-query", diagnostic.GetMessage());
+    }
+
+    [Fact]
     public async Task PrefersExplicitTargetOverNamespaceInference()
     {
         const string source = """
@@ -2017,6 +2170,43 @@ public sealed class DependencyContractAnalyzerTests
             DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredTarget)
                 .WithLocation(0)
                 .WithArguments("repository"));
+    }
+
+    [Fact]
+    public async Task PrefersExplicitTargetOverConfiguredTrailingNamespaceInference()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            namespace MyCompany.ReadModels.Query
+            {
+                [ContractTarget("storage")]
+                [ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+
+            namespace MyCompany.Application
+            {
+                [RequiresContractOnTarget("read-models-query", "thread-safe")]
+                public sealed class Consumer
+                {
+                    public Consumer(MyCompany.ReadModels.Query.UserRepository repository)
+                    {
+                    }
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.namespace_inference_max_segments", "2"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UndeclaredRequiredTarget, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("read-models-query", diagnostic.GetMessage());
     }
 
     [Fact]

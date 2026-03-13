@@ -52,7 +52,7 @@ Still out of scope:
 
 | Item | Reason |
 | --- | --- |
-| Namespace-based inference beyond final-segment normalization | Only the final namespace segment is inferred in the current implementation |
+| Namespace-based inference beyond trailing 2-segment normalization | The current implementation supports leaf fallback by default and trailing 2-segment fallback through configuration |
 
 ## 3. Attribute model
 
@@ -286,7 +286,9 @@ Current behavior:
 - Dependencies outside the current compilation assembly are ignored for missing-contract checks.
 - Type-level targets and scopes use explicit attributes first.
 - If a type has no explicit target, the analyzer infers one from the final namespace segment in the current compilation.
+- If `dependency_contract_analyzer.namespace_inference_max_segments = 2`, the analyzer also infers a trailing two-segment fallback target name in the current compilation.
 - If a type has no explicit scope and the assembly has no assembly-level scope, the analyzer infers one from the final namespace segment in the current compilation.
+- If `dependency_contract_analyzer.namespace_inference_max_segments = 2`, the analyzer also infers a trailing two-segment fallback scope name when assembly-level scope is absent.
 - Assembly-level scope remains explicit metadata and suppresses scope inference.
 - Assembly/type-level `ExcludeDependencyContractAnalysisAttribute` skips analyzer execution for owner types.
 - `ExcludeDependencyContractSourceAttribute` removes dependency sources from matching constructors, methods, properties, and fields after owner-type exclusions are applied.
@@ -465,12 +467,16 @@ Default diagnostic severities are product defaults; recommended CI severities ar
 
 If an option value is missing or invalid, the analyzer falls back to the default.
 
+The analyzer also supports this global integer `.editorconfig` option:
+
+- `dependency_contract_analyzer.namespace_inference_max_segments` (default: `1`, supported values: `1`, `2`)
+
 The analyzer also supports these list-valued `.editorconfig` options:
 
 - `dependency_contract_analyzer.excluded_namespaces`
 - `dependency_contract_analyzer.excluded_types`
 
-`excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. List values accept comma, semicolon, or newline separators.
+`excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. List values accept comma, semicolon, or newline separators. `namespace_inference_max_segments` controls whether fallback inference uses only the final namespace segment (`1`) or both the final segment and trailing two-segment combinations (`2`).
 
 ### 8.2 Contract naming rule
 
@@ -596,7 +602,7 @@ Representative scenarios include:
 ## 12. Future extensions
 
 - EditorConfig-based policy control beyond dependency collection toggles
-- Richer namespace metadata inference beyond final-segment normalization
+- Richer namespace metadata inference beyond trailing 2-segment normalization
 
 ## 13. Non-goals
 

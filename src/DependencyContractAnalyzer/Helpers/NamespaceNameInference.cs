@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
 
@@ -5,15 +6,56 @@ namespace DependencyContractAnalyzer.Helpers;
 
 internal static class NamespaceNameInference
 {
-    public static string? InferName(INamespaceSymbol namespaceSymbol)
+    public static ImmutableArray<string> InferNames(INamespaceSymbol namespaceSymbol, int maxSegments)
     {
         if (namespaceSymbol.IsGlobalNamespace ||
-            string.IsNullOrWhiteSpace(namespaceSymbol.Name))
+            maxSegments < 1)
         {
-            return null;
+            return ImmutableArray<string>.Empty;
         }
 
-        return ConvertIdentifierToKebabCase(namespaceSymbol.Name);
+        var normalizedSegments = ImmutableArray.CreateBuilder<string?>(maxSegments);
+        for (var current = namespaceSymbol;
+             !current.IsGlobalNamespace && normalizedSegments.Count < maxSegments;
+             current = current.ContainingNamespace)
+        {
+            normalizedSegments.Add(
+                string.IsNullOrWhiteSpace(current.Name)
+                    ? null
+                    : ConvertIdentifierToKebabCase(current.Name));
+        }
+
+        if (normalizedSegments.Count == 0)
+        {
+            return ImmutableArray<string>.Empty;
+        }
+
+        var inferredNames = ImmutableHashSet.CreateBuilder<string>();
+        for (var segmentCount = 1; segmentCount <= normalizedSegments.Count; segmentCount++)
+        {
+            var segments = ImmutableArray.CreateBuilder<string>(segmentCount);
+            var hasInvalidSegment = false;
+
+            for (var index = segmentCount - 1; index >= 0; index--)
+            {
+                if (normalizedSegments[index] is not { } segment)
+                {
+                    hasInvalidSegment = true;
+                    break;
+                }
+
+                segments.Add(segment);
+            }
+
+            if (hasInvalidSegment)
+            {
+                continue;
+            }
+
+            inferredNames.Add(string.Join("-", segments));
+        }
+
+        return inferredNames.ToImmutableArray();
     }
 
     private static string? ConvertIdentifierToKebabCase(string segment)

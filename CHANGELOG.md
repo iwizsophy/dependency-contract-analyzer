@@ -22,7 +22,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - `ExcludeDependencyContractAnalysisAttribute` for assembly/type-level owner exclusion
 - `ExcludeDependencyContractSourceAttribute` for member-level dependency source exclusion
 - Exact-match requirement suppression attributes for dependency, target, and scope requirements
-- Namespace-based fallback inference for target and scope names from final namespace segments
+- Namespace-based fallback inference for target and scope names from final namespace segments, with optional trailing two-segment inference
 - Dependency analysis for non-constructor method parameters
 - Dependency analysis for property types
 - Dependency analysis for `new` expressions, including target-typed object creation

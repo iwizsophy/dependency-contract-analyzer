@@ -139,7 +139,7 @@ public sealed class SnapshotCache
 
 With these declarations, `snapshot-cache` satisfies both `immutable` and `thread-safe`. Mixed alias and hierarchy chains are supported, and cyclic implication definitions are reported as `DCA202`.
 
-`ContractAlias` remains a backward-compatible implication edge. `ContractHierarchy` is the explicit hierarchy API and supports multi-parent graphs by repeating attributes. For targets and scopes, explicit attributes remain the primary metadata source, and the analyzer infers a fallback name from the final namespace segment when type-level metadata is absent. `ReadModel` becomes `read-model`. For scopes, assembly-level `ContractScope` remains explicit metadata and suppresses namespace inference.
+`ContractAlias` remains a backward-compatible implication edge. `ContractHierarchy` is the explicit hierarchy API and supports multi-parent graphs by repeating attributes. For targets and scopes, explicit attributes remain the primary metadata source. By default, the analyzer infers a fallback name from the final namespace segment when type-level metadata is absent, so `ReadModel` becomes `read-model`. With `dependency_contract_analyzer.namespace_inference_max_segments = 2`, trailing two-segment fallbacks such as `ReadModels.Query` -> `read-models-query` are also inferred. For scopes, assembly-level `ContractScope` remains explicit metadata and suppresses namespace inference.
 
 ## Default severities
 
@@ -159,10 +159,11 @@ These are product defaults. All diagnostics remain configurable through `.editor
 - `dependency_contract_analyzer.analyze_static_members`
 - `dependency_contract_analyzer.excluded_namespaces`
 - `dependency_contract_analyzer.excluded_types`
+- `dependency_contract_analyzer.namespace_inference_max_segments`
 
 All `analyze_*` options default to `true`. Constructor parameters remain enabled.
 
-`excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names.
+`excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. `namespace_inference_max_segments` is a global option. Supported values are `1` and `2`, the default is `1`, and invalid values fall back to the default.
 
 ## Recommended CI policy
 

@@ -97,12 +97,13 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 startContext.Compilation.Assembly,
                 contractAliasAttributeSymbol,
                 contractHierarchyAttributeSymbol);
+            var namespaceInferenceOptions = NamespaceInferenceOptions.Create(startContext.Options.AnalyzerConfigOptionsProvider);
             var knownTargets = contractTargetAttributeSymbol is null
                 ? CreateEmptyNameSet()
-                : CollectKnownTargets(startContext.Compilation.Assembly, contractTargetAttributeSymbol);
+                : CollectKnownTargets(startContext.Compilation.Assembly, contractTargetAttributeSymbol, namespaceInferenceOptions);
             var knownScopes = contractScopeAttributeSymbol is null
                 ? CreateEmptyNameSet()
-                : CollectKnownScopes(startContext.Compilation.Assembly, contractScopeAttributeSymbol);
+                : CollectKnownScopes(startContext.Compilation.Assembly, contractScopeAttributeSymbol, namespaceInferenceOptions);
 
             if (!contractAliasResolver.Diagnostics.IsDefaultOrEmpty)
             {
@@ -125,6 +126,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                         contractTargetAttributeSymbol,
                         excludeDependencyContractAnalysisAttributeSymbol,
                         excludeDependencyContractSourceAttributeSymbol,
+                        namespaceInferenceOptions,
                         contractAliasResolver,
                         knownScopes,
                         knownTargets,
@@ -146,6 +148,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol? contractTargetAttributeSymbol,
         INamedTypeSymbol? excludeDependencyContractAnalysisAttributeSymbol,
         INamedTypeSymbol? excludeDependencyContractSourceAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions,
         ContractAliasResolver contractAliasResolver,
         ImmutableHashSet<string> knownScopes,
         ImmutableHashSet<string> knownTargets,
@@ -199,6 +202,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             contractTargetAttributeSymbol,
             DependencyCollectionOptions.Create(context.Options.AnalyzerConfigOptionsProvider, namedType),
             excludeDependencyContractSourceAttributeSymbol,
+            namespaceInferenceOptions,
             contractAliasResolver,
             knownScopes,
             knownTargets,
@@ -335,6 +339,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol? contractTargetAttributeSymbol,
         DependencyCollectionOptions dependencyCollectionOptions,
         INamedTypeSymbol? excludeDependencyContractSourceAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions,
         ContractAliasResolver contractAliasResolver,
         ImmutableHashSet<string> knownScopes,
         ImmutableHashSet<string> knownTargets,
@@ -825,7 +830,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
                     if (!targetCache.TryGetValue(dependency.Type, out var targets))
                     {
-                        targets = GetTargets(dependency.Type, contractTargetAttributeSymbol);
+                        targets = GetTargets(dependency.Type, contractTargetAttributeSymbol, namespaceInferenceOptions);
                         targetCache.Add(dependency.Type, targets);
                     }
 
@@ -906,7 +911,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
                 if (!scopeCache.TryGetValue(dependency.Type, out var scopes))
                 {
-                    scopes = GetScopes(dependency.Type, contractScopeAttributeSymbol);
+                    scopes = GetScopes(dependency.Type, contractScopeAttributeSymbol, namespaceInferenceOptions);
                     scopeCache.Add(dependency.Type, scopes);
                 }
 
@@ -987,7 +992,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
     private static ImmutableHashSet<string> GetTargets(
         INamedTypeSymbol type,
-        INamedTypeSymbol contractTargetAttributeSymbol)
+        INamedTypeSymbol contractTargetAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions)
     {
         var targets = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
         var toVisit = new Stack<INamedTypeSymbol>();
@@ -1003,7 +1009,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 continue;
             }
 
-            AddResolvedTargetNames(current, contractTargetAttributeSymbol, targets);
+            AddResolvedTargetNames(current, contractTargetAttributeSymbol, namespaceInferenceOptions, targets);
 
             if (current.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
             {
@@ -1021,7 +1027,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
     private static ImmutableHashSet<string> GetScopes(
         INamedTypeSymbol type,
-        INamedTypeSymbol contractScopeAttributeSymbol)
+        INamedTypeSymbol contractScopeAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions)
     {
         var scopes = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
         var hasAssemblyLevelScopes = AddNormalizedNames(
@@ -1042,7 +1049,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 continue;
             }
 
-            AddResolvedScopeNames(current, contractScopeAttributeSymbol, scopes, hasAssemblyLevelScopes);
+            AddResolvedScopeNames(current, contractScopeAttributeSymbol, namespaceInferenceOptions, scopes, hasAssemblyLevelScopes);
 
             if (current.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
             {
@@ -1060,16 +1067,18 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
     private static ImmutableHashSet<string> CollectKnownTargets(
         IAssemblySymbol assembly,
-        INamedTypeSymbol contractTargetAttributeSymbol)
+        INamedTypeSymbol contractTargetAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions)
     {
         var knownNames = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
-        AddKnownTargets(assembly.GlobalNamespace, contractTargetAttributeSymbol, knownNames);
+        AddKnownTargets(assembly.GlobalNamespace, contractTargetAttributeSymbol, namespaceInferenceOptions, knownNames);
         return knownNames.ToImmutable();
     }
 
     private static ImmutableHashSet<string> CollectKnownScopes(
         IAssemblySymbol assembly,
-        INamedTypeSymbol contractScopeAttributeSymbol)
+        INamedTypeSymbol contractScopeAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions)
     {
         var knownNames = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
         var hasAssemblyLevelScopes = AddNormalizedNames(
@@ -1077,67 +1086,71 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             contractScopeAttributeSymbol,
             0,
             knownNames);
-        AddKnownScopes(assembly.GlobalNamespace, contractScopeAttributeSymbol, knownNames, hasAssemblyLevelScopes);
+        AddKnownScopes(assembly.GlobalNamespace, contractScopeAttributeSymbol, namespaceInferenceOptions, knownNames, hasAssemblyLevelScopes);
         return knownNames.ToImmutable();
     }
 
     private static void AddKnownTargets(
         INamespaceSymbol namespaceSymbol,
         INamedTypeSymbol contractTargetAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions,
         ImmutableHashSet<string>.Builder knownNames)
     {
         foreach (var type in namespaceSymbol.GetTypeMembers())
         {
-            AddKnownTargets(type, contractTargetAttributeSymbol, knownNames);
+            AddKnownTargets(type, contractTargetAttributeSymbol, namespaceInferenceOptions, knownNames);
         }
 
         foreach (var nestedNamespace in namespaceSymbol.GetNamespaceMembers())
         {
-            AddKnownTargets(nestedNamespace, contractTargetAttributeSymbol, knownNames);
+            AddKnownTargets(nestedNamespace, contractTargetAttributeSymbol, namespaceInferenceOptions, knownNames);
         }
     }
 
     private static void AddKnownTargets(
         INamedTypeSymbol type,
         INamedTypeSymbol contractTargetAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions,
         ImmutableHashSet<string>.Builder knownNames)
     {
-        AddResolvedTargetNames(type, contractTargetAttributeSymbol, knownNames);
+        AddResolvedTargetNames(type, contractTargetAttributeSymbol, namespaceInferenceOptions, knownNames);
 
         foreach (var nestedType in type.GetTypeMembers())
         {
-            AddKnownTargets(nestedType, contractTargetAttributeSymbol, knownNames);
+            AddKnownTargets(nestedType, contractTargetAttributeSymbol, namespaceInferenceOptions, knownNames);
         }
     }
 
     private static void AddKnownScopes(
         INamespaceSymbol namespaceSymbol,
         INamedTypeSymbol contractScopeAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions,
         ImmutableHashSet<string>.Builder knownNames,
         bool hasAssemblyLevelScopes)
     {
         foreach (var type in namespaceSymbol.GetTypeMembers())
         {
-            AddKnownScopes(type, contractScopeAttributeSymbol, knownNames, hasAssemblyLevelScopes);
+            AddKnownScopes(type, contractScopeAttributeSymbol, namespaceInferenceOptions, knownNames, hasAssemblyLevelScopes);
         }
 
         foreach (var nestedNamespace in namespaceSymbol.GetNamespaceMembers())
         {
-            AddKnownScopes(nestedNamespace, contractScopeAttributeSymbol, knownNames, hasAssemblyLevelScopes);
+            AddKnownScopes(nestedNamespace, contractScopeAttributeSymbol, namespaceInferenceOptions, knownNames, hasAssemblyLevelScopes);
         }
     }
 
     private static void AddKnownScopes(
         INamedTypeSymbol type,
         INamedTypeSymbol contractScopeAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions,
         ImmutableHashSet<string>.Builder knownNames,
         bool hasAssemblyLevelScopes)
     {
-        AddResolvedScopeNames(type, contractScopeAttributeSymbol, knownNames, hasAssemblyLevelScopes);
+        AddResolvedScopeNames(type, contractScopeAttributeSymbol, namespaceInferenceOptions, knownNames, hasAssemblyLevelScopes);
 
         foreach (var nestedType in type.GetTypeMembers())
         {
-            AddKnownScopes(nestedType, contractScopeAttributeSymbol, knownNames, hasAssemblyLevelScopes);
+            AddKnownScopes(nestedType, contractScopeAttributeSymbol, namespaceInferenceOptions, knownNames, hasAssemblyLevelScopes);
         }
     }
 
@@ -1309,6 +1322,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
     private static void AddResolvedTargetNames(
         INamedTypeSymbol type,
         INamedTypeSymbol contractTargetAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions,
         ImmutableHashSet<string>.Builder targetNames)
     {
         if (AddNormalizedNames(type.GetAttributes(), contractTargetAttributeSymbol, 0, targetNames))
@@ -1316,7 +1330,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             return;
         }
 
-        if (NamespaceNameInference.InferName(type.ContainingNamespace) is { } inferredName)
+        foreach (var inferredName in NamespaceNameInference.InferNames(type.ContainingNamespace, namespaceInferenceOptions.MaxSegments))
         {
             targetNames.Add(inferredName);
         }
@@ -1325,6 +1339,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
     private static void AddResolvedScopeNames(
         INamedTypeSymbol type,
         INamedTypeSymbol contractScopeAttributeSymbol,
+        NamespaceInferenceOptions namespaceInferenceOptions,
         ImmutableHashSet<string>.Builder scopeNames,
         bool hasAssemblyLevelScopes)
     {
@@ -1334,7 +1349,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             return;
         }
 
-        if (NamespaceNameInference.InferName(type.ContainingNamespace) is { } inferredName)
+        foreach (var inferredName in NamespaceNameInference.InferNames(type.ContainingNamespace, namespaceInferenceOptions.MaxSegments))
         {
             scopeNames.Add(inferredName);
         }
