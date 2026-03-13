@@ -209,6 +209,9 @@ internal static class DependencyContractAnalyzerVerifier
 
         return (await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync())
             .OrderBy(static diagnostic => diagnostic.Location.SourceSpan.Start)
+            .ThenBy(static diagnostic => diagnostic.Location.SourceSpan.End)
+            .ThenBy(static diagnostic => diagnostic.Id, StringComparer.Ordinal)
+            .ThenBy(static diagnostic => diagnostic.GetMessage(), StringComparer.Ordinal)
             .ToImmutableArray();
     }
 

@@ -67,6 +67,7 @@ internal readonly struct AnalysisExclusionOptions
 
         return false;
     }
+
     private static string[] GetListOption(AnalyzerConfigOptions options, string key)
     {
         if (!options.TryGetValue(key, out var rawValue) ||
