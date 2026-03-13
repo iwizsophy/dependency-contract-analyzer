@@ -183,7 +183,7 @@ public sealed class RequiresContractOnScopeAttribute : Attribute
 }
 ```
 
-### 3.5 契約の別名・包含
+### 3.5 契約包含辺
 
 ```csharp
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -200,28 +200,33 @@ public sealed class ContractAliasAttribute : Attribute
 }
 ```
 
+```csharp
+[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+public sealed class ContractHierarchyAttribute : Attribute
+{
+    public string Child { get; }
+    public string Parent { get; }
+
+    public ContractHierarchyAttribute(string child, string parent)
+    {
+        Child = child;
+        Parent = parent;
+    }
+}
+```
+
 例:
 
 ```csharp
 [assembly: ContractAlias("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
 ```
 
 意味:
 
-`immutable` を提供していれば `thread-safe` 要求を満たすとみなします。
+`snapshot-cache` を提供していれば `immutable` と `thread-safe` の両方を満たすとみなします。
 
-v1 では alias が唯一の契約階層表現であり、有向・推移的・循環禁止のグラフとして扱います。
-
-### v2 契約階層モデル案
-
-legacy alias と互換性を保ったまま契約階層を拡張するため、v2 では assembly-level `ContractHierarchyAttribute` を導入する方針とします。
-
-```csharp
-[assembly: ContractHierarchy("immutable", "thread-safe")]
-[assembly: ContractHierarchy("snapshot-cache", "immutable")]
-```
-
-想定セマンティクス:
+現在のセマンティクス:
 
 - `child -> parent` を契約包含の有向辺として扱う
 - 同じ child に対して属性を繰り返すことで多親を表現できる
@@ -239,7 +244,7 @@ legacy alias と互換性を保ったまま契約階層を拡張するため、v
 1. `RequiresDependencyContract`
 2. `RequiresContractOnTarget`
 3. `RequiresContractOnScope`
-4. `ContractAlias` 解決
+4. 包含グラフ解決
 
 これは依存評価時の優先順位であり、リリース順とは別です。
 
@@ -328,15 +333,16 @@ public class BillingRepository : IBillingRepository
 
 `BillingRepository` が `retry-safe` を持たなければ違反です。
 
-### 6.4 Alias
+### 6.4 包含グラフベース requirement
 
 ```csharp
 [assembly: ContractAlias("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
 ```
 
 ```csharp
-[ProvidesContract("immutable")]
-public class ImmutableStore : IStore
+[ProvidesContract("snapshot-cache")]
+public class SnapshotStore : IStore
 {
 }
 ```
@@ -349,7 +355,7 @@ public class StoreConsumer
 }
 ```
 
-結果: alias により適合です。
+結果: 包含グラフにより適合です。
 
 ## 7. 実装アーキテクチャ
 
@@ -434,7 +440,7 @@ Evaluate(consumer, dependency) -> violations
 1. consumer の requirement を列挙する
 2. dependency が requirement の対象に一致するか判定する
 3. required contract を満たすか確認する
-4. 必要なら alias を適用する
+4. 必要なら包含グラフ解決を適用する
 5. それでも満たさなければ diagnostic を発行する
 
 ## 10. 診断体系の最終形
@@ -450,13 +456,13 @@ Evaluate(consumer, dependency) -> violations
 - `DCA101`: 契約名フォーマット違反
 - `DCA102`: 重複契約指定
 
-`DCA101` は contract 名と alias endpoint のみを対象とし、target 名 / scope 名には適用しません。v1 で適用する形式は lower-kebab-case です。
+`DCA101` は contract 名と alias / hierarchy endpoint のみを対象とし、target 名 / scope 名には適用しません。v1 で適用する形式は lower-kebab-case です。
 
 ### ルール定義診断
 
 - `DCA200`: 存在しない target を要求
 - `DCA201`: 存在しない scope を要求
-- `DCA202`: alias が循環している
+- `DCA202`: 契約包含定義が循環している
 - `DCA203`: scope 名が空
 - `DCA204`: target 名が空
 - `DCA205`: target 要求に一致する依存が存在しない

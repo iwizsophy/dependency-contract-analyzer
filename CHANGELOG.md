@@ -22,13 +22,14 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Dependency analysis for property types
 - Dependency analysis for `new` expressions, including target-typed object creation
 - Dependency analysis for static member usage
-- `DCA101` contract naming validation for lower-kebab-case contract names and alias endpoints
+- `DCA101` contract naming validation for lower-kebab-case contract names and implication endpoints
 - `ContractScopeAttribute` and `RequiresContractOnScopeAttribute` for scope-based contract rules
 - `ContractTargetAttribute` and `RequiresContractOnTargetAttribute` for target-based contract rules
 - `ContractAliasAttribute` for assembly-level contract implication rules
+- `ContractHierarchyAttribute` for explicit assembly-level contract hierarchy edges
 - Scope-based analyzer evaluation, including assembly-level default scopes and empty-scope validation
 - Target-based analyzer evaluation, including inherited target matching and empty-target validation
-- Alias-based contract resolution, including transitive alias chains and cycle detection
+- Contract implication resolution, including mixed alias/hierarchy graphs and cycle detection
 - Rule-definition diagnostics for undeclared and unused target/scope requirements
 - Regression tests for scope matching, duplicate requirements, and assembly/type scope interaction
 - Regression tests for target matching, duplicate requirements, and multi-target declarations

@@ -10,7 +10,7 @@ Its core concept is:
 
 ## Status
 
-- Implemented analyzer rules: `ProvidesContract`, `RequiresDependencyContract`, `ContractTarget`, `RequiresContractOnTarget`, `ContractScope`, `RequiresContractOnScope`, `ContractAlias`
+- Implemented analyzer rules: `ProvidesContract`, `RequiresDependencyContract`, `ContractTarget`, `RequiresContractOnTarget`, `ContractScope`, `RequiresContractOnScope`, `ContractAlias`, `ContractHierarchy`
 - Dependency extraction currently covers constructor parameters, non-constructor method parameters, property types, fields, `new` expressions, static member usage, base types, and implemented interfaces
 - Package ID: `DependencyContractAnalyzer`
 - Implementation scope for the first release is tracked in [docs/specification.md](docs/specification.md)
@@ -125,20 +125,21 @@ public sealed class OrderService
 
 Target names also use `Trim()` with `StringComparison.OrdinalIgnoreCase`.
 
-Assembly-level aliases can declare implied contracts:
+Assembly-level implication edges can be declared with either `ContractAlias` or `ContractHierarchy`:
 
 ```csharp
 [assembly: ContractAlias("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
 
-[ProvidesContract("immutable")]
-public sealed class ImmutableCache
+[ProvidesContract("snapshot-cache")]
+public sealed class SnapshotCache
 {
 }
 ```
 
-With this alias, `immutable` also satisfies `thread-safe`. Alias chains are supported, and cyclic alias definitions are reported as `DCA202`.
+With these declarations, `snapshot-cache` satisfies both `immutable` and `thread-safe`. Mixed alias and hierarchy chains are supported, and cyclic implication definitions are reported as `DCA202`.
 
-Contract hierarchy still stops at transitive alias closure. For targets and scopes, explicit attributes remain the primary metadata source, and the analyzer now infers a fallback name from the final namespace segment when type-level metadata is absent. `ReadModel` becomes `read-model`. For scopes, assembly-level `ContractScope` remains explicit metadata and suppresses namespace inference.
+`ContractAlias` remains a backward-compatible implication edge. `ContractHierarchy` is the explicit hierarchy API and supports multi-parent graphs by repeating attributes. For targets and scopes, explicit attributes remain the primary metadata source, and the analyzer infers a fallback name from the final namespace segment when type-level metadata is absent. `ReadModel` becomes `read-model`. For scopes, assembly-level `ContractScope` remains explicit metadata and suppresses namespace inference.
 
 ## Default severities
 
@@ -160,7 +161,7 @@ All four options default to `true`. Constructor parameters, field types, base ty
 
 - Promote `DCA202`, `DCA203`, and `DCA204` to `Error` in CI.
 - Keep `DCA205` and `DCA206` at `Info` unless the codebase is already stable enough to treat stale requirements as build-blocking.
-- `DCA101` validates lower-kebab-case contract names and alias endpoints only. It does not apply to target or scope names.
+- `DCA101` validates lower-kebab-case contract names and alias or hierarchy endpoints only. It does not apply to target or scope names.
 
 ## Suppression model
 

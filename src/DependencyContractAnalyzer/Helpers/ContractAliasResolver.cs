@@ -27,19 +27,24 @@ internal sealed class ContractAliasResolver
 
     public ImmutableArray<Diagnostic> Diagnostics { get; }
 
-    public static ContractAliasResolver Create(IAssemblySymbol assembly, INamedTypeSymbol? contractAliasAttributeSymbol)
+    public static ContractAliasResolver Create(
+        IAssemblySymbol assembly,
+        INamedTypeSymbol? contractAliasAttributeSymbol,
+        INamedTypeSymbol? contractHierarchyAttributeSymbol)
     {
-        if (contractAliasAttributeSymbol is null)
+        if (contractAliasAttributeSymbol is null && contractHierarchyAttributeSymbol is null)
         {
             return Empty;
         }
 
         var diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
-        var duplicateCandidates = new Dictionary<string, List<AliasDefinition>>(StringComparer.OrdinalIgnoreCase);
+        var duplicateCandidates = new Dictionary<string, List<ImplicationDefinition>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var attribute in assembly.GetAttributes())
         {
-            if (!attribute.AttributeClass.SymbolEquals(contractAliasAttributeSymbol))
+            var isAlias = attribute.AttributeClass.SymbolEquals(contractAliasAttributeSymbol);
+            var isHierarchy = attribute.AttributeClass.SymbolEquals(contractHierarchyAttributeSymbol);
+            if (!isAlias && !isHierarchy)
             {
                 continue;
             }
@@ -92,21 +97,21 @@ internal sealed class ContractAliasResolver
                         normalizedTo));
             }
 
-            var definition = new AliasDefinition(attribute, normalizedFrom, normalizedTo);
+            var definition = new ImplicationDefinition(attribute, normalizedFrom, normalizedTo);
             var duplicateKey = normalizedFrom + "|" + normalizedTo;
             if (!duplicateCandidates.TryGetValue(duplicateKey, out var definitions))
             {
-                definitions = new List<AliasDefinition>();
+                definitions = new List<ImplicationDefinition>();
                 duplicateCandidates.Add(duplicateKey, definitions);
             }
 
             definitions.Add(definition);
         }
 
-        var aliasDefinitions = new List<AliasDefinition>();
+        var implicationDefinitions = new List<ImplicationDefinition>();
         foreach (var entry in duplicateCandidates)
         {
-            aliasDefinitions.Add(entry.Value[0]);
+            implicationDefinitions.Add(entry.Value[0]);
 
             if (entry.Value.Count < 2)
             {
@@ -124,13 +129,13 @@ internal sealed class ContractAliasResolver
             }
         }
 
-        if (aliasDefinitions.Count == 0)
+        if (implicationDefinitions.Count == 0)
         {
             return new ContractAliasResolver(Empty._aliasClosure, diagnostics.ToImmutable());
         }
 
-        var adjacency = BuildAdjacency(aliasDefinitions);
-        ReportCycles(aliasDefinitions, adjacency, diagnostics);
+        var adjacency = BuildAdjacency(implicationDefinitions);
+        ReportCycles(implicationDefinitions, adjacency, diagnostics);
 
         return new ContractAliasResolver(BuildClosure(adjacency), diagnostics.ToImmutable());
     }
@@ -154,11 +159,11 @@ internal sealed class ContractAliasResolver
         return expanded.ToImmutable();
     }
 
-    private static Dictionary<string, ImmutableHashSet<string>> BuildAdjacency(IEnumerable<AliasDefinition> aliasDefinitions)
+    private static Dictionary<string, ImmutableHashSet<string>> BuildAdjacency(IEnumerable<ImplicationDefinition> implicationDefinitions)
     {
         var adjacency = new Dictionary<string, ImmutableHashSet<string>.Builder>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var definition in aliasDefinitions)
+        foreach (var definition in implicationDefinitions)
         {
             if (!adjacency.TryGetValue(definition.From, out var targets))
             {
@@ -212,7 +217,7 @@ internal sealed class ContractAliasResolver
     }
 
     private static void ReportCycles(
-        IReadOnlyList<AliasDefinition> aliasDefinitions,
+        IReadOnlyList<ImplicationDefinition> implicationDefinitions,
         Dictionary<string, ImmutableHashSet<string>> adjacency,
         ImmutableArray<Diagnostic>.Builder diagnostics)
     {
@@ -246,7 +251,7 @@ internal sealed class ContractAliasResolver
             }
         }
 
-        foreach (var definition in aliasDefinitions)
+        foreach (var definition in implicationDefinitions)
         {
             if (!componentByNode.TryGetValue(definition.From, out var component) ||
                 !componentByNode.TryGetValue(definition.To, out var toComponent) ||
@@ -353,9 +358,9 @@ internal sealed class ContractAliasResolver
 
     private static string FormatAlias(string from, string to) => from + " -> " + to;
 
-    private readonly struct AliasDefinition
+    private readonly struct ImplicationDefinition
     {
-        public AliasDefinition(AttributeData attribute, string from, string to)
+        public ImplicationDefinition(AttributeData attribute, string from, string to)
         {
             Attribute = attribute;
             From = from;

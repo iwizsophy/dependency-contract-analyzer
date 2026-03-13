@@ -1486,6 +1486,89 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task ResolvesHierarchyForDependencyRequirement()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractHierarchy("immutable", "thread-safe")]
+
+            [ProvidesContract("immutable")]
+            public interface ICache
+            {
+            }
+
+            public sealed class ImmutableCache : ICache
+            {
+            }
+
+            [RequiresDependencyContract(typeof(ICache), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(ICache cache)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ResolvesMultiParentHierarchyForTargetRequirement()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractHierarchy("immutable", "thread-safe")]
+            [assembly: ContractHierarchy("immutable", "snapshot-safe")]
+
+            [ContractTarget("repository")]
+            [ProvidesContract("immutable")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnTarget("repository", "snapshot-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ResolvesMixedAliasAndHierarchyForScopeRequirement()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractAlias("immutable", "thread-safe")]
+            [assembly: ContractHierarchy("thread-safe", "resilient")]
+
+            [ContractScope("repository")]
+            [ProvidesContract("immutable")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnScope("repository", "resilient")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
     public async Task ReportsDiagnosticWhenAliasNameIsEmpty()
     {
         const string source = """
@@ -1493,6 +1576,26 @@ public sealed class DependencyContractAnalyzerTests
 
             [assembly: {|#0:ContractAlias("   ", "thread-safe")|}]
             [assembly: {|#1:ContractAlias("immutable", "   ")|}]
+
+            public sealed class Marker
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyContractName).WithLocation(0),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyContractName).WithLocation(1));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenHierarchyNameIsEmpty()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: {|#0:ContractHierarchy("   ", "thread-safe")|}]
+            [assembly: {|#1:ContractHierarchy("immutable", "   ")|}]
 
             public sealed class Marker
             {
@@ -1533,6 +1636,51 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task ReportsDiagnosticWhenHierarchyNameViolatesLowerKebabCase()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: {|#0:ContractHierarchy("ThreadSafe", "thread-safe")|}]
+            [assembly: {|#1:ContractHierarchy("immutable", "SnapshotSafe")|}]
+
+            public sealed class Marker
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(0)
+                .WithArguments("ThreadSafe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(1)
+                .WithArguments("SnapshotSafe"));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenHierarchyDuplicatesAliasDefinition()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractAlias("immutable", "thread-safe")]
+            [assembly: {|#0:ContractHierarchy("immutable", "thread-safe")|}]
+
+            public sealed class Marker
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.DuplicateContractDeclaration)
+                .WithLocation(0)
+                .WithArguments("immutable -> thread-safe"));
+    }
+
+    [Fact]
     public async Task ReportsDiagnosticWhenAliasDefinitionIsCyclic()
     {
         const string source = """
@@ -1540,6 +1688,30 @@ public sealed class DependencyContractAnalyzerTests
 
             [assembly: {|#0:ContractAlias("a", "b")|}]
             [assembly: {|#1:ContractAlias("b", "a")|}]
+
+            public sealed class Marker
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.CyclicAliasDefinition)
+                .WithLocation(0)
+                .WithArguments("a -> b"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.CyclicAliasDefinition)
+                .WithLocation(1)
+                .WithArguments("b -> a"));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenAliasAndHierarchyDefinitionAreCyclicTogether()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: {|#0:ContractAlias("a", "b")|}]
+            [assembly: {|#1:ContractHierarchy("b", "a")|}]
 
             public sealed class Marker
             {

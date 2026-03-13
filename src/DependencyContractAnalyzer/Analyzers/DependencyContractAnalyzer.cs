@@ -17,6 +17,7 @@ namespace DependencyContractAnalyzer.Analyzers;
 public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAnalyzer
 {
     private const string ContractAliasAttributeMetadataName = "DependencyContractAnalyzer.ContractAliasAttribute";
+    private const string ContractHierarchyAttributeMetadataName = "DependencyContractAnalyzer.ContractHierarchyAttribute";
     private const string ContractScopeAttributeMetadataName = "DependencyContractAnalyzer.ContractScopeAttribute";
     private const string ContractTargetAttributeMetadataName = "DependencyContractAnalyzer.ContractTargetAttribute";
     private const string ProvidesContractAttributeMetadataName = "DependencyContractAnalyzer.ProvidesContractAttribute";
@@ -57,6 +58,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         {
             var contractAliasAttributeSymbol =
                 startContext.Compilation.GetTypeByMetadataName(ContractAliasAttributeMetadataName);
+            var contractHierarchyAttributeSymbol =
+                startContext.Compilation.GetTypeByMetadataName(ContractHierarchyAttributeMetadataName);
             var providesContractAttributeSymbol =
                 startContext.Compilation.GetTypeByMetadataName(ProvidesContractAttributeMetadataName);
             var contractScopeAttributeSymbol =
@@ -77,7 +80,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
             var contractAliasResolver = ContractAliasResolver.Create(
                 startContext.Compilation.Assembly,
-                contractAliasAttributeSymbol);
+                contractAliasAttributeSymbol,
+                contractHierarchyAttributeSymbol);
             var knownTargets = contractTargetAttributeSymbol is null
                 ? CreateEmptyNameSet()
                 : CollectKnownTargets(startContext.Compilation.Assembly, contractTargetAttributeSymbol);

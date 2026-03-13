@@ -43,6 +43,7 @@ The following rule families are currently implemented:
 | `ContractScope` | Yes |
 | `RequiresContractOnScope` | Yes |
 | `ContractAlias` | Yes |
+| `ContractHierarchy` | Yes |
 
 Still out of scope:
 
@@ -165,15 +166,31 @@ public sealed class ContractAliasAttribute : Attribute
 }
 ```
 
-### 3.8 Alias semantics
+### 3.8 Contract hierarchy
 
-In v1, contract hierarchy is modeled only by transitive aliases.
+```csharp
+[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+public sealed class ContractHierarchyAttribute : Attribute
+{
+    public string Child { get; }
+    public string Parent { get; }
 
-- Aliases are directed edges from `from` to `to`.
-- Alias satisfaction is transitive.
-- A contract satisfies itself and every contract reachable through alias edges.
-- Alias cycles are invalid and reported as `DCA202`.
-- Contract hierarchies beyond alias implication are out of scope for v1.
+    public ContractHierarchyAttribute(string child, string parent)
+    {
+        Child = child;
+        Parent = parent;
+    }
+}
+```
+
+### 3.9 Implication semantics
+
+- `ContractAlias` and `ContractHierarchy` both declare directed implication edges.
+- Alias edges use `from -> to`; hierarchy edges use `child -> parent`.
+- Contract satisfaction is transitive across the combined implication graph.
+- A contract satisfies itself and every contract reachable through alias or hierarchy edges.
+- Repeated hierarchy attributes allow multiple parents for the same contract.
+- Cycles in the combined implication graph are invalid and reported as `DCA202`.
 
 For DI-agnostic analysis, declare contracts on the consumed abstraction when a dependency is typed as an interface or base class.
 
@@ -184,7 +201,7 @@ The analyzer currently evaluates requirements in this order:
 1. `RequiresDependencyContract`
 2. `RequiresContractOnTarget`
 3. `RequiresContractOnScope`
-4. `ContractAlias` expansion when matching provided contracts
+4. contract implication expansion when matching provided contracts
 
 Current behavior:
 
@@ -211,7 +228,7 @@ This applies to:
 - contract names
 - target names
 - scope names
-- alias `from` / `to` names
+- alias or hierarchy endpoint names
 
 ## 6. Dependency discovery
 
@@ -330,9 +347,9 @@ The analyzer currently reads metadata as follows:
 - Provided contracts: from the dependency type itself, implemented interfaces, and base types
 - Targets: from the dependency type itself, implemented interfaces, and base types
 - Scopes: from the dependency type itself, implemented interfaces, base types, and assembly-level scope declarations
-- Aliases: from assembly-level `ContractAliasAttribute` declarations
+- Implication edges: from assembly-level `ContractAliasAttribute` and `ContractHierarchyAttribute` declarations
 
-Provided contracts are expanded through the transitive alias closure before matching requirements.
+Provided contracts are expanded through the transitive implication closure before matching requirements.
 
 Assembly-level scopes act as default scopes in addition to type-level scope declarations.
 
@@ -347,7 +364,7 @@ Assembly-level scopes act as default scopes in addition to type-level scope decl
 | `DCA102` | `Warning` | Contract or requirement declaration is duplicated |
 | `DCA200` | `Warning` | Required target is undeclared in the compilation |
 | `DCA201` | `Warning` | Required scope is undeclared in the compilation |
-| `DCA202` | `Warning` | Contract alias definition is cyclic |
+| `DCA202` | `Warning` | Contract implication definition is cyclic |
 | `DCA203` | `Warning` | Scope name is empty |
 | `DCA204` | `Warning` | Target name is empty |
 | `DCA205` | `Info` | Required target is not used by any analyzable dependency |
@@ -374,7 +391,7 @@ If an option value is missing or invalid, the analyzer falls back to the default
 
 - Required format: lower-kebab-case
 - Regex: `^[a-z0-9]+(-[a-z0-9]+)*$`
-- Applies only to contract names and alias endpoints
+- Applies only to contract names and alias or hierarchy endpoints
 - Does not apply to target names or scope names
 
 Covered names:
@@ -384,6 +401,7 @@ Covered names:
 - the contract name argument of `RequiresContractOnTarget`
 - the contract name argument of `RequiresContractOnScope`
 - both `from` and `to` arguments of `ContractAlias`
+- both `child` and `parent` arguments of `ContractHierarchy`
 
 ### 8.3 Suppression model
 
@@ -404,6 +422,7 @@ src/
    │  └ DependencyContractAnalyzer.cs
    ├ Attributes
    │  ├ ContractAliasAttribute.cs
+   │  ├ ContractHierarchyAttribute.cs
    │  ├ ContractScopeAttribute.cs
    │  ├ ContractTargetAttribute.cs
    │  ├ ProvidesContractAttribute.cs
@@ -432,9 +451,9 @@ CompilationStart
         |
         +-- Resolve attribute symbols
         |
-        +-- Read assembly-level ContractAlias declarations
+        +-- Read assembly-level implication declarations
         |
-        +-- Report alias diagnostics at compilation end
+        +-- Report implication diagnostics at compilation end
         |
         +-- SymbolAction(TypeSymbol)
               |
@@ -446,7 +465,7 @@ CompilationStart
               |
               +-- Read provided contracts, targets, and scopes
               |
-              +-- Expand provided contracts through aliases
+              +-- Expand provided contracts through implication edges
               |
               +-- Report diagnostics when requirements are not satisfied
 ```
@@ -467,12 +486,11 @@ Representative scenarios include:
 - `DCA002` when `RequiresDependencyContract` references an unused dependency type
 - Scope-based matching through type-level and assembly-level scopes
 - Target-based matching through direct and inherited target declarations
-- Alias-based matching through direct and multi-step alias chains
-- Diagnostics for empty names, duplicate declarations, and cyclic aliases
+- Implication-based matching through alias, hierarchy, and mixed multi-step chains
+- Diagnostics for empty names, duplicate declarations, and cyclic implication graphs
 
 ## 12. Future extensions
 
-- `ContractHierarchyAttribute`-based implication graphs beyond legacy aliases
 - EditorConfig-based policy control beyond dependency collection toggles
 - Richer namespace metadata inference beyond final-segment normalization
 

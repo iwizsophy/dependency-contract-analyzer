@@ -33,7 +33,7 @@ public static class DiagnosticIds
     public const string DuplicateContractDeclaration = "DCA102";
 
     /// <summary>
-    /// Alias definition is cyclic.
+    /// Contract implication definition is cyclic.
     /// </summary>
     public const string CyclicAliasDefinition = "DCA202";
 
@@ -174,8 +174,8 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor CyclicAliasDefinition =
         new(
             DiagnosticIds.CyclicAliasDefinition,
-            "Contract alias definition is cyclic",
-            "Contract alias '{0}' participates in a cycle.",
+            "Contract implication definition is cyclic",
+            "Contract implication '{0}' participates in a cycle.",
             Category,
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true);

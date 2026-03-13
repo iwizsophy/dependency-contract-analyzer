@@ -10,7 +10,7 @@
 
 ## 現在の状態
 
-- 実装済み Analyzer ルール: `ProvidesContract`, `RequiresDependencyContract`, `ContractTarget`, `RequiresContractOnTarget`, `ContractScope`, `RequiresContractOnScope`, `ContractAlias`
+- 実装済み Analyzer ルール: `ProvidesContract`, `RequiresDependencyContract`, `ContractTarget`, `RequiresContractOnTarget`, `ContractScope`, `RequiresContractOnScope`, `ContractAlias`, `ContractHierarchy`
 - 依存抽出の対象は現在、コンストラクタ引数、コンストラクタ以外のメソッド引数、プロパティ型、フィールド型、`new` 式、static メンバー利用、継承、実装インタフェースです
 - パッケージ ID は `DependencyContractAnalyzer` です
 - 初期実装スコープは [docs/specification.ja.md](docs/specification.ja.md) にまとめています
@@ -125,20 +125,21 @@ public sealed class OrderService
 
 target 名も `Trim()` 後、`StringComparison.OrdinalIgnoreCase` で比較します。
 
-assembly 単位で alias による契約包含も宣言できます。
+assembly 単位の包含辺は `ContractAlias` と `ContractHierarchy` のどちらでも宣言できます。
 
 ```csharp
 [assembly: ContractAlias("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
 
-[ProvidesContract("immutable")]
-public sealed class ImmutableCache
+[ProvidesContract("snapshot-cache")]
+public sealed class SnapshotCache
 {
 }
 ```
 
-この alias がある場合、`immutable` は `thread-safe` も満たすものとして扱われます。alias の多段解決に対応し、循環 alias は `DCA202` として報告します。
+この定義がある場合、`snapshot-cache` は `immutable` と `thread-safe` の両方を満たすものとして扱われます。alias と hierarchy を混在した多段解決に対応し、循環する包含定義は `DCA202` として報告します。
 
-契約階層は引き続き推移的 alias closure のみです。target / scope では明示属性を優先しつつ、type-level metadata がない場合は namespace 最終セグメントから fallback 名を推定します。`ReadModel` は `read-model` として扱われます。scope は assembly-level `ContractScope` がある場合、それを明示定義として優先し namespace 推定は行いません。
+`ContractAlias` は後方互換のための包含辺として維持し、`ContractHierarchy` が明示的な階層 API です。多親階層は属性の繰り返しで表現できます。target / scope では明示属性を優先しつつ、type-level metadata がない場合は namespace 最終セグメントから fallback 名を推定します。`ReadModel` は `read-model` として扱われます。scope は assembly-level `ContractScope` がある場合、それを明示定義として優先し namespace 推定は行いません。
 
 ## 既定 Severity
 
@@ -160,7 +161,7 @@ public sealed class ImmutableCache
 
 - `DCA202`、`DCA203`、`DCA204` は CI では `Error` へ昇格推奨
 - `DCA205`、`DCA206` は通常は `Info` のまま推奨
-- `DCA101` は lower-kebab-case の contract 名と alias endpoint のみを対象とし、target / scope 名には適用しません
+- `DCA101` は lower-kebab-case の contract 名と alias / hierarchy endpoint のみを対象とし、target / scope 名には適用しません
 
 ## Suppression モデル
 

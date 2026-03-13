@@ -177,7 +177,7 @@ public sealed class RequiresContractOnScopeAttribute : Attribute
 }
 ```
 
-### 3.5 Contract aliases
+### 3.5 Contract implication edges
 
 ```csharp
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -194,28 +194,33 @@ public sealed class ContractAliasAttribute : Attribute
 }
 ```
 
+```csharp
+[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
+public sealed class ContractHierarchyAttribute : Attribute
+{
+    public string Child { get; }
+    public string Parent { get; }
+
+    public ContractHierarchyAttribute(string child, string parent)
+    {
+        Child = child;
+        Parent = parent;
+    }
+}
+```
+
 Example:
 
 ```csharp
 [assembly: ContractAlias("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
 ```
 
 Meaning:
 
-`immutable` satisfies `thread-safe`.
+`snapshot-cache` satisfies both `immutable` and `thread-safe`.
 
-In v1, aliases are the only contract-hierarchy mechanism. The model is a directed, transitive alias graph with cycle rejection.
-
-### Proposed v2 hierarchy model
-
-To extend contract hierarchy beyond legacy aliases without breaking compatibility, v2 should introduce an assembly-level `ContractHierarchyAttribute`:
-
-```csharp
-[assembly: ContractHierarchy("immutable", "thread-safe")]
-[assembly: ContractHierarchy("snapshot-cache", "immutable")]
-```
-
-Proposed semantics:
+Current semantics:
 
 - `child -> parent` is a contract implication edge
 - repeated attributes allow multiple parents
@@ -233,7 +238,7 @@ Evaluation precedence inside the rule engine should be explicit:
 1. `RequiresDependencyContract`
 2. `RequiresContractOnTarget`
 3. `RequiresContractOnScope`
-4. `ContractAlias` resolution
+4. implication graph resolution
 
 This precedence is about how a dependency is evaluated, not about release order.
 
@@ -322,15 +327,16 @@ public class BillingRepository : IBillingRepository
 
 If `BillingRepository` does not provide `retry-safe`, the analyzer reports a violation.
 
-### 6.4 Alias-based requirement
+### 6.4 Implication-based requirement
 
 ```csharp
 [assembly: ContractAlias("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
 ```
 
 ```csharp
-[ProvidesContract("immutable")]
-public class ImmutableStore : IStore
+[ProvidesContract("snapshot-cache")]
+public class SnapshotStore : IStore
 {
 }
 ```
@@ -343,7 +349,7 @@ public class StoreConsumer
 }
 ```
 
-Result: valid because the alias satisfies the requirement.
+Result: valid because the implication graph satisfies the requirement.
 
 ## 7. Suggested internal model
 
@@ -428,7 +434,7 @@ Inside that evaluation:
 1. Enumerate the consumer requirements.
 2. Decide whether the dependency matches the requirement subject.
 3. Check whether the dependency satisfies the required contract.
-4. Apply alias resolution when needed.
+4. Apply implication-graph resolution when needed.
 5. Emit diagnostics if the contract is still not satisfied.
 
 ## 10. Diagnostic family
@@ -444,13 +450,13 @@ Inside that evaluation:
 - `DCA101`: contract naming format violation
 - `DCA102`: duplicate contract declaration
 
-`DCA101` applies only to contract names and alias endpoints. It does not apply to target names or scope names, and the enforced v1 format is lower-kebab-case.
+`DCA101` applies only to contract names and alias or hierarchy endpoints. It does not apply to target names or scope names, and the enforced v1 format is lower-kebab-case.
 
 ### Rule-definition diagnostics
 
 - `DCA200`: unknown target required
 - `DCA201`: unknown scope required
-- `DCA202`: cyclic alias definition
+- `DCA202`: cyclic implication definition
 - `DCA203`: empty scope name
 - `DCA204`: empty target name
 - `DCA205`: unused target requirement
