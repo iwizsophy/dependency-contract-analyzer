@@ -24,6 +24,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Exact-match requirement suppression attributes for dependency, target, and scope requirements
 - Namespace-based fallback inference for target and scope names from final namespace segments, with optional trailing two-segment inference
 - Global `.editorconfig` external dependency policy with `ignore` and `metadata` modes
+- External implication-graph expansion for referenced assemblies in `metadata` mode
 - Dependency analysis for non-constructor method parameters
 - Dependency analysis for property types
 - Dependency analysis for `new` expressions, including target-typed object creation
@@ -47,6 +48,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Regression tests for static member usage across dependency, target, and scope rules
 - Regression tests for `DCA101` contract naming validation
 - Regression tests for external dependency metadata policy across dependency, target, and scope requirements
+- Regression tests for external alias/hierarchy implication graphs and silent referenced diagnostics
 
 ### Changed
 
@@ -54,6 +56,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Updated README and development guides to describe the current repository state instead of planned-only wording
 - Clarified current design boundaries for alias semantics, `.editorconfig`, namespace inference, suppression, and `DCA101` naming scope
 - Stopped namespace fallback inference from flowing in through external dependency base types and interfaces
+- Merged local and referenced implication graphs when expanding provided contracts for external dependencies
 
 ### Fixed
 

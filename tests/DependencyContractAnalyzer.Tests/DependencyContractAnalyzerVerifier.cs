@@ -299,6 +299,22 @@ internal static class DependencyContractAnalyzerVerifier
                 {
                 }
             }
+
+            [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
+            public sealed class ContractAliasAttribute : Attribute
+            {
+                public ContractAliasAttribute(string from, string to)
+                {
+                }
+            }
+
+            [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
+            public sealed class ContractHierarchyAttribute : Attribute
+            {
+                public ContractHierarchyAttribute(string child, string parent)
+                {
+                }
+            }
         }
         """;
 }

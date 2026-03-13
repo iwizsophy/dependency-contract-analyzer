@@ -139,7 +139,7 @@ public sealed class SnapshotCache
 
 この定義がある場合、`snapshot-cache` は `immutable` と `thread-safe` の両方を満たすものとして扱われます。alias と hierarchy を混在した多段解決に対応し、循環する包含定義は `DCA202` として報告します。
 
-`ContractAlias` は後方互換のための包含辺として維持し、`ContractHierarchy` が明示的な階層 API です。多親階層は属性の繰り返しで表現できます。target / scope では明示属性を優先します。既定では type-level metadata がない場合に namespace 最終セグメントから fallback 名を推定し、`ReadModel` は `read-model` として扱われます。`dependency_contract_analyzer.namespace_inference_max_segments = 2` を設定すると、`ReadModels.Query` -> `read-models-query` のような trailing 2-segment fallback も推定します。scope は assembly-level `ContractScope` がある場合、それを明示定義として優先し namespace 推定は行いません。current compilation 外の dependency は既定では無視しますが、`dependency_contract_analyzer.external_dependency_policy = metadata` を設定すると、参照先 assembly の explicit provided-contract / target / scope metadata も読み取ります。なお undeclared target / scope 判定は引き続き current compilation 内の宣言だけを対象にします。
+`ContractAlias` は後方互換のための包含辺として維持し、`ContractHierarchy` が明示的な階層 API です。多親階層は属性の繰り返しで表現できます。target / scope では明示属性を優先します。既定では type-level metadata がない場合に namespace 最終セグメントから fallback 名を推定し、`ReadModel` は `read-model` として扱われます。`dependency_contract_analyzer.namespace_inference_max_segments = 2` を設定すると、`ReadModels.Query` -> `read-models-query` のような trailing 2-segment fallback も推定します。scope は assembly-level `ContractScope` がある場合、それを明示定義として優先し namespace 推定は行いません。current compilation 外の dependency は既定では無視しますが、`dependency_contract_analyzer.external_dependency_policy = metadata` を設定すると、参照先 assembly の explicit provided-contract / target / scope metadata に加えて `ContractAlias` / `ContractHierarchy` の包含辺も読み取ります。参照先包含定義の診断は consumer compilation には出しません。なお undeclared target / scope 判定は引き続き current compilation 内の宣言だけを対象にします。
 
 ## 既定 Severity
 
@@ -164,7 +164,7 @@ public sealed class SnapshotCache
 
 すべての `analyze_*` option は既定で `true` です。コンストラクタ引数は常に解析対象です。
 
-`excluded_namespaces` は列挙した namespace とその subnamespace 配下の owner type 解析をスキップします。`excluded_types` は fully qualified owner type 名を指定して解析をスキップします。`namespace_inference_max_segments` は global option で、`1` と `2` をサポートし、既定値は `1`、不正値は既定値へフォールバックします。`external_dependency_policy` も global option で、`ignore` と `metadata` をサポートし、既定値は `ignore`、不正値は既定値へフォールバックします。`metadata` モードでも namespace inference は current compilation 内の型に限定し、参照先 assembly からは explicit metadata のみを使用します。
+`excluded_namespaces` は列挙した namespace とその subnamespace 配下の owner type 解析をスキップします。`excluded_types` は fully qualified owner type 名を指定して解析をスキップします。`namespace_inference_max_segments` は global option で、`1` と `2` をサポートし、既定値は `1`、不正値は既定値へフォールバックします。`external_dependency_policy` も global option で、`ignore` と `metadata` をサポートし、既定値は `ignore`、不正値は既定値へフォールバックします。`metadata` モードでも namespace inference は current compilation 内の型に限定し、参照先 assembly からは explicit metadata と包含辺のみを使用します。
 
 ## 推奨 CI 運用
 

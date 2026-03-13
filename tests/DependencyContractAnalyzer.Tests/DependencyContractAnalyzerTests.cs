@@ -377,6 +377,149 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task ReadsExternalAliasImplicationMetadataWhenMetadataPolicyIsEnabled()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using ExternalContracts;
+
+            [RequiresDependencyContract(typeof(IExternalWorker), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IExternalWorker worker)
+                {
+                }
+            }
+            """;
+        const string externalBody = """
+            [assembly: DependencyContractAnalyzer.ContractAlias("immutable", "thread-safe")]
+
+            namespace ExternalContracts
+            {
+                [DependencyContractAnalyzer.ProvidesContract("immutable")]
+                public interface IExternalWorker
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            new[] { CreateExternalAssemblySource(externalBody) },
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task ReadsExternalHierarchyImplicationMetadataWhenMetadataPolicyIsEnabled()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using ExternalContracts;
+
+            [RequiresDependencyContract(typeof(IExternalWorker), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IExternalWorker worker)
+                {
+                }
+            }
+            """;
+        const string externalBody = """
+            [assembly: DependencyContractAnalyzer.ContractHierarchy("snapshot-cache", "thread-safe")]
+
+            namespace ExternalContracts
+            {
+                [DependencyContractAnalyzer.ProvidesContract("snapshot-cache")]
+                public interface IExternalWorker
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            new[] { CreateExternalAssemblySource(externalBody) },
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task CombinesLocalAndExternalImplicationGraphsForExternalDependencies()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using ExternalContracts;
+
+            [assembly: ContractAlias("immutable", "thread-safe")]
+
+            [RequiresDependencyContract(typeof(IExternalWorker), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IExternalWorker worker)
+                {
+                }
+            }
+            """;
+        const string externalBody = """
+            [assembly: DependencyContractAnalyzer.ContractHierarchy("snapshot-cache", "immutable")]
+
+            namespace ExternalContracts
+            {
+                [DependencyContractAnalyzer.ProvidesContract("snapshot-cache")]
+                public interface IExternalWorker
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            new[] { CreateExternalAssemblySource(externalBody) },
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task DoesNotReportImplicationDiagnosticsFromReferencedAssemblies()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using ExternalContracts;
+
+            [RequiresDependencyContract(typeof(IExternalWorker), "b")]
+            public sealed class Consumer
+            {
+                public Consumer(IExternalWorker worker)
+                {
+                }
+            }
+            """;
+        const string externalBody = """
+            [assembly: DependencyContractAnalyzer.ContractAlias("a", "b")]
+            [assembly: DependencyContractAnalyzer.ContractHierarchy("b", "a")]
+
+            namespace ExternalContracts
+            {
+                [DependencyContractAnalyzer.ProvidesContract("a")]
+                public interface IExternalWorker
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            new[] { CreateExternalAssemblySource(externalBody) },
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public async Task ReadsTargetMetadataFromExternalDependencyWhenMetadataPolicyIsEnabled()
     {
         const string source = """
@@ -2858,6 +3001,22 @@ public sealed class DependencyContractAnalyzerTests
             internal sealed class ContractScopeAttribute : System.Attribute
             {
                 public ContractScopeAttribute(string name)
+                {
+                }
+            }
+
+            [System.AttributeUsage(System.AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
+            internal sealed class ContractAliasAttribute : System.Attribute
+            {
+                public ContractAliasAttribute(string from, string to)
+                {
+                }
+            }
+
+            [System.AttributeUsage(System.AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
+            internal sealed class ContractHierarchyAttribute : System.Attribute
+            {
+                public ContractHierarchyAttribute(string child, string parent)
                 {
                 }
             }

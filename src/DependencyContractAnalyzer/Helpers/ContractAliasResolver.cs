@@ -10,6 +10,9 @@ namespace DependencyContractAnalyzer.Helpers;
 
 internal sealed class ContractAliasResolver
 {
+    private const string ContractAliasAttributeMetadataName = "DependencyContractAnalyzer.ContractAliasAttribute";
+    private const string ContractHierarchyAttributeMetadataName = "DependencyContractAnalyzer.ContractHierarchyAttribute";
+
     private static readonly ContractAliasResolver Empty =
         new(
             ImmutableDictionary<string, ImmutableHashSet<string>>.Empty.WithComparers(StringComparer.OrdinalIgnoreCase),
@@ -32,18 +35,73 @@ internal sealed class ContractAliasResolver
         INamedTypeSymbol? contractAliasAttributeSymbol,
         INamedTypeSymbol? contractHierarchyAttributeSymbol)
     {
-        if (contractAliasAttributeSymbol is null && contractHierarchyAttributeSymbol is null)
-        {
-            return Empty;
-        }
+        return CreateCore(
+            assembly,
+            contractAliasAttributeSymbol,
+            contractHierarchyAttributeSymbol,
+            reportDiagnostics: true);
+    }
 
+    public static ContractAliasResolver CreateExternal(
+        IAssemblySymbol assembly,
+        INamedTypeSymbol? contractAliasAttributeSymbol,
+        INamedTypeSymbol? contractHierarchyAttributeSymbol)
+    {
+        return CreateCore(
+            assembly,
+            contractAliasAttributeSymbol,
+            contractHierarchyAttributeSymbol,
+            reportDiagnostics: false);
+    }
+
+    public static ImmutableHashSet<string> ExpandAcross(
+        ImmutableHashSet<string> contracts,
+        IEnumerable<ContractAliasResolver> resolvers)
+    {
+        var expandedContracts = contracts;
+
+        while (true)
+        {
+            var changed = false;
+
+            foreach (var resolver in resolvers)
+            {
+                var nextContracts = resolver.Expand(expandedContracts);
+                if (nextContracts.SetEquals(expandedContracts))
+                {
+                    continue;
+                }
+
+                expandedContracts = nextContracts;
+                changed = true;
+            }
+
+            if (!changed)
+            {
+                return expandedContracts;
+            }
+        }
+    }
+
+    private static ContractAliasResolver CreateCore(
+        IAssemblySymbol assembly,
+        INamedTypeSymbol? contractAliasAttributeSymbol,
+        INamedTypeSymbol? contractHierarchyAttributeSymbol,
+        bool reportDiagnostics)
+    {
         var diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
         var duplicateCandidates = new Dictionary<string, List<ImplicationDefinition>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var attribute in assembly.GetAttributes())
         {
-            var isAlias = attribute.AttributeClass.SymbolEquals(contractAliasAttributeSymbol);
-            var isHierarchy = attribute.AttributeClass.SymbolEquals(contractHierarchyAttributeSymbol);
+            var isAlias = HasMatchingAttributeClass(
+                attribute,
+                contractAliasAttributeSymbol,
+                ContractAliasAttributeMetadataName);
+            var isHierarchy = HasMatchingAttributeClass(
+                attribute,
+                contractHierarchyAttributeSymbol,
+                ContractHierarchyAttributeMetadataName);
             if (!isAlias && !isHierarchy)
             {
                 continue;
@@ -57,10 +115,13 @@ internal sealed class ContractAliasResolver
                 : null;
             if (normalizedFrom is null)
             {
-                diagnostics.Add(
-                    Diagnostic.Create(
-                        DiagnosticDescriptors.EmptyContractName,
-                        GetAttributeLocation(attribute)));
+                if (reportDiagnostics)
+                {
+                    diagnostics.Add(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.EmptyContractName,
+                            GetAttributeLocation(attribute)));
+                }
             }
 
             var normalizedTo = hasTo
@@ -68,10 +129,13 @@ internal sealed class ContractAliasResolver
                 : null;
             if (normalizedTo is null)
             {
-                diagnostics.Add(
-                    Diagnostic.Create(
-                        DiagnosticDescriptors.EmptyContractName,
-                        GetAttributeLocation(attribute)));
+                if (reportDiagnostics)
+                {
+                    diagnostics.Add(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.EmptyContractName,
+                            GetAttributeLocation(attribute)));
+                }
             }
 
             if (normalizedFrom is null || normalizedTo is null)
@@ -81,20 +145,26 @@ internal sealed class ContractAliasResolver
 
             if (!ContractNameFormat.IsLowerKebabCase(normalizedFrom))
             {
-                diagnostics.Add(
-                    Diagnostic.Create(
-                        DiagnosticDescriptors.ContractNamingFormatViolation,
-                        GetAttributeLocation(attribute),
-                        normalizedFrom));
+                if (reportDiagnostics)
+                {
+                    diagnostics.Add(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.ContractNamingFormatViolation,
+                            GetAttributeLocation(attribute),
+                            normalizedFrom));
+                }
             }
 
             if (!ContractNameFormat.IsLowerKebabCase(normalizedTo))
             {
-                diagnostics.Add(
-                    Diagnostic.Create(
-                        DiagnosticDescriptors.ContractNamingFormatViolation,
-                        GetAttributeLocation(attribute),
-                        normalizedTo));
+                if (reportDiagnostics)
+                {
+                    diagnostics.Add(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.ContractNamingFormatViolation,
+                            GetAttributeLocation(attribute),
+                            normalizedTo));
+                }
             }
 
             var definition = new ImplicationDefinition(attribute, normalizedFrom, normalizedTo);
@@ -113,7 +183,7 @@ internal sealed class ContractAliasResolver
         {
             implicationDefinitions.Add(entry.Value[0]);
 
-            if (entry.Value.Count < 2)
+            if (!reportDiagnostics || entry.Value.Count < 2)
             {
                 continue;
             }
@@ -131,13 +201,20 @@ internal sealed class ContractAliasResolver
 
         if (implicationDefinitions.Count == 0)
         {
-            return new ContractAliasResolver(Empty._aliasClosure, diagnostics.ToImmutable());
+            return new ContractAliasResolver(
+                Empty._aliasClosure,
+                reportDiagnostics ? diagnostics.ToImmutable() : ImmutableArray<Diagnostic>.Empty);
         }
 
         var adjacency = BuildAdjacency(implicationDefinitions);
-        ReportCycles(implicationDefinitions, adjacency, diagnostics);
+        if (reportDiagnostics)
+        {
+            ReportCycles(implicationDefinitions, adjacency, diagnostics);
+        }
 
-        return new ContractAliasResolver(BuildClosure(adjacency), diagnostics.ToImmutable());
+        return new ContractAliasResolver(
+            BuildClosure(adjacency),
+            reportDiagnostics ? diagnostics.ToImmutable() : ImmutableArray<Diagnostic>.Empty);
     }
 
     public ImmutableHashSet<string> Expand(ImmutableHashSet<string> contracts)
@@ -355,6 +432,46 @@ internal sealed class ContractAliasResolver
     private static Location GetAttributeLocation(AttributeData attribute) =>
         attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation() ??
         Location.None;
+
+    private static bool HasMatchingAttributeClass(
+        AttributeData attribute,
+        INamedTypeSymbol? expectedAttributeSymbol,
+        string expectedAttributeMetadataName)
+    {
+        var attributeClass = attribute.AttributeClass;
+        return attributeClass is not null &&
+            (attributeClass.SymbolEquals(expectedAttributeSymbol) ||
+             string.Equals(
+                 GetFullyQualifiedMetadataName(attributeClass),
+                 expectedAttributeMetadataName,
+                 StringComparison.Ordinal));
+    }
+
+    private static string GetFullyQualifiedMetadataName(INamedTypeSymbol symbol)
+    {
+        var parts = new Stack<string>();
+        ISymbol? current = symbol;
+
+        while (current is not null)
+        {
+            switch (current)
+            {
+                case INamedTypeSymbol namedType:
+                    parts.Push(namedType.MetadataName);
+                    current = namedType.ContainingSymbol;
+                    break;
+                case INamespaceSymbol namespaceSymbol when !namespaceSymbol.IsGlobalNamespace:
+                    parts.Push(namespaceSymbol.MetadataName);
+                    current = namespaceSymbol.ContainingSymbol;
+                    break;
+                default:
+                    current = null;
+                    break;
+            }
+        }
+
+        return string.Join(".", parts);
+    }
 
     private static string FormatAlias(string from, string to) => from + " -> " + to;
 
