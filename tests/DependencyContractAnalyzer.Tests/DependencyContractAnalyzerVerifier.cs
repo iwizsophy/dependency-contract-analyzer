@@ -71,6 +71,8 @@ internal static class DependencyContractAnalyzerVerifier
         string[] additionalReferenceSources,
         params (string Key, string Value)[] options)
     {
+        // Some external-reference tests need the current compilation to own its local
+        // attribute declarations so referenced metadata stays isolated from the analyzer assembly.
         var additionalReferences = additionalReferenceSources
             .Select(CreateMetadataReferenceFromSource)
             .ToImmutableArray();
@@ -206,6 +208,8 @@ internal static class DependencyContractAnalyzerVerifier
 
     private static MetadataReference CreateMetadataReferenceFromSource(string source)
     {
+        // Build throwaway referenced assemblies in-memory so tests can model metadata-only
+        // dependencies without checked-in fixture projects.
         var syntaxTree = CSharpSyntaxTree.ParseText(
             source,
             new CSharpParseOptions(LanguageVersion.Preview),

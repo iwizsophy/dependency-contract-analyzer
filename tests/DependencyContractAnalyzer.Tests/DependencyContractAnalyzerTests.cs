@@ -7,6 +7,7 @@ namespace DependencyContractAnalyzer.Tests;
 
 public sealed class DependencyContractAnalyzerTests
 {
+    // Baseline dependency-contract behavior, normalization, duplicates, and naming.
     [Fact]
     public async Task ReportsNoDiagnosticWhenDependencyProvidesRequiredContract()
     {
@@ -320,6 +321,7 @@ public sealed class DependencyContractAnalyzerTests
         await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
     }
 
+    // External metadata mode plus preset-driven defaults around referenced assemblies.
     [Fact]
     public async Task IgnoresExternalDependenciesForMissingContractChecks()
     {
@@ -391,6 +393,9 @@ public sealed class DependencyContractAnalyzerTests
             }
             """;
 
+        // The consumer contributes "immutable -> thread-safe" while the referenced
+        // assembly contributes "snapshot-cache -> immutable". The analyzer should
+        // close over both graphs before evaluating the external dependency.
         var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
             new[] { CreateExternalAssemblySource(externalBody) },
@@ -1063,6 +1068,8 @@ public sealed class DependencyContractAnalyzerTests
             source,
             additionalReferenceSources,
             ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+        // Turning off the undeclared family should not suppress evaluation entirely.
+        // The analyzer should continue into dependency matching and consume metadata.
         var configuredDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
             additionalReferenceSources,
@@ -1108,6 +1115,8 @@ public sealed class DependencyContractAnalyzerTests
             source,
             additionalReferenceSources,
             ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+        // Scope evaluation follows the same "keep going after undeclared is disabled"
+        // rule as target evaluation when external metadata is available.
         var configuredDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
             additionalReferenceSources,
@@ -1121,6 +1130,7 @@ public sealed class DependencyContractAnalyzerTests
         Assert.Empty(configuredDiagnostics);
     }
 
+    // Additional dependency-source families controlled by editorconfig toggles.
     [Fact]
     public async Task ReportsNoDiagnosticWhenMethodParameterProvidesRequiredContract()
     {
@@ -1612,6 +1622,7 @@ public sealed class DependencyContractAnalyzerTests
         Assert.Contains("Clock", diagnostic.GetMessage());
     }
 
+    // Owner exclusion, exact-match suppression, and member-source exclusion behavior.
     [Fact]
     public async Task SkipsAnalyzerWhenOwnerNamespaceIsExcludedByEditorConfig()
     {
@@ -2293,6 +2304,7 @@ public sealed class DependencyContractAnalyzerTests
         await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
     }
 
+    // Scope resolution combines explicit declarations, assembly defaults, and namespace inference.
     [Fact]
     public async Task ReportsNoDiagnosticWhenScopedStaticUsageProvidesRequiredContract()
     {
@@ -2746,6 +2758,7 @@ public sealed class DependencyContractAnalyzerTests
                 .WithArguments("repository"));
     }
 
+    // Target resolution mirrors scope behavior, but namespace fallback stays local-only.
     [Fact]
     public async Task ReportsNoDiagnosticWhenTargetedDependencyProvidesRequiredContract()
     {
@@ -3048,6 +3061,8 @@ public sealed class DependencyContractAnalyzerTests
             }
             """;
 
+        // "Read_Model" cannot be normalized, so the two-segment fallback is dropped.
+        // The leaf "query" fallback remains valid and should still match.
         await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
             source,
             DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredTarget)
@@ -3328,6 +3343,7 @@ public sealed class DependencyContractAnalyzerTests
                 .WithArguments("repository"));
     }
 
+    // Alias and hierarchy tests exercise the shared implication graph and its validation rules.
     [Fact]
     public async Task ResolvesAliasForDependencyRequirement()
     {
@@ -3627,9 +3643,13 @@ public sealed class DependencyContractAnalyzerTests
                 .WithArguments("b -> a"));
     }
 
+    // External-reference tests append a minimal attribute surface so the synthesized
+    // assembly can emit metadata the analyzer recognizes without taking a package dependency.
     private static string CreateExternalAssemblySource(string body) =>
         body + "\r\n" + ExternalAttributeSource;
 
+    // This is intentionally minimal: only the referenced-assembly attributes that the
+    // analyzer reads from metadata are required for these tests.
     private const string ExternalAttributeSource = """
         namespace DependencyContractAnalyzer
         {
