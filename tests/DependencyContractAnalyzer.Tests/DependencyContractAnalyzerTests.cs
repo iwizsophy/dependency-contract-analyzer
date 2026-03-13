@@ -1643,6 +1643,62 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task SkipsAnalyzerWhenExcludedNamespaceListUsesMixedSeparators()
+    {
+        const string source = """
+            namespace MyCompany.Legacy.Migrations;
+
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.excluded_namespaces", "MyCompany.Other; MyCompany.Legacy\r\nMyCompany.Unused"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task SkipsAnalyzerWhenExcludedTypeListUsesMixedSeparators()
+    {
+        const string source = """
+            namespace MyCompany.Application;
+
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.excluded_types", "MyCompany.Other.Consumer; MyCompany.Application.Consumer\r\nMyCompany.Unused.Consumer"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public async Task DoesNotSkipAnalyzerForSiblingNamespaceExclusion()
     {
         const string source = """
@@ -1712,6 +1768,32 @@ public sealed class DependencyContractAnalyzerTests
             {
                 public Consumer(IFoo foo)
                 {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task SkipsAnalyzerWhenContainingTypeHasCustomExclusionAttribute()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [ExcludeDependencyContractAnalysis]
+            public sealed class Outer
+            {
+                [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+                public sealed class NestedConsumer
+                {
+                    public NestedConsumer(IFoo foo)
+                    {
+                    }
                 }
             }
             """;
