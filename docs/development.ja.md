@@ -29,7 +29,7 @@ dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c 
 現在のリポジトリ構成は次のとおりです。
 
 - `src/DependencyContractAnalyzer`: Analyzer、本体属性、Diagnostic、補助ロジック
-- `samples/DependencyContractAnalyzer.Sample`: 実行可能な consumer 例と intentional な valid / invalid ケース
+- `samples/DependencyContractAnalyzer.Sample`: clean build を前提にした実行可能な consumer 例。代表的な invalid case は sample README に分離
 - `tests/DependencyContractAnalyzer.Tests`: `Microsoft.CodeAnalysis.Testing` ベースの単体テスト
 - `docs/`: コントリビューター向け、公開運用向け、仕様書
 

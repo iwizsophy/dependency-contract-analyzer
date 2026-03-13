@@ -29,7 +29,7 @@ dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c 
 The repository currently follows this structure:
 
 - `src/DependencyContractAnalyzer`: analyzer, diagnostics, attributes, and helper logic
-- `samples/DependencyContractAnalyzer.Sample`: runnable consumer example with intentional valid and invalid analyzer cases
+- `samples/DependencyContractAnalyzer.Sample`: runnable consumer example that should build cleanly; representative invalid cases are documented in the sample README
 - `tests/DependencyContractAnalyzer.Tests`: unit tests built on `Microsoft.CodeAnalysis.Testing`
 - `docs/`: contributor, release, and specification documentation
 
