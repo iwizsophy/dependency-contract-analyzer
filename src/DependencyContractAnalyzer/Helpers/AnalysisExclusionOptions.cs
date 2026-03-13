@@ -33,6 +33,8 @@ internal readonly struct AnalysisExclusionOptions
             return new AnalysisExclusionOptions(Array.Empty<string>(), Array.Empty<string>());
         }
 
+        // Exclusion lists are source-scoped so teams can carve out migration-heavy
+        // files or namespaces gradually without suppressing the entire solution.
         var options = analyzerConfigOptionsProvider.GetOptions(sourceTree);
         return new AnalysisExclusionOptions(
             GetListOption(options, ExcludedNamespacesKey),
@@ -55,6 +57,8 @@ internal readonly struct AnalysisExclusionOptions
         var namespaceName = containingNamespace.ToDisplayString();
         foreach (var excludedNamespace in ExcludedNamespaces)
         {
+            // Namespace exclusions cascade to subnamespaces to avoid repeating entries
+            // for each nested area of the same architectural slice.
             if (namespaceName.Equals(excludedNamespace, StringComparison.OrdinalIgnoreCase) ||
                 namespaceName.StartsWith(excludedNamespace + ".", StringComparison.OrdinalIgnoreCase))
             {

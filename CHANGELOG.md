@@ -68,7 +68,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Fixed
 
-- _None_
+- Aligned invalid `external_dependency_policy` values with the documented preset-derived fallback behavior
 
 ### Removed
 

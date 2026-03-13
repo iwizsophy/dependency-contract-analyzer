@@ -63,6 +63,8 @@ internal readonly struct DependencyCollectionOptions
         var sourceTree = GetSourceTree(type);
         if (sourceTree is null)
         {
+            // Metadata-only types cannot map back to a source-specific editorconfig
+            // section, so fall back to preset-derived defaults for all optional sources.
             return new DependencyCollectionOptions(
                 behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
                 behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
@@ -74,6 +76,8 @@ internal readonly struct DependencyCollectionOptions
         }
 
         var options = analyzerConfigOptionsProvider.GetOptions(sourceTree);
+        // Source-scoped toggles allow teams to ratchet dependency extraction up or down
+        // for specific files without changing the whole compilation at once.
         return new DependencyCollectionOptions(
             GetBooleanOption(options, AnalyzeFieldsKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
             GetBooleanOption(options, AnalyzeBaseTypesKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),

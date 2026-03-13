@@ -12,6 +12,8 @@ internal static class SymbolExtensions
         this INamedTypeSymbol dependencyType,
         INamedTypeSymbol requiredType)
     {
+        // Dependency-type requirements match against the discovered type itself plus
+        // its base-type and interface closure, mirroring how provided contracts flow.
         foreach (var candidate in dependencyType.EnumerateTypeClosure())
         {
             if (MatchesSymbol(candidate, requiredType))
@@ -52,6 +54,8 @@ internal static class SymbolExtensions
     }
 
     private static bool MatchesSymbol(INamedTypeSymbol left, INamedTypeSymbol right) =>
+        // Compare both constructed and original definitions so generic dependencies
+        // can satisfy requirements expressed on either open or closed type forms.
         left.SymbolEquals(right) ||
         left.OriginalDefinition.SymbolEquals(right) ||
         left.SymbolEquals(right.OriginalDefinition) ||

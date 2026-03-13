@@ -19,6 +19,8 @@ internal static class NamespaceNameInference
              !current.IsGlobalNamespace && normalizedSegments.Count < maxSegments;
              current = current.ContainingNamespace)
         {
+            // Collect leaf-first namespace segments so later passes can emit both
+            // single-segment and trailing multi-segment fallback names.
             normalizedSegments.Add(
                 string.IsNullOrWhiteSpace(current.Name)
                     ? null
@@ -49,6 +51,8 @@ internal static class NamespaceNameInference
 
             if (hasInvalidSegment)
             {
+                // If any segment cannot be normalized to kebab-case, skip only that
+                // candidate name and keep evaluating shorter alternatives.
                 continue;
             }
 
@@ -80,6 +84,8 @@ internal static class NamespaceNameInference
             {
                 var previous = segment[index - 1];
                 var nextIsLower = index < segment.Length - 1 && char.IsLower(segment[index + 1]);
+                // Treat acronym-to-word boundaries like "ReadModel" -> "read-model"
+                // without splitting runs such as "IO" into "i-o".
                 if (char.IsLower(previous) ||
                     char.IsDigit(previous) ||
                     (char.IsUpper(previous) && nextIsLower))

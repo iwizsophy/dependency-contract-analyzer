@@ -4,6 +4,8 @@ internal static class ContractNameFormat
 {
     public static bool IsLowerKebabCase(string contractName)
     {
+        // DCA101 intentionally allows only lowercase ASCII letters, digits, and
+        // single interior hyphens so contract names stay stable across APIs/docs.
         var previousWasHyphen = false;
 
         for (var index = 0; index < contractName.Length; index++)

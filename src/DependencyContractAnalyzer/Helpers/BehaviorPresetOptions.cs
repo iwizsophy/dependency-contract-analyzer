@@ -40,6 +40,8 @@ internal readonly struct BehaviorPresetOptions
             return Default;
         }
 
+        // Presets are global because they seed defaults for both source-scoped and
+        // compilation-scoped options from one consistent baseline.
         return rawValue.Trim().ToLowerInvariant() switch
         {
             "default" => Default,

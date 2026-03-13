@@ -665,6 +665,33 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task InvalidExternalDependencyPolicyFallsBackToBehaviorPresetDefault()
+    {
+        const string source = """
+            using System;
+            using DependencyContractAnalyzer;
+
+            [RequiresDependencyContract(typeof(IDisposable), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IDisposable dependency)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "strict"),
+            ("dependency_contract_analyzer.external_dependency_policy", "invalid"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.MissingRequiredContract, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("IDisposable", diagnostic.GetMessage());
+    }
+
+    [Fact]
     public async Task RelaxedBehaviorPresetDisablesMethodParameterAnalysisByDefault()
     {
         const string source = """
