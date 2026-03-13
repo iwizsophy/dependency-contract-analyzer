@@ -92,12 +92,21 @@ internal static class DependencyCollector
                 continue;
             }
 
-            AddDependency(field.Type, DependencyKind.Field, dependencies, seen);
+            if (options.AnalyzeFields)
+            {
+                AddDependency(field.Type, DependencyKind.Field, dependencies, seen);
+            }
         }
 
-        if (type.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
+        if (options.AnalyzeBaseTypes &&
+            type.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
         {
             AddDependency(baseType, DependencyKind.BaseType, dependencies, seen);
+        }
+
+        if (!options.AnalyzeInterfaceImplementations)
+        {
+            return dependencies.ToImmutable();
         }
 
         foreach (var interfaceType in type.Interfaces)

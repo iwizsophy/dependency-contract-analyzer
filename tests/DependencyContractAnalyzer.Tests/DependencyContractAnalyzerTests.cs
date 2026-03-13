@@ -509,6 +509,149 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task ReportsNoDiagnosticWhenFieldDependencyProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                private readonly IFoo _foo;
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenFieldAnalysisIsDisabledByEditorConfig()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                private readonly IFoo _foo;
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.analyze_fields", "false"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("IFoo", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenBaseTypeDependencyProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public class FooBase
+            {
+            }
+
+            [RequiresDependencyContract(typeof(FooBase), "thread-safe")]
+            public sealed class Consumer : FooBase
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenBaseTypeAnalysisIsDisabledByEditorConfig()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public class FooBase
+            {
+            }
+
+            [RequiresDependencyContract(typeof(FooBase), "thread-safe")]
+            public sealed class Consumer : FooBase
+            {
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.analyze_base_types", "false"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("FooBase", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenImplementedInterfaceDependencyProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer : IFoo
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenImplementedInterfaceAnalysisIsDisabledByEditorConfig()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer : IFoo
+            {
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.analyze_interface_implementations", "false"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("IFoo", diagnostic.GetMessage());
+    }
+
+    [Fact]
     public async Task ReportsNoDiagnosticWhenCreatedTypeProvidesRequiredContract()
     {
         const string source = """

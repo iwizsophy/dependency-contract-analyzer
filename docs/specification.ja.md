@@ -25,12 +25,15 @@
 
 次の依存種別は `.editorconfig` で無効化でき、既定値は `true` です。
 
+- `dependency_contract_analyzer.analyze_fields`
+- `dependency_contract_analyzer.analyze_base_types`
+- `dependency_contract_analyzer.analyze_interface_implementations`
 - `dependency_contract_analyzer.analyze_method_parameters`
 - `dependency_contract_analyzer.analyze_properties`
 - `dependency_contract_analyzer.analyze_object_creation`
 - `dependency_contract_analyzer.analyze_static_members`
 
-コンストラクタ引数、フィールド型、継承、インタフェース実装は常に解析対象です。
+コンストラクタ引数は常に解析対象です。
 
 現在、実装済みのルールファミリは次のとおりです。
 
@@ -452,6 +455,9 @@ Severity は `.editorconfig` により変更可能です。
 
 `DependencyContractAnalyzer` は次の boolean `.editorconfig` option をサポートします。
 
+- `dependency_contract_analyzer.analyze_fields`（既定: `true`）
+- `dependency_contract_analyzer.analyze_base_types`（既定: `true`）
+- `dependency_contract_analyzer.analyze_interface_implementations`（既定: `true`）
 - `dependency_contract_analyzer.analyze_method_parameters`（既定: `true`）
 - `dependency_contract_analyzer.analyze_properties`（既定: `true`）
 - `dependency_contract_analyzer.analyze_object_creation`（既定: `true`）
@@ -575,7 +581,7 @@ CompilationStart
 - プロパティ型だけで依存が表現される場合も Diagnostic なし
 - `new` 式だけで依存が表現される場合も Diagnostic なし
 - static メンバー利用だけで依存が表現される場合も Diagnostic なし
-- `.editorconfig` で method parameter / property / object creation / static member の解析を無効化した場合は `DCA002`
+- `.editorconfig` で field / base type / interface implementation / method parameter / property / object creation / static member の解析を無効化した場合は `DCA002`
 - `.editorconfig` で owner type を namespace / type 単位 exclusion した場合は Diagnostic なし
 - 一致する dependency source が member-level exclusion された結果、`DCA002` / `DCA205` / `DCA206` になるケース
 - owner type 上で一致する dependency / target / scope requirement を suppression した場合は Diagnostic なし

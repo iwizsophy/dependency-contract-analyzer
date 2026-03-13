@@ -17,6 +17,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - GitHub issue templates for bug reports and feature requests
 - Sample consumer project with representative valid and invalid analyzer usage
 - `.editorconfig` policy toggles for method parameters, properties, object creation, and static member dependency analysis
+- `.editorconfig` policy toggles for field, base-type, and interface-implementation dependency analysis
 - `.editorconfig` owner-type exclusion by namespace and fully qualified type name
 - `ExcludeDependencyContractAnalysisAttribute` for assembly/type-level owner exclusion
 - `ExcludeDependencyContractSourceAttribute` for member-level dependency source exclusion

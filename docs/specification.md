@@ -25,12 +25,15 @@ The analyzer currently inspects the following dependency kinds:
 
 The following dependency kinds can be disabled through `.editorconfig` and default to `true`:
 
+- `dependency_contract_analyzer.analyze_fields`
+- `dependency_contract_analyzer.analyze_base_types`
+- `dependency_contract_analyzer.analyze_interface_implementations`
 - `dependency_contract_analyzer.analyze_method_parameters`
 - `dependency_contract_analyzer.analyze_properties`
 - `dependency_contract_analyzer.analyze_object_creation`
 - `dependency_contract_analyzer.analyze_static_members`
 
-Constructor parameters, field types, base types, and implemented interfaces are always analyzed.
+Constructor parameters are always analyzed.
 
 The following rule families are currently implemented:
 
@@ -452,6 +455,9 @@ Default diagnostic severities are product defaults; recommended CI severities ar
 
 `DependencyContractAnalyzer` supports the following boolean `.editorconfig` options:
 
+- `dependency_contract_analyzer.analyze_fields` (default: `true`)
+- `dependency_contract_analyzer.analyze_base_types` (default: `true`)
+- `dependency_contract_analyzer.analyze_interface_implementations` (default: `true`)
 - `dependency_contract_analyzer.analyze_method_parameters` (default: `true`)
 - `dependency_contract_analyzer.analyze_properties` (default: `true`)
 - `dependency_contract_analyzer.analyze_object_creation` (default: `true`)
@@ -575,7 +581,7 @@ Representative scenarios include:
 - No diagnostic when a required dependency appears only on a property type
 - No diagnostic when a required dependency appears only through a `new` expression
 - No diagnostic when a required dependency appears only through static member usage
-- `DCA002` when method parameter, property, object creation, or static-member dependency analysis is disabled through `.editorconfig`
+- `DCA002` when field, base-type, interface-implementation, method-parameter, property, object-creation, or static-member dependency analysis is disabled through `.editorconfig`
 - No diagnostic when the owner type is excluded through `.editorconfig` namespace or type exclusion settings
 - `DCA002`, `DCA205`, or `DCA206` when the only matching dependency source is excluded at member level
 - No diagnostic when a matching dependency, target, or scope requirement is suppressed on the owner type

@@ -5,22 +5,37 @@ namespace DependencyContractAnalyzer.Helpers;
 
 internal readonly struct DependencyCollectionOptions
 {
+    private const string AnalyzeFieldsKey = "dependency_contract_analyzer.analyze_fields";
+    private const string AnalyzeBaseTypesKey = "dependency_contract_analyzer.analyze_base_types";
+    private const string AnalyzeInterfaceImplementationsKey = "dependency_contract_analyzer.analyze_interface_implementations";
     private const string AnalyzeMethodParametersKey = "dependency_contract_analyzer.analyze_method_parameters";
     private const string AnalyzePropertiesKey = "dependency_contract_analyzer.analyze_properties";
     private const string AnalyzeObjectCreationKey = "dependency_contract_analyzer.analyze_object_creation";
     private const string AnalyzeStaticMembersKey = "dependency_contract_analyzer.analyze_static_members";
 
     public DependencyCollectionOptions(
+        bool analyzeFields,
+        bool analyzeBaseTypes,
+        bool analyzeInterfaceImplementations,
         bool analyzeMethodParameters,
         bool analyzeProperties,
         bool analyzeObjectCreation,
         bool analyzeStaticMembers)
     {
+        AnalyzeFields = analyzeFields;
+        AnalyzeBaseTypes = analyzeBaseTypes;
+        AnalyzeInterfaceImplementations = analyzeInterfaceImplementations;
         AnalyzeMethodParameters = analyzeMethodParameters;
         AnalyzeProperties = analyzeProperties;
         AnalyzeObjectCreation = analyzeObjectCreation;
         AnalyzeStaticMembers = analyzeStaticMembers;
     }
+
+    public bool AnalyzeFields { get; }
+
+    public bool AnalyzeBaseTypes { get; }
+
+    public bool AnalyzeInterfaceImplementations { get; }
 
     public bool AnalyzeMethodParameters { get; }
 
@@ -32,6 +47,9 @@ internal readonly struct DependencyCollectionOptions
 
     public static DependencyCollectionOptions Default =>
         new(
+            analyzeFields: true,
+            analyzeBaseTypes: true,
+            analyzeInterfaceImplementations: true,
             analyzeMethodParameters: true,
             analyzeProperties: true,
             analyzeObjectCreation: true,
@@ -49,6 +67,9 @@ internal readonly struct DependencyCollectionOptions
 
         var options = analyzerConfigOptionsProvider.GetOptions(sourceTree);
         return new DependencyCollectionOptions(
+            GetBooleanOption(options, AnalyzeFieldsKey, defaultValue: true),
+            GetBooleanOption(options, AnalyzeBaseTypesKey, defaultValue: true),
+            GetBooleanOption(options, AnalyzeInterfaceImplementationsKey, defaultValue: true),
             GetBooleanOption(options, AnalyzeMethodParametersKey, defaultValue: true),
             GetBooleanOption(options, AnalyzePropertiesKey, defaultValue: true),
             GetBooleanOption(options, AnalyzeObjectCreationKey, defaultValue: true),

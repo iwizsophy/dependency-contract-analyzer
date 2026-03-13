@@ -150,6 +150,9 @@ These are product defaults. All diagnostics remain configurable through `.editor
 
 `.editorconfig` also supports dependency collection policy toggles for these optional dependency sources:
 
+- `dependency_contract_analyzer.analyze_fields`
+- `dependency_contract_analyzer.analyze_base_types`
+- `dependency_contract_analyzer.analyze_interface_implementations`
 - `dependency_contract_analyzer.analyze_method_parameters`
 - `dependency_contract_analyzer.analyze_properties`
 - `dependency_contract_analyzer.analyze_object_creation`
@@ -157,7 +160,7 @@ These are product defaults. All diagnostics remain configurable through `.editor
 - `dependency_contract_analyzer.excluded_namespaces`
 - `dependency_contract_analyzer.excluded_types`
 
-The four `analyze_*` options default to `true`. Constructor parameters, field types, base types, and implemented interfaces remain enabled.
+All `analyze_*` options default to `true`. Constructor parameters remain enabled.
 
 `excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names.
 
