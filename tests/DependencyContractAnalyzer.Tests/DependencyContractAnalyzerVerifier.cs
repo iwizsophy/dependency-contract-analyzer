@@ -85,40 +85,12 @@ internal static class DependencyContractAnalyzerVerifier
         IEnumerable<(string Key, string Value)> options,
         ImmutableArray<MetadataReference> additionalReferences)
     {
-        var syntaxTree = CSharpSyntaxTree.ParseText(
-            source,
-            new CSharpParseOptions(LanguageVersion.Preview),
-            path: "/0/Test0.cs");
-        var compilation = CSharpCompilation.Create(
-            assemblyName: "DependencyContractAnalyzer.Tests.EditorConfig",
-            syntaxTrees: new[] { syntaxTree },
-            references: DefaultMetadataReferences.AddRange(additionalReferences),
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-        var compilationErrors = compilation.GetDiagnostics()
-            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
-            .Select(static diagnostic => diagnostic.ToString())
-            .ToImmutableArray();
-        if (!compilationErrors.IsDefaultOrEmpty)
-        {
-            throw new InvalidOperationException(string.Join(Environment.NewLine, compilationErrors));
-        }
-
-        var analyzer = new DependencyContractAnalyzerDiagnosticAnalyzer();
-        var analyzerOptions = new AnalyzerOptions(
-            ImmutableArray<AdditionalText>.Empty,
-            new TestAnalyzerConfigOptionsProvider(options));
-        var compilationWithAnalyzers = compilation.WithAnalyzers(
-            ImmutableArray.Create<DiagnosticAnalyzer>(analyzer),
-            new CompilationWithAnalyzersOptions(
-                analyzerOptions,
-                onAnalyzerException: null,
-                concurrentAnalysis: false,
-                logAnalyzerExecutionTime: false,
-                reportSuppressedDiagnostics: false));
-
-        return (await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync())
-            .OrderBy(static diagnostic => diagnostic.Location.SourceSpan.Start)
-            .ToImmutableArray();
+        var syntaxTree = ParseSource(source, "/0/Test0.cs");
+        var compilation = CreateCompilation(
+            "DependencyContractAnalyzer.Tests.EditorConfig",
+            new[] { syntaxTree },
+            DefaultMetadataReferences.AddRange(additionalReferences));
+        return await RunAnalyzerAsync(compilation, options);
     }
 
     private static async Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsWithoutAnalyzerReferenceAsync(
@@ -128,45 +100,14 @@ internal static class DependencyContractAnalyzerVerifier
     {
         var syntaxTrees = new[]
         {
-            CSharpSyntaxTree.ParseText(
-                SourceDefinedAttributeSource,
-                new CSharpParseOptions(LanguageVersion.Preview),
-                path: "/0/DependencyContractAnalyzer.Attributes.cs"),
-            CSharpSyntaxTree.ParseText(
-                source,
-                new CSharpParseOptions(LanguageVersion.Preview),
-                path: "/0/Test0.cs"),
+            ParseSource(SourceDefinedAttributeSource, "/0/DependencyContractAnalyzer.Attributes.cs"),
+            ParseSource(source, "/0/Test0.cs"),
         };
-        var compilation = CSharpCompilation.Create(
-            assemblyName: "DependencyContractAnalyzer.Tests.SourceDefinedAttributes",
-            syntaxTrees: syntaxTrees,
-            references: PlatformMetadataReferences.AddRange(additionalReferences),
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-        var compilationErrors = compilation.GetDiagnostics()
-            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
-            .Select(static diagnostic => diagnostic.ToString())
-            .ToImmutableArray();
-        if (!compilationErrors.IsDefaultOrEmpty)
-        {
-            throw new InvalidOperationException(string.Join(Environment.NewLine, compilationErrors));
-        }
-
-        var analyzer = new DependencyContractAnalyzerDiagnosticAnalyzer();
-        var analyzerOptions = new AnalyzerOptions(
-            ImmutableArray<AdditionalText>.Empty,
-            new TestAnalyzerConfigOptionsProvider(options));
-        var compilationWithAnalyzers = compilation.WithAnalyzers(
-            ImmutableArray.Create<DiagnosticAnalyzer>(analyzer),
-            new CompilationWithAnalyzersOptions(
-                analyzerOptions,
-                onAnalyzerException: null,
-                concurrentAnalysis: false,
-                logAnalyzerExecutionTime: false,
-                reportSuppressedDiagnostics: false));
-
-        return (await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync())
-            .OrderBy(static diagnostic => diagnostic.Location.SourceSpan.Start)
-            .ToImmutableArray();
+        var compilation = CreateCompilation(
+            "DependencyContractAnalyzer.Tests.SourceDefinedAttributes",
+            syntaxTrees,
+            PlatformMetadataReferences.AddRange(additionalReferences));
+        return await RunAnalyzerAsync(compilation, options);
     }
 
     private sealed class Test : CSharpAnalyzerTest<DependencyContractAnalyzerDiagnosticAnalyzer, XUnitVerifier>
@@ -210,23 +151,11 @@ internal static class DependencyContractAnalyzerVerifier
     {
         // Build throwaway referenced assemblies in-memory so tests can model metadata-only
         // dependencies without checked-in fixture projects.
-        var syntaxTree = CSharpSyntaxTree.ParseText(
-            source,
-            new CSharpParseOptions(LanguageVersion.Preview),
-            path: "/0/External.cs");
-        var compilation = CSharpCompilation.Create(
-            assemblyName: "DependencyContractAnalyzer.Tests.External." + Guid.NewGuid().ToString("N"),
-            syntaxTrees: new[] { syntaxTree },
-            references: PlatformMetadataReferences,
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-        var errors = compilation.GetDiagnostics()
-            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
-            .Select(static diagnostic => diagnostic.ToString())
-            .ToImmutableArray();
-        if (!errors.IsDefaultOrEmpty)
-        {
-            throw new InvalidOperationException(string.Join(Environment.NewLine, errors));
-        }
+        var syntaxTree = ParseSource(source, "/0/External.cs");
+        var compilation = CreateCompilation(
+            "DependencyContractAnalyzer.Tests.External." + Guid.NewGuid().ToString("N"),
+            new[] { syntaxTree },
+            PlatformMetadataReferences);
 
         using var stream = new MemoryStream();
         var emitResult = compilation.Emit(stream);
@@ -239,6 +168,60 @@ internal static class DependencyContractAnalyzerVerifier
         }
 
         return MetadataReference.CreateFromImage(stream.ToArray());
+    }
+
+    private static SyntaxTree ParseSource(string source, string path) =>
+        CSharpSyntaxTree.ParseText(
+            source,
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: path);
+
+    private static CSharpCompilation CreateCompilation(
+        string assemblyName,
+        IEnumerable<SyntaxTree> syntaxTrees,
+        ImmutableArray<MetadataReference> references)
+    {
+        var compilation = CSharpCompilation.Create(
+            assemblyName: assemblyName,
+            syntaxTrees: syntaxTrees,
+            references: references,
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        ThrowIfCompilationHasErrors(compilation);
+        return compilation;
+    }
+
+    private static async Task<ImmutableArray<Diagnostic>> RunAnalyzerAsync(
+        CSharpCompilation compilation,
+        IEnumerable<(string Key, string Value)> options)
+    {
+        var analyzer = new DependencyContractAnalyzerDiagnosticAnalyzer();
+        var analyzerOptions = new AnalyzerOptions(
+            ImmutableArray<AdditionalText>.Empty,
+            new TestAnalyzerConfigOptionsProvider(options));
+        var compilationWithAnalyzers = compilation.WithAnalyzers(
+            ImmutableArray.Create<DiagnosticAnalyzer>(analyzer),
+            new CompilationWithAnalyzersOptions(
+                analyzerOptions,
+                onAnalyzerException: null,
+                concurrentAnalysis: false,
+                logAnalyzerExecutionTime: false,
+                reportSuppressedDiagnostics: false));
+
+        return (await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync())
+            .OrderBy(static diagnostic => diagnostic.Location.SourceSpan.Start)
+            .ToImmutableArray();
+    }
+
+    private static void ThrowIfCompilationHasErrors(Compilation compilation)
+    {
+        var compilationErrors = compilation.GetDiagnostics()
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .Select(static diagnostic => diagnostic.ToString())
+            .ToImmutableArray();
+        if (!compilationErrors.IsDefaultOrEmpty)
+        {
+            throw new InvalidOperationException(string.Join(Environment.NewLine, compilationErrors));
+        }
     }
 
     private static ImmutableArray<MetadataReference> CreatePlatformMetadataReferences()

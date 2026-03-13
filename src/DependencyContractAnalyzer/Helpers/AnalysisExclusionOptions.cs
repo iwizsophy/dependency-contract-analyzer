@@ -27,15 +27,14 @@ internal readonly struct AnalysisExclusionOptions
         AnalyzerConfigOptionsProvider analyzerConfigOptionsProvider,
         INamedTypeSymbol type)
     {
-        var sourceTree = GetSourceTree(type);
-        if (sourceTree is null)
+        var options = AnalyzerConfigOptionReader.GetSourceOptions(analyzerConfigOptionsProvider, type);
+        if (options is null)
         {
             return new AnalysisExclusionOptions(Array.Empty<string>(), Array.Empty<string>());
         }
 
         // Exclusion lists are source-scoped so teams can carve out migration-heavy
         // files or namespaces gradually without suppressing the entire solution.
-        var options = analyzerConfigOptionsProvider.GetOptions(sourceTree);
         return new AnalysisExclusionOptions(
             GetListOption(options, ExcludedNamespacesKey),
             GetListOption(options, ExcludedTypesKey));
@@ -68,20 +67,6 @@ internal readonly struct AnalysisExclusionOptions
 
         return false;
     }
-
-    private static SyntaxTree? GetSourceTree(INamedTypeSymbol type)
-    {
-        foreach (var location in type.Locations)
-        {
-            if (location.IsInSource && location.SourceTree is not null)
-            {
-                return location.SourceTree;
-            }
-        }
-
-        return null;
-    }
-
     private static string[] GetListOption(AnalyzerConfigOptions options, string key)
     {
         if (!options.TryGetValue(key, out var rawValue) ||
