@@ -19,6 +19,8 @@ internal static class DependencyCollector
         var dependencies = ImmutableArray.CreateBuilder<DependencyDescriptor>();
         var seen = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
+        // Constructor parameters remain the baseline dependency source even when
+        // optional source families are disabled by configuration or presets.
         foreach (var constructor in type.InstanceConstructors)
         {
             if (constructor.IsImplicitlyDeclared ||
@@ -137,6 +139,8 @@ internal static class DependencyCollector
 
         return member switch
         {
+            // Property and event accessors surface as methods/fields in Roslyn, so mirror
+            // exclusion declared on the associated property or event member as well.
             IMethodSymbol { AssociatedSymbol: { } associatedSymbol } => HasAttribute(associatedSymbol, excludeDependencyContractSourceAttributeSymbol),
             IFieldSymbol { AssociatedSymbol: { } associatedSymbol } => HasAttribute(associatedSymbol, excludeDependencyContractSourceAttributeSymbol),
             _ => false,
@@ -245,6 +249,8 @@ internal static class DependencyCollector
         ImmutableArray<DependencyDescriptor>.Builder dependencies,
         HashSet<INamedTypeSymbol> seen)
     {
+        // Different discovery paths can hit the same dependency type; keep the first
+        // observed kind only so later analysis reasons about unique dependency types.
         if (type is not INamedTypeSymbol namedType || !seen.Add(namedType))
         {
             return;

@@ -30,6 +30,8 @@ internal readonly struct RequirementEvaluationOptions
         AnalyzerConfigOptionsProvider analyzerConfigOptionsProvider,
         INamedTypeSymbol type)
     {
+        // Keep these switches source-scoped like the dependency-source toggles so
+        // teams can relax migration-heavy areas without changing the whole solution.
         var sourceTree = GetSourceTree(type);
         if (sourceTree is null)
         {
