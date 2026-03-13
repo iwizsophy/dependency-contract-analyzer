@@ -35,6 +35,29 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task ReportsNoDiagnosticWhenOpenGenericRequirementMatchesClosedGenericDependency()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IRepository<T>
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IRepository<>), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IRepository<int> repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
     public async Task ReportsDiagnosticWhenDependencyDoesNotProvideRequiredContract()
     {
         const string source = """
@@ -3000,6 +3023,36 @@ public sealed class DependencyContractAnalyzerTests
         Assert.Equal(DiagnosticIds.UndeclaredRequiredTarget, diagnostic.Id);
         Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
         Assert.Contains("read-models-query", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task SkipsInvalidNamespaceSegmentsButKeepsShorterValidFallbacks()
+    {
+        const string source = """
+            namespace MyCompany.Read_Model.Query;
+
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnTarget("query", "thread-safe")]
+            [{|#0:RequiresContractOnTarget("read-model-query", "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredTarget)
+                .WithLocation(0)
+                .WithArguments("read-model-query"));
     }
 
     [Fact]
