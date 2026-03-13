@@ -169,13 +169,15 @@ The four `analyze_*` options default to `true`. Constructor parameters, field ty
 
 ## Suppression model
 
-v1 relies only on standard Roslyn suppression mechanisms:
+The current implementation supports:
 
 - `#pragma warning disable`
 - `[SuppressMessage]`
 - `.editorconfig` severity settings
+- `.editorconfig` owner-type exclusion through `excluded_namespaces` and `excluded_types`
+- `[ExcludeDependencyContractAnalysis]` on assemblies and owner types
 
-Custom exclusion attributes and requirement-level suppression are out of scope for v1.
+Requirement-level suppression and member-level dependency source exclusion remain out of scope.
 
 ## Non-goals
 

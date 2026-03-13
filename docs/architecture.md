@@ -35,7 +35,7 @@ This is not only an analyzer for attributes. It is a static architecture verific
     |
     +-- contract matching
     +-- alias / implication resolution
-    +-- standard Roslyn suppression in v1
+    +-- standard Roslyn suppression and owner-type exclusions
     +-- diagnostics
 ```
 
@@ -489,4 +489,4 @@ Current recommended delivery roadmap for this repository:
 
 If delivery risk changes, target and scope can be swapped without changing the end-state architecture.
 
-The current `.editorconfig` surface covers diagnostic severity, dependency collection toggles for method parameters, properties, object creation, and static member usage, and owner-type exclusion by namespace or fully qualified type name. Namespace-based target/scope inference is implemented only for final-segment fallback names in the current compilation. Richer namespace heuristics and custom exclusion models remain out of scope.
+The current `.editorconfig` surface covers diagnostic severity, dependency collection toggles for method parameters, properties, object creation, and static member usage, and owner-type exclusion by namespace or fully qualified type name. Custom exclusion attributes are implemented for assemblies and owner types. Namespace-based target/scope inference is implemented only for final-segment fallback names in the current compilation. Richer namespace heuristics and finer-grained custom exclusion models remain out of scope.

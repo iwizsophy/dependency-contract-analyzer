@@ -39,7 +39,7 @@
     |
     +-- 契約一致判定
     +-- Alias / 包含関係解決
-    +-- v1 では Roslyn 標準 suppression のみ
+    +-- Roslyn 標準 suppression と owner type exclusion
     +-- Diagnostic 発行
 ```
 
@@ -495,4 +495,4 @@ Evaluate(consumer, dependency) -> violations
 
 実装リスクや需要に応じて v2 と v3 は入れ替えても、最終形のアーキテクチャ自体は変わりません。
 
-現在の `.editorconfig` 対応は Diagnostic severity に加え、method parameter / property / object creation / static member 利用の依存抽出トグルと、namespace / fully qualified type 名による owner type exclusion を含みます。namespace ベースの target / scope 推定は current compilation 内の最終セグメント fallback のみ実装済みで、より高度な推定や独自 exclusion モデルは引き続き非対応です。
+現在の `.editorconfig` 対応は Diagnostic severity に加え、method parameter / property / object creation / static member 利用の依存抽出トグルと、namespace / fully qualified type 名による owner type exclusion を含みます。独自 exclusion 属性は assembly と owner type に対して実装済みです。namespace ベースの target / scope 推定は current compilation 内の最終セグメント fallback のみ実装済みで、より高度な推定や finer-grained な exclusion モデルは引き続き非対応です。

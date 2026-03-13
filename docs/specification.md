@@ -192,6 +192,17 @@ public sealed class ContractHierarchyAttribute : Attribute
 - Repeated hierarchy attributes allow multiple parents for the same contract.
 - Cycles in the combined implication graph are invalid and reported as `DCA202`.
 
+### 3.10 Custom exclusion attribute
+
+```csharp
+[AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
+public sealed class ExcludeDependencyContractAnalysisAttribute : Attribute
+{
+}
+```
+
+When applied to an assembly or owner type, analyzer execution for that owner type is skipped.
+
 For DI-agnostic analysis, declare contracts on the consumed abstraction when a dependency is typed as an interface or base class.
 
 ## 4. Rule evaluation model
@@ -214,6 +225,7 @@ Current behavior:
 - If a type has no explicit target, the analyzer infers one from the final namespace segment in the current compilation.
 - If a type has no explicit scope and the assembly has no assembly-level scope, the analyzer infers one from the final namespace segment in the current compilation.
 - Assembly-level scope remains explicit metadata and suppresses scope inference.
+- Assembly/type-level `ExcludeDependencyContractAnalysisAttribute` skips analyzer execution for owner types.
 
 ## 5. Name normalization rules
 
@@ -412,13 +424,15 @@ Covered names:
 
 ### 8.3 Suppression model
 
-v1 supports only standard Roslyn suppression mechanisms:
+The current implementation supports:
 
 - `#pragma warning disable`
 - `[SuppressMessage]`
 - `.editorconfig` severity settings
+- `.editorconfig` owner-type exclusion via `excluded_namespaces` and `excluded_types`
+- `ExcludeDependencyContractAnalysisAttribute` on assemblies and owner types
 
-Custom exclusion attributes, namespace-level exclusions, and requirement-level exclusions are out of scope for v1.
+Requirement-level exclusions and member-level dependency source exclusion remain out of scope.
 
 ## 9. Current project layout
 
@@ -432,6 +446,7 @@ src/
    │  ├ ContractHierarchyAttribute.cs
    │  ├ ContractScopeAttribute.cs
    │  ├ ContractTargetAttribute.cs
+   │  ├ ExcludeDependencyContractAnalysisAttribute.cs
    │  ├ ProvidesContractAttribute.cs
    │  ├ RequiresContractOnScopeAttribute.cs
    │  ├ RequiresContractOnTargetAttribute.cs
@@ -496,10 +511,13 @@ Representative scenarios include:
 - Target-based matching through direct and inherited target declarations
 - Implication-based matching through alias, hierarchy, and mixed multi-step chains
 - Diagnostics for empty names, duplicate declarations, and cyclic implication graphs
+- No diagnostic when the owner type is excluded through the custom exclusion attribute
 
 ## 12. Future extensions
 
 - EditorConfig-based policy control beyond dependency collection toggles
+- Member-level dependency source exclusion
+- Requirement-level exclusion / suppression
 - Richer namespace metadata inference beyond final-segment normalization
 
 ## 13. Non-goals

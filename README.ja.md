@@ -169,13 +169,15 @@ public sealed class SnapshotCache
 
 ## Suppression モデル
 
-v1 では Roslyn 標準の suppression 機構のみを利用します。
+現在の実装では次をサポートします。
 
 - `#pragma warning disable`
 - `[SuppressMessage]`
 - `.editorconfig` による severity 設定
+- `.editorconfig` の `excluded_namespaces` / `excluded_types` による owner type exclusion
+- assembly / owner type に付ける `[ExcludeDependencyContractAnalysis]`
 
-独自 exclusion 属性や requirement 単位 suppression は v1 非対応です。
+requirement 単位 suppression と member-level dependency source exclusion は引き続き非対応です。
 
 ## 非対象
 

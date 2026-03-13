@@ -20,6 +20,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
     private const string ContractHierarchyAttributeMetadataName = "DependencyContractAnalyzer.ContractHierarchyAttribute";
     private const string ContractScopeAttributeMetadataName = "DependencyContractAnalyzer.ContractScopeAttribute";
     private const string ContractTargetAttributeMetadataName = "DependencyContractAnalyzer.ContractTargetAttribute";
+    private const string ExcludeDependencyContractAnalysisAttributeMetadataName = "DependencyContractAnalyzer.ExcludeDependencyContractAnalysisAttribute";
     private const string ProvidesContractAttributeMetadataName = "DependencyContractAnalyzer.ProvidesContractAttribute";
     private const string RequiresContractOnScopeAttributeMetadataName = "DependencyContractAnalyzer.RequiresContractOnScopeAttribute";
     private const string RequiresContractOnTargetAttributeMetadataName = "DependencyContractAnalyzer.RequiresContractOnTargetAttribute";
@@ -62,6 +63,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 startContext.Compilation.GetTypeByMetadataName(ContractHierarchyAttributeMetadataName);
             var providesContractAttributeSymbol =
                 startContext.Compilation.GetTypeByMetadataName(ProvidesContractAttributeMetadataName);
+            var excludeDependencyContractAnalysisAttributeSymbol =
+                startContext.Compilation.GetTypeByMetadataName(ExcludeDependencyContractAnalysisAttributeMetadataName);
             var contractScopeAttributeSymbol =
                 startContext.Compilation.GetTypeByMetadataName(ContractScopeAttributeMetadataName);
             var contractTargetAttributeSymbol =
@@ -108,6 +111,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                         symbolContext,
                         contractScopeAttributeSymbol,
                         contractTargetAttributeSymbol,
+                        excludeDependencyContractAnalysisAttributeSymbol,
                         contractAliasResolver,
                         knownScopes,
                         knownTargets,
@@ -124,6 +128,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         SymbolAnalysisContext context,
         INamedTypeSymbol? contractScopeAttributeSymbol,
         INamedTypeSymbol? contractTargetAttributeSymbol,
+        INamedTypeSymbol? excludeDependencyContractAnalysisAttributeSymbol,
         ContractAliasResolver contractAliasResolver,
         ImmutableHashSet<string> knownScopes,
         ImmutableHashSet<string> knownTargets,
@@ -134,6 +139,12 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
     {
         var namedType = (INamedTypeSymbol)context.Symbol;
         if (namedType.TypeKind is not (TypeKind.Class or TypeKind.Interface))
+        {
+            return;
+        }
+
+        if (excludeDependencyContractAnalysisAttributeSymbol is not null &&
+            HasExclusionAttribute(namedType, excludeDependencyContractAnalysisAttributeSymbol))
         {
             return;
         }
@@ -1003,6 +1014,26 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
     private static string GetDuplicateRequirementKey(INamedTypeSymbol dependencyType, string contractName) =>
         dependencyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + "|" + contractName;
+
+    private static bool HasExclusionAttribute(
+        INamedTypeSymbol namedType,
+        INamedTypeSymbol exclusionAttributeSymbol)
+    {
+        if (namedType.ContainingAssembly.GetAttributes().Any(attribute => attribute.AttributeClass.SymbolEquals(exclusionAttributeSymbol)))
+        {
+            return true;
+        }
+
+        for (INamedTypeSymbol? current = namedType; current is not null; current = current.ContainingType)
+        {
+            if (current.GetAttributes().Any(attribute => attribute.AttributeClass.SymbolEquals(exclusionAttributeSymbol)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static void AddResolvedTargetNames(
         INamedTypeSymbol type,

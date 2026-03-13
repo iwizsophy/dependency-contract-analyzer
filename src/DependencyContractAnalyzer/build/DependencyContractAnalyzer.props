@@ -4,6 +4,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\ContractHierarchyAttribute.cs" Link="DependencyContractAnalyzer.Attributes\ContractHierarchyAttribute.cs" Visible="false" />
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\ContractScopeAttribute.cs" Link="DependencyContractAnalyzer.Attributes\ContractScopeAttribute.cs" Visible="false" />
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\ContractTargetAttribute.cs" Link="DependencyContractAnalyzer.Attributes\ContractTargetAttribute.cs" Visible="false" />
+    <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\ExcludeDependencyContractAnalysisAttribute.cs" Link="DependencyContractAnalyzer.Attributes\ExcludeDependencyContractAnalysisAttribute.cs" Visible="false" />
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\ProvidesContractAttribute.cs" Link="DependencyContractAnalyzer.Attributes\ProvidesContractAttribute.cs" Visible="false" />
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\RequiresContractOnScopeAttribute.cs" Link="DependencyContractAnalyzer.Attributes\RequiresContractOnScopeAttribute.cs" Visible="false" />
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\RequiresContractOnTargetAttribute.cs" Link="DependencyContractAnalyzer.Attributes\RequiresContractOnTargetAttribute.cs" Visible="false" />

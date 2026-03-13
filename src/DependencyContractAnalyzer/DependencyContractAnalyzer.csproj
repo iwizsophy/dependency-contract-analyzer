@@ -35,6 +35,7 @@
     <None Include="Attributes\ContractHierarchyAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ContractHierarchyAttribute.cs" Visible="false" />
     <None Include="Attributes\ContractScopeAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ContractScopeAttribute.cs" Visible="false" />
     <None Include="Attributes\ContractTargetAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ContractTargetAttribute.cs" Visible="false" />
+    <None Include="Attributes\ExcludeDependencyContractAnalysisAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ExcludeDependencyContractAnalysisAttribute.cs" Visible="false" />
     <None Include="Attributes\ProvidesContractAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ProvidesContractAttribute.cs" Visible="false" />
     <None Include="Attributes\RequiresContractOnScopeAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\RequiresContractOnScopeAttribute.cs" Visible="false" />
     <None Include="Attributes\RequiresContractOnTargetAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\RequiresContractOnTargetAttribute.cs" Visible="false" />
@@ -43,6 +44,7 @@
     <None Include="Attributes\ContractHierarchyAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ContractHierarchyAttribute.cs" Visible="false" />
     <None Include="Attributes\ContractScopeAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ContractScopeAttribute.cs" Visible="false" />
     <None Include="Attributes\ContractTargetAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ContractTargetAttribute.cs" Visible="false" />
+    <None Include="Attributes\ExcludeDependencyContractAnalysisAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ExcludeDependencyContractAnalysisAttribute.cs" Visible="false" />
     <None Include="Attributes\ProvidesContractAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ProvidesContractAttribute.cs" Visible="false" />
     <None Include="Attributes\RequiresContractOnScopeAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\RequiresContractOnScopeAttribute.cs" Visible="false" />
     <None Include="Attributes\RequiresContractOnTargetAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\RequiresContractOnTargetAttribute.cs" Visible="false" />

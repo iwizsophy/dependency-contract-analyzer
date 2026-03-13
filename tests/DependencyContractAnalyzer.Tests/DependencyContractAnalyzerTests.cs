@@ -779,6 +779,80 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task SkipsAnalyzerWhenOwnerTypeHasCustomExclusionAttribute()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [ExcludeDependencyContractAnalysis]
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task SkipsAnalyzerWhenAssemblyHasCustomExclusionAttribute()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ExcludeDependencyContractAnalysis]
+
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task DoesNotSkipAnalyzerWhenDependencyTypeHasCustomExclusionAttribute()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ExcludeDependencyContractAnalysis]
+            public interface IFoo
+            {
+            }
+
+            [{|#0:RequiresDependencyContract(typeof(IFoo), "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.MissingRequiredContract)
+                .WithLocation(0)
+                .WithArguments("IFoo", "thread-safe"));
+    }
+
+    [Fact]
     public async Task ReportsNoDiagnosticWhenTargetedStaticUsageProvidesRequiredContract()
     {
         const string source = """

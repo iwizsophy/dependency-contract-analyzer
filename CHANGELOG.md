@@ -18,6 +18,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Sample consumer project with representative valid and invalid analyzer usage
 - `.editorconfig` policy toggles for method parameters, properties, object creation, and static member dependency analysis
 - `.editorconfig` owner-type exclusion by namespace and fully qualified type name
+- `ExcludeDependencyContractAnalysisAttribute` for assembly/type-level owner exclusion
 - Namespace-based fallback inference for target and scope names from final namespace segments
 - Dependency analysis for non-constructor method parameters
 - Dependency analysis for property types
