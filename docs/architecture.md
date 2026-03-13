@@ -206,6 +206,26 @@ Meaning:
 
 In v1, aliases are the only contract-hierarchy mechanism. The model is a directed, transitive alias graph with cycle rejection.
 
+### Proposed v2 hierarchy model
+
+To extend contract hierarchy beyond legacy aliases without breaking compatibility, v2 should introduce an assembly-level `ContractHierarchyAttribute`:
+
+```csharp
+[assembly: ContractHierarchy("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
+```
+
+Proposed semantics:
+
+- `child -> parent` is a contract implication edge
+- repeated attributes allow multiple parents
+- `ContractAlias` remains supported and is treated as the same implication edge model for backward compatibility
+- alias and hierarchy edges are resolved in one combined DAG
+- `DCA202` continues to report cycles across the combined graph
+- contract satisfaction uses the transitive closure of that combined graph
+
+This keeps existing alias behavior intact while providing a clearer API for multi-level and multi-parent contract hierarchies.
+
 ## 4. Rule evaluation precedence
 
 Evaluation precedence inside the rule engine should be explicit:

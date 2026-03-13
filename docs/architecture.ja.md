@@ -212,6 +212,26 @@ public sealed class ContractAliasAttribute : Attribute
 
 v1 では alias が唯一の契約階層表現であり、有向・推移的・循環禁止のグラフとして扱います。
 
+### v2 契約階層モデル案
+
+legacy alias と互換性を保ったまま契約階層を拡張するため、v2 では assembly-level `ContractHierarchyAttribute` を導入する方針とします。
+
+```csharp
+[assembly: ContractHierarchy("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
+```
+
+想定セマンティクス:
+
+- `child -> parent` を契約包含の有向辺として扱う
+- 同じ child に対して属性を繰り返すことで多親を表現できる
+- 後方互換のため `ContractAlias` も同じ包含辺モデルとして解釈する
+- alias と hierarchy の辺は 1 つの DAG として解決する
+- `DCA202` は combined graph 全体の cycle を報告する
+- 契約充足判定は combined graph の推移閉包を使う
+
+これにより既存 alias の互換性を維持しつつ、多段・多親の契約階層を明示的に表現できます。
+
 ## 4. ルール評価の優先順位
 
 ルールエンジン内での評価順は明示した方がよいです。

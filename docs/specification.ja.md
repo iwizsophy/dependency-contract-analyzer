@@ -471,7 +471,7 @@ CompilationStart
 - 空名、重複宣言、循環 alias の診断
 
 ## 12. 将来拡張
-- alias を超える契約階層
+- legacy alias を超える `ContractHierarchyAttribute` ベースの包含グラフ
 - 依存抽出トグルを超える EditorConfig ベースのポリシー制御
 - 最終セグメント推定を超える namespace ベースのメタデータ推定
 

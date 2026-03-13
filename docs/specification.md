@@ -472,7 +472,7 @@ Representative scenarios include:
 
 ## 12. Future extensions
 
-- Contract hierarchies beyond alias implication
+- `ContractHierarchyAttribute`-based implication graphs beyond legacy aliases
 - EditorConfig-based policy control beyond dependency collection toggles
 - Richer namespace metadata inference beyond final-segment normalization
 
