@@ -416,120 +416,32 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             duplicates.Add(requirement);
         }
 
-        var targetRequirements = new List<TargetRequirementDescriptor>();
         var duplicateTargetCandidates = new Dictionary<string, List<TargetRequirementDescriptor>>(StringComparer.OrdinalIgnoreCase);
+        var targetRequirements = new List<TargetRequirementDescriptor>();
 
         if (contractTargetAttributeSymbol is not null && requiresContractOnTargetAttributeSymbol is not null)
         {
-            foreach (var attribute in namedType.GetAttributes())
-            {
-                if (!attribute.AttributeClass.SymbolEquals(requiresContractOnTargetAttributeSymbol))
-                {
-                    continue;
-                }
-
-                var hasTargetName = TryGetStringArgument(attribute, 0, out var targetName);
-                var hasContractName = TryGetStringArgument(attribute, 1, out var contractName);
-
-                var normalizedTargetName = hasTargetName
-                    ? ContractNameNormalizer.Normalize(targetName)
-                    : null;
-                if (normalizedTargetName is null)
-                {
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            DiagnosticDescriptors.EmptyTargetName,
-                            GetAttributeLocation(attribute, namedType)));
-                }
-
-                var normalizedContractName = hasContractName
-                    ? ContractNameNormalizer.Normalize(contractName)
-                    : null;
-                if (normalizedContractName is null)
-                {
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            DiagnosticDescriptors.EmptyContractName,
-                            GetAttributeLocation(attribute, namedType)));
-                }
-
-                if (normalizedTargetName is null || normalizedContractName is null)
-                {
-                    continue;
-                }
-
-                ReportInvalidContractName(context, normalizedContractName, attribute, namedType);
-
-                var requirement = new TargetRequirementDescriptor(attribute, normalizedTargetName, normalizedContractName);
-                targetRequirements.Add(requirement);
-
-                var duplicateKey = normalizedTargetName + "|" + normalizedContractName;
-                if (!duplicateTargetCandidates.TryGetValue(duplicateKey, out var duplicates))
-                {
-                    duplicates = new List<TargetRequirementDescriptor>();
-                    duplicateTargetCandidates.Add(duplicateKey, duplicates);
-                }
-
-                duplicates.Add(requirement);
-            }
+            targetRequirements = CollectNamedRequirements(
+                context,
+                namedType,
+                requiresContractOnTargetAttributeSymbol,
+                DiagnosticDescriptors.EmptyTargetName,
+                duplicateTargetCandidates,
+                static (attribute, targetName, contractName) => new TargetRequirementDescriptor(attribute, targetName, contractName));
         }
 
-        var scopeRequirements = new List<ScopeRequirementDescriptor>();
         var duplicateScopeCandidates = new Dictionary<string, List<ScopeRequirementDescriptor>>(StringComparer.OrdinalIgnoreCase);
+        var scopeRequirements = new List<ScopeRequirementDescriptor>();
 
         if (contractScopeAttributeSymbol is not null && requiresContractOnScopeAttributeSymbol is not null)
         {
-            foreach (var attribute in namedType.GetAttributes())
-            {
-                if (!attribute.AttributeClass.SymbolEquals(requiresContractOnScopeAttributeSymbol))
-                {
-                    continue;
-                }
-
-                var hasScopeName = TryGetStringArgument(attribute, 0, out var scopeName);
-                var hasContractName = TryGetStringArgument(attribute, 1, out var contractName);
-
-                var normalizedScopeName = hasScopeName
-                    ? ContractNameNormalizer.Normalize(scopeName)
-                    : null;
-                if (normalizedScopeName is null)
-                {
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            DiagnosticDescriptors.EmptyScopeName,
-                            GetAttributeLocation(attribute, namedType)));
-                }
-
-                var normalizedContractName = hasContractName
-                    ? ContractNameNormalizer.Normalize(contractName)
-                    : null;
-                if (normalizedContractName is null)
-                {
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            DiagnosticDescriptors.EmptyContractName,
-                            GetAttributeLocation(attribute, namedType)));
-                }
-
-                if (normalizedScopeName is null || normalizedContractName is null)
-                {
-                    continue;
-                }
-
-                ReportInvalidContractName(context, normalizedContractName, attribute, namedType);
-
-                var requirement = new ScopeRequirementDescriptor(attribute, normalizedScopeName, normalizedContractName);
-                scopeRequirements.Add(requirement);
-
-                var duplicateKey = normalizedScopeName + "|" + normalizedContractName;
-                if (!duplicateScopeCandidates.TryGetValue(duplicateKey, out var duplicates))
-                {
-                    duplicates = new List<ScopeRequirementDescriptor>();
-                    duplicateScopeCandidates.Add(duplicateKey, duplicates);
-                }
-
-                duplicates.Add(requirement);
-            }
+            scopeRequirements = CollectNamedRequirements(
+                context,
+                namedType,
+                requiresContractOnScopeAttributeSymbol,
+                DiagnosticDescriptors.EmptyScopeName,
+                duplicateScopeCandidates,
+                static (attribute, scopeName, contractName) => new ScopeRequirementDescriptor(attribute, scopeName, contractName));
         }
 
         var dependencyTypeSuppressions = new List<RequirementDescriptor>();
@@ -580,128 +492,36 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             }
         }
 
-        var targetSuppressions = new List<TargetRequirementDescriptor>();
         var duplicateTargetSuppressionCandidates = new Dictionary<string, List<TargetRequirementDescriptor>>(StringComparer.OrdinalIgnoreCase);
         var invalidTargetSuppressionAttributes = new HashSet<AttributeData>();
+        var targetSuppressions = new List<TargetRequirementDescriptor>();
 
         if (suppressRequiredTargetContractAttributeSymbol is not null)
         {
-            foreach (var attribute in namedType.GetAttributes())
-            {
-                if (!attribute.AttributeClass.SymbolEquals(suppressRequiredTargetContractAttributeSymbol))
-                {
-                    continue;
-                }
-
-                var hasTargetName = TryGetStringArgument(attribute, 0, out var targetName);
-                var hasContractName = TryGetStringArgument(attribute, 1, out var contractName);
-
-                var normalizedTargetName = hasTargetName
-                    ? ContractNameNormalizer.Normalize(targetName)
-                    : null;
-                if (normalizedTargetName is null)
-                {
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            DiagnosticDescriptors.EmptyTargetName,
-                            GetAttributeLocation(attribute, namedType)));
-                }
-
-                var normalizedContractName = hasContractName
-                    ? ContractNameNormalizer.Normalize(contractName)
-                    : null;
-                if (normalizedContractName is null)
-                {
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            DiagnosticDescriptors.EmptyContractName,
-                            GetAttributeLocation(attribute, namedType)));
-                }
-
-                if (normalizedTargetName is null || normalizedContractName is null)
-                {
-                    continue;
-                }
-
-                if (ReportInvalidContractName(context, normalizedContractName, attribute, namedType))
-                {
-                    invalidTargetSuppressionAttributes.Add(attribute);
-                }
-
-                var suppression = new TargetRequirementDescriptor(attribute, normalizedTargetName, normalizedContractName);
-                targetSuppressions.Add(suppression);
-
-                var duplicateKey = GetNamedRequirementKey(normalizedTargetName, normalizedContractName);
-                if (!duplicateTargetSuppressionCandidates.TryGetValue(duplicateKey, out var duplicates))
-                {
-                    duplicates = new List<TargetRequirementDescriptor>();
-                    duplicateTargetSuppressionCandidates.Add(duplicateKey, duplicates);
-                }
-
-                duplicates.Add(suppression);
-            }
+            targetSuppressions = CollectNamedRequirements(
+                context,
+                namedType,
+                suppressRequiredTargetContractAttributeSymbol,
+                DiagnosticDescriptors.EmptyTargetName,
+                duplicateTargetSuppressionCandidates,
+                static (attribute, targetName, contractName) => new TargetRequirementDescriptor(attribute, targetName, contractName),
+                invalidTargetSuppressionAttributes);
         }
 
-        var scopeSuppressions = new List<ScopeRequirementDescriptor>();
         var duplicateScopeSuppressionCandidates = new Dictionary<string, List<ScopeRequirementDescriptor>>(StringComparer.OrdinalIgnoreCase);
         var invalidScopeSuppressionAttributes = new HashSet<AttributeData>();
+        var scopeSuppressions = new List<ScopeRequirementDescriptor>();
 
         if (suppressRequiredScopeContractAttributeSymbol is not null)
         {
-            foreach (var attribute in namedType.GetAttributes())
-            {
-                if (!attribute.AttributeClass.SymbolEquals(suppressRequiredScopeContractAttributeSymbol))
-                {
-                    continue;
-                }
-
-                var hasScopeName = TryGetStringArgument(attribute, 0, out var scopeName);
-                var hasContractName = TryGetStringArgument(attribute, 1, out var contractName);
-
-                var normalizedScopeName = hasScopeName
-                    ? ContractNameNormalizer.Normalize(scopeName)
-                    : null;
-                if (normalizedScopeName is null)
-                {
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            DiagnosticDescriptors.EmptyScopeName,
-                            GetAttributeLocation(attribute, namedType)));
-                }
-
-                var normalizedContractName = hasContractName
-                    ? ContractNameNormalizer.Normalize(contractName)
-                    : null;
-                if (normalizedContractName is null)
-                {
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            DiagnosticDescriptors.EmptyContractName,
-                            GetAttributeLocation(attribute, namedType)));
-                }
-
-                if (normalizedScopeName is null || normalizedContractName is null)
-                {
-                    continue;
-                }
-
-                if (ReportInvalidContractName(context, normalizedContractName, attribute, namedType))
-                {
-                    invalidScopeSuppressionAttributes.Add(attribute);
-                }
-
-                var suppression = new ScopeRequirementDescriptor(attribute, normalizedScopeName, normalizedContractName);
-                scopeSuppressions.Add(suppression);
-
-                var duplicateKey = GetNamedRequirementKey(normalizedScopeName, normalizedContractName);
-                if (!duplicateScopeSuppressionCandidates.TryGetValue(duplicateKey, out var duplicates))
-                {
-                    duplicates = new List<ScopeRequirementDescriptor>();
-                    duplicateScopeSuppressionCandidates.Add(duplicateKey, duplicates);
-                }
-
-                duplicates.Add(suppression);
-            }
+            scopeSuppressions = CollectNamedRequirements(
+                context,
+                namedType,
+                suppressRequiredScopeContractAttributeSymbol,
+                DiagnosticDescriptors.EmptyScopeName,
+                duplicateScopeSuppressionCandidates,
+                static (attribute, scopeName, contractName) => new ScopeRequirementDescriptor(attribute, scopeName, contractName),
+                invalidScopeSuppressionAttributes);
         }
 
         var duplicateDependencyRequirements = GetDuplicateAttributes(
@@ -824,93 +644,41 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             }
         }
 
+        ImmutableHashSet<string> ResolveTargets(INamedTypeSymbol dependencyType, bool isExternalDependency)
+        {
+            if (!targetCache.TryGetValue(dependencyType, out var targets))
+            {
+                targets = GetTargets(
+                    dependencyType,
+                    contractTargetAttributeSymbol!,
+                    namespaceInferenceOptions,
+                    context.Compilation.Assembly,
+                    allowNamespaceInference: !isExternalDependency);
+                targetCache.Add(dependencyType, targets);
+            }
+
+            return targets;
+        }
+
         if (contractTargetAttributeSymbol is not null)
         {
-            foreach (var requirement in targetRequirements)
-            {
-                if (duplicateTargetRequirements.Contains(requirement.Attribute))
-                {
-                    continue;
-                }
-
-                if (targetSuppressionKeys.Contains(GetNamedRequirementKey(requirement.TargetName, requirement.ContractName)))
-                {
-                    continue;
-                }
-
-                if (!knownTargets.Contains(requirement.TargetName) &&
-                    requirementEvaluationOptions.ReportUndeclaredRequirementDiagnostics)
-                {
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            DiagnosticDescriptors.UndeclaredRequiredTarget,
-                            GetAttributeLocation(requirement.Attribute, namedType),
-                            requirement.TargetName));
-                    continue;
-                }
-
-                var hasMatchingDependency = false;
-                foreach (var dependency in dependencies)
-                {
-                    var isExternalDependency = dependency.Type.IsExternalTo(context.Compilation.Assembly);
-                    if (isExternalDependency &&
-                        externalDependencyOptions.Policy == ExternalDependencyPolicy.Ignore)
-                    {
-                        continue;
-                    }
-
-                    if (!targetCache.TryGetValue(dependency.Type, out var targets))
-                    {
-                        targets = GetTargets(
-                            dependency.Type,
-                            contractTargetAttributeSymbol,
-                            namespaceInferenceOptions,
-                            context.Compilation.Assembly,
-                            allowNamespaceInference: !isExternalDependency);
-                        targetCache.Add(dependency.Type, targets);
-                    }
-
-                    if (!targets.Contains(requirement.TargetName))
-                    {
-                        continue;
-                    }
-
-                    hasMatchingDependency = true;
-
-                    if (!providedContractCache.TryGetValue(dependency.Type, out var providedContracts))
-                    {
-                        providedContracts = GetProvidedContracts(
-                            dependency.Type,
-                            providesContractAttributeSymbol,
-                            contractAliasResolver,
-                            context.Compilation.Assembly,
-                            resolveReferencedAssemblyImplicationGraph);
-                        providedContractCache.Add(dependency.Type, providedContracts);
-                    }
-
-                    if (providedContracts.Contains(requirement.ContractName))
-                    {
-                        continue;
-                    }
-
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            DiagnosticDescriptors.MissingRequiredContract,
-                            GetAttributeLocation(requirement.Attribute, namedType),
-                            dependency.Type.ToDisplayString(MinimalSymbolDisplayFormat),
-                            requirement.ContractName));
-                }
-
-                if (!hasMatchingDependency &&
-                    requirementEvaluationOptions.ReportUnusedRequirementDiagnostics)
-                {
-                    context.ReportDiagnostic(
-                        Diagnostic.Create(
-                            DiagnosticDescriptors.UnusedRequiredTarget,
-                            GetAttributeLocation(requirement.Attribute, namedType),
-                            requirement.TargetName));
-                }
-            }
+            AnalyzeNamedRequirements(
+                context,
+                namedType,
+                targetRequirements,
+                duplicateTargetRequirements,
+                targetSuppressionKeys,
+                knownTargets,
+                dependencies,
+                requirementEvaluationOptions,
+                externalDependencyOptions,
+                providedContractCache,
+                ResolveTargets,
+                providesContractAttributeSymbol,
+                contractAliasResolver,
+                resolveReferencedAssemblyImplicationGraph,
+                DiagnosticDescriptors.UndeclaredRequiredTarget,
+                DiagnosticDescriptors.UnusedRequiredTarget);
         }
 
         if (contractScopeAttributeSymbol is null)
@@ -918,91 +686,39 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             return;
         }
 
-        foreach (var requirement in scopeRequirements)
+        ImmutableHashSet<string> ResolveScopes(INamedTypeSymbol dependencyType, bool isExternalDependency)
         {
-            if (duplicateScopeRequirements.Contains(requirement.Attribute))
+            if (!scopeCache.TryGetValue(dependencyType, out var scopes))
             {
-                continue;
+                scopes = GetScopes(
+                    dependencyType,
+                    contractScopeAttributeSymbol,
+                    namespaceInferenceOptions,
+                    context.Compilation.Assembly,
+                    allowNamespaceInference: !isExternalDependency);
+                scopeCache.Add(dependencyType, scopes);
             }
 
-            if (scopeSuppressionKeys.Contains(GetNamedRequirementKey(requirement.ScopeName, requirement.ContractName)))
-            {
-                continue;
-            }
-
-            if (!knownScopes.Contains(requirement.ScopeName) &&
-                requirementEvaluationOptions.ReportUndeclaredRequirementDiagnostics)
-            {
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        DiagnosticDescriptors.UndeclaredRequiredScope,
-                        GetAttributeLocation(requirement.Attribute, namedType),
-                        requirement.ScopeName));
-                continue;
-            }
-
-            var hasMatchingDependency = false;
-            foreach (var dependency in dependencies)
-            {
-                var isExternalDependency = dependency.Type.IsExternalTo(context.Compilation.Assembly);
-                if (isExternalDependency &&
-                    externalDependencyOptions.Policy == ExternalDependencyPolicy.Ignore)
-                {
-                    continue;
-                }
-
-                if (!scopeCache.TryGetValue(dependency.Type, out var scopes))
-                {
-                    scopes = GetScopes(
-                        dependency.Type,
-                        contractScopeAttributeSymbol,
-                        namespaceInferenceOptions,
-                        context.Compilation.Assembly,
-                        allowNamespaceInference: !isExternalDependency);
-                    scopeCache.Add(dependency.Type, scopes);
-                }
-
-                if (!scopes.Contains(requirement.ScopeName))
-                {
-                    continue;
-                }
-
-                hasMatchingDependency = true;
-
-                if (!providedContractCache.TryGetValue(dependency.Type, out var providedContracts))
-                {
-                    providedContracts = GetProvidedContracts(
-                        dependency.Type,
-                        providesContractAttributeSymbol,
-                        contractAliasResolver,
-                        context.Compilation.Assembly,
-                        resolveReferencedAssemblyImplicationGraph);
-                    providedContractCache.Add(dependency.Type, providedContracts);
-                }
-
-                if (providedContracts.Contains(requirement.ContractName))
-                {
-                    continue;
-                }
-
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        DiagnosticDescriptors.MissingRequiredContract,
-                        GetAttributeLocation(requirement.Attribute, namedType),
-                        dependency.Type.ToDisplayString(MinimalSymbolDisplayFormat),
-                        requirement.ContractName));
-            }
-
-            if (!hasMatchingDependency &&
-                requirementEvaluationOptions.ReportUnusedRequirementDiagnostics)
-            {
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        DiagnosticDescriptors.UnusedRequiredScope,
-                        GetAttributeLocation(requirement.Attribute, namedType),
-                        requirement.ScopeName));
-            }
+            return scopes;
         }
+
+        AnalyzeNamedRequirements(
+            context,
+            namedType,
+            scopeRequirements,
+            duplicateScopeRequirements,
+            scopeSuppressionKeys,
+            knownScopes,
+            dependencies,
+            requirementEvaluationOptions,
+            externalDependencyOptions,
+            providedContractCache,
+            ResolveScopes,
+            providesContractAttributeSymbol,
+            contractAliasResolver,
+            resolveReferencedAssemblyImplicationGraph,
+            DiagnosticDescriptors.UndeclaredRequiredScope,
+            DiagnosticDescriptors.UnusedRequiredScope);
     }
 
     private static ImmutableHashSet<string> GetProvidedContracts(
@@ -1240,6 +956,49 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
     private static ImmutableHashSet<string> CreateEmptyNameSet() =>
         ImmutableHashSet.Create<string>(StringComparer.OrdinalIgnoreCase);
 
+    private static List<TRequirement> CollectNamedRequirements<TRequirement>(
+        SymbolAnalysisContext context,
+        INamedTypeSymbol namedType,
+        INamedTypeSymbol attributeSymbol,
+        DiagnosticDescriptor emptyNameDescriptor,
+        Dictionary<string, List<TRequirement>> duplicateCandidates,
+        Func<AttributeData, string, string, TRequirement> requirementFactory,
+        HashSet<AttributeData>? invalidAttributes = null)
+        where TRequirement : struct, INamedRequirement
+    {
+        var requirements = new List<TRequirement>();
+
+        foreach (var attribute in namedType.GetAttributes())
+        {
+            if (!attribute.AttributeClass.SymbolEquals(attributeSymbol) ||
+                !TryGetNamedRequirementParts(
+                    context,
+                    namedType,
+                    attribute,
+                    emptyNameDescriptor,
+                    out var normalizedName,
+                    out var normalizedContractName))
+            {
+                continue;
+            }
+
+            if (ReportInvalidContractName(context, normalizedContractName, attribute, namedType) &&
+                invalidAttributes is not null)
+            {
+                invalidAttributes.Add(attribute);
+            }
+
+            var requirement = requirementFactory(attribute, normalizedName, normalizedContractName);
+            requirements.Add(requirement);
+            AddDuplicateCandidate(
+                duplicateCandidates,
+                GetNamedRequirementKey(requirement.Name, requirement.ContractName),
+                requirement);
+        }
+
+        return requirements;
+    }
+
     private static HashSet<AttributeData> GetDuplicateAttributes<TRequirement>(
         SymbolAnalysisContext context,
         INamedTypeSymbol namedType,
@@ -1271,6 +1030,104 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         return duplicateAttributes;
     }
 
+    // Target- and scope-based rules intentionally share the same evaluation path so
+    // future policy changes cannot silently drift between the two named variants.
+    private static void AnalyzeNamedRequirements<TRequirement>(
+        SymbolAnalysisContext context,
+        INamedTypeSymbol namedType,
+        IEnumerable<TRequirement> requirements,
+        HashSet<AttributeData> duplicateRequirements,
+        ImmutableHashSet<string> suppressionKeys,
+        ImmutableHashSet<string> knownNames,
+        ImmutableArray<DependencyDescriptor> dependencies,
+        RequirementEvaluationOptions requirementEvaluationOptions,
+        ExternalDependencyOptions externalDependencyOptions,
+        Dictionary<INamedTypeSymbol, ImmutableHashSet<string>> providedContractCache,
+        Func<INamedTypeSymbol, bool, ImmutableHashSet<string>> resolveDependencyNames,
+        INamedTypeSymbol providesContractAttributeSymbol,
+        ContractAliasResolver contractAliasResolver,
+        Func<IAssemblySymbol, ContractAliasResolver> resolveReferencedAssemblyImplicationGraph,
+        DiagnosticDescriptor undeclaredDescriptor,
+        DiagnosticDescriptor unusedDescriptor)
+        where TRequirement : struct, INamedRequirement
+    {
+        foreach (var requirement in requirements)
+        {
+            if (duplicateRequirements.Contains(requirement.Attribute))
+            {
+                continue;
+            }
+
+            if (suppressionKeys.Contains(GetNamedRequirementKey(requirement.Name, requirement.ContractName)))
+            {
+                continue;
+            }
+
+            if (!knownNames.Contains(requirement.Name) &&
+                requirementEvaluationOptions.ReportUndeclaredRequirementDiagnostics)
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        undeclaredDescriptor,
+                        GetAttributeLocation(requirement.Attribute, namedType),
+                        requirement.Name));
+                continue;
+            }
+
+            var hasMatchingDependency = false;
+            foreach (var dependency in dependencies)
+            {
+                var isExternalDependency = dependency.Type.IsExternalTo(context.Compilation.Assembly);
+                if (isExternalDependency &&
+                    externalDependencyOptions.Policy == ExternalDependencyPolicy.Ignore)
+                {
+                    continue;
+                }
+
+                var dependencyNames = resolveDependencyNames(dependency.Type, isExternalDependency);
+                if (!dependencyNames.Contains(requirement.Name))
+                {
+                    continue;
+                }
+
+                hasMatchingDependency = true;
+
+                if (!providedContractCache.TryGetValue(dependency.Type, out var providedContracts))
+                {
+                    providedContracts = GetProvidedContracts(
+                        dependency.Type,
+                        providesContractAttributeSymbol,
+                        contractAliasResolver,
+                        context.Compilation.Assembly,
+                        resolveReferencedAssemblyImplicationGraph);
+                    providedContractCache.Add(dependency.Type, providedContracts);
+                }
+
+                if (providedContracts.Contains(requirement.ContractName))
+                {
+                    continue;
+                }
+
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        DiagnosticDescriptors.MissingRequiredContract,
+                        GetAttributeLocation(requirement.Attribute, namedType),
+                        dependency.Type.ToDisplayString(MinimalSymbolDisplayFormat),
+                        requirement.ContractName));
+            }
+
+            if (!hasMatchingDependency &&
+                requirementEvaluationOptions.ReportUnusedRequirementDiagnostics)
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        unusedDescriptor,
+                        GetAttributeLocation(requirement.Attribute, namedType),
+                        requirement.Name));
+            }
+        }
+    }
+
     private static bool ReportInvalidContractName(
         SymbolAnalysisContext context,
         string contractName,
@@ -1287,6 +1144,52 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 DiagnosticDescriptors.ContractNamingFormatViolation,
                 GetAttributeLocation(attribute, fallbackSymbol),
                 contractName));
+        return true;
+    }
+
+    private static bool TryGetNamedRequirementParts(
+        SymbolAnalysisContext context,
+        INamedTypeSymbol namedType,
+        AttributeData attribute,
+        DiagnosticDescriptor emptyNameDescriptor,
+        out string normalizedName,
+        out string normalizedContractName)
+    {
+        normalizedName = string.Empty;
+        normalizedContractName = string.Empty;
+
+        var hasName = TryGetStringArgument(attribute, 0, out var name);
+        var hasContractName = TryGetStringArgument(attribute, 1, out var contractName);
+
+        var candidateName = hasName
+            ? ContractNameNormalizer.Normalize(name)
+            : null;
+        if (candidateName is null)
+        {
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    emptyNameDescriptor,
+                    GetAttributeLocation(attribute, namedType)));
+        }
+
+        var candidateContractName = hasContractName
+            ? ContractNameNormalizer.Normalize(contractName)
+            : null;
+        if (candidateContractName is null)
+        {
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.EmptyContractName,
+                    GetAttributeLocation(attribute, namedType)));
+        }
+
+        if (candidateName is null || candidateContractName is null)
+        {
+            return false;
+        }
+
+        normalizedName = candidateName;
+        normalizedContractName = candidateContractName;
         return true;
     }
 
@@ -1359,6 +1262,20 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
     private static string GetNamedRequirementKey(string name, string contractName) =>
         name + "|" + contractName;
+
+    private static void AddDuplicateCandidate<TRequirement>(
+        Dictionary<string, List<TRequirement>> duplicateCandidates,
+        string key,
+        TRequirement requirement)
+    {
+        if (!duplicateCandidates.TryGetValue(key, out var duplicates))
+        {
+            duplicates = new List<TRequirement>();
+            duplicateCandidates.Add(key, duplicates);
+        }
+
+        duplicates.Add(requirement);
+    }
 
     private static ImmutableHashSet<string> CreateValidRequirementKeys<TRequirement>(
         IEnumerable<TRequirement> requirements,
@@ -1500,6 +1417,11 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         string ContractName { get; }
     }
 
+    private interface INamedRequirement : IRequirement
+    {
+        string Name { get; }
+    }
+
     private readonly struct RequirementDescriptor : IRequirement
     {
         public RequirementDescriptor(
@@ -1519,7 +1441,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         public string ContractName { get; }
     }
 
-    private readonly struct TargetRequirementDescriptor : IRequirement
+    private readonly struct TargetRequirementDescriptor : INamedRequirement
     {
         public TargetRequirementDescriptor(
             AttributeData attribute,
@@ -1535,10 +1457,12 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
         public string TargetName { get; }
 
+        public string Name => TargetName;
+
         public string ContractName { get; }
     }
 
-    private readonly struct ScopeRequirementDescriptor : IRequirement
+    private readonly struct ScopeRequirementDescriptor : INamedRequirement
     {
         public ScopeRequirementDescriptor(
             AttributeData attribute,
@@ -1553,6 +1477,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         public AttributeData Attribute { get; }
 
         public string ScopeName { get; }
+
+        public string Name => ScopeName;
 
         public string ContractName { get; }
     }
