@@ -158,6 +158,8 @@ public sealed class SnapshotCache
 - `dependency_contract_analyzer.analyze_properties`
 - `dependency_contract_analyzer.analyze_object_creation`
 - `dependency_contract_analyzer.analyze_static_members`
+- `dependency_contract_analyzer.report_unused_requirement_diagnostics`
+- `dependency_contract_analyzer.report_undeclared_requirement_diagnostics`
 - `dependency_contract_analyzer.excluded_namespaces`
 - `dependency_contract_analyzer.excluded_types`
 - `dependency_contract_analyzer.namespace_inference_max_segments`
@@ -172,6 +174,8 @@ public sealed class SnapshotCache
 - `relaxed`: optional dependency-source toggle を無効化し、namespace inference を無効化し、`external_dependency_policy = ignore` を既定にします
 
 個別 option は常に preset より優先します。たとえば `analyze_method_parameters = true`、`namespace_inference_max_segments = 2`、`external_dependency_policy = metadata` は `behavior_preset` より優先されます。exclusion list と diagnostic severity は別制御です。
+
+`report_unused_requirement_diagnostics` は `DCA002`、`DCA205`、`DCA206` を制御し、`report_undeclared_requirement_diagnostics` は `DCA200`、`DCA201` を制御します。どちらも既定値は `true` で、不正値は既定値へフォールバックします。undeclared requirement diagnostics を無効化した場合、target / scope requirement は undeclared check で停止せず、そのまま一致する dependency 評価を続けます。
 
 `excluded_namespaces` は列挙した namespace とその subnamespace 配下の owner type 解析をスキップします。`excluded_types` は fully qualified owner type 名を指定して解析をスキップします。`namespace_inference_max_segments` は global option で、`1` と `2` をサポートし、既定値は `1`、不正値は preset 由来の既定値へフォールバックします。`external_dependency_policy` も global option で、`ignore` と `metadata` をサポートし、既定値は `ignore`、不正値は preset 由来の既定値へフォールバックします。`metadata` モードでも namespace inference は current compilation 内の型に限定し、参照先 assembly からは explicit metadata と包含辺のみを使用します。
 

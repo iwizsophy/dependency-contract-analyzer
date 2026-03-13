@@ -825,6 +825,151 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task SuppressesUnusedDependencyRequirementDiagnosticsWhenDisabled()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.report_unused_requirement_diagnostics", "false"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task SuppressesUnusedTargetAndScopeRequirementDiagnosticsWhenDisabled()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            [ContractScope("repository")]
+            public sealed class UserRepository
+            {
+            }
+
+            public interface ILogger
+            {
+            }
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(ILogger logger)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.report_unused_requirement_diagnostics", "false"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task DisablingUndeclaredTargetDiagnosticsAllowsExternalMetadataEvaluation()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using ExternalContracts;
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+        const string externalBody = """
+            namespace ExternalContracts
+            {
+                [DependencyContractAnalyzer.ContractTarget("repository")]
+                [DependencyContractAnalyzer.ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+            """;
+        var additionalReferenceSources = new[] { CreateExternalAssemblySource(externalBody) };
+
+        var defaultDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            additionalReferenceSources,
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+        var configuredDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            additionalReferenceSources,
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"),
+            ("dependency_contract_analyzer.report_undeclared_requirement_diagnostics", "false"));
+
+        var defaultDiagnostic = Assert.Single(defaultDiagnostics);
+        Assert.Equal(DiagnosticIds.UndeclaredRequiredTarget, defaultDiagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, defaultDiagnostic.Severity);
+        Assert.Contains("repository", defaultDiagnostic.GetMessage());
+        Assert.Empty(configuredDiagnostics);
+    }
+
+    [Fact]
+    public async Task DisablingUndeclaredScopeDiagnosticsAllowsExternalMetadataEvaluation()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using ExternalContracts;
+
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+        const string externalBody = """
+            [assembly: DependencyContractAnalyzer.ContractScope("repository")]
+
+            namespace ExternalContracts
+            {
+                [DependencyContractAnalyzer.ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+            """;
+        var additionalReferenceSources = new[] { CreateExternalAssemblySource(externalBody) };
+
+        var defaultDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            additionalReferenceSources,
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+        var configuredDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            additionalReferenceSources,
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"),
+            ("dependency_contract_analyzer.report_undeclared_requirement_diagnostics", "false"));
+
+        var defaultDiagnostic = Assert.Single(defaultDiagnostics);
+        Assert.Equal(DiagnosticIds.UndeclaredRequiredScope, defaultDiagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, defaultDiagnostic.Severity);
+        Assert.Contains("repository", defaultDiagnostic.GetMessage());
+        Assert.Empty(configuredDiagnostics);
+    }
+
+    [Fact]
     public async Task ReportsNoDiagnosticWhenMethodParameterProvidesRequiredContract()
     {
         const string source = """

@@ -158,6 +158,8 @@ These are product defaults. All diagnostics remain configurable through `.editor
 - `dependency_contract_analyzer.analyze_properties`
 - `dependency_contract_analyzer.analyze_object_creation`
 - `dependency_contract_analyzer.analyze_static_members`
+- `dependency_contract_analyzer.report_unused_requirement_diagnostics`
+- `dependency_contract_analyzer.report_undeclared_requirement_diagnostics`
 - `dependency_contract_analyzer.excluded_namespaces`
 - `dependency_contract_analyzer.excluded_types`
 - `dependency_contract_analyzer.namespace_inference_max_segments`
@@ -172,6 +174,8 @@ Under `behavior_preset = default`, all `analyze_*` options default to `true`. Co
 - `relaxed`: disables optional dependency-source toggles, disables namespace inference, and defaults `external_dependency_policy` to `ignore`
 
 Explicit per-option settings always override the preset. For example, `analyze_method_parameters = true`, `namespace_inference_max_segments = 2`, or `external_dependency_policy = metadata` each take precedence over `behavior_preset`. Exclusion lists and diagnostic severity remain separate controls.
+
+`report_unused_requirement_diagnostics` controls `DCA002`, `DCA205`, and `DCA206`. `report_undeclared_requirement_diagnostics` controls `DCA200` and `DCA201`. Both default to `true`, and invalid values fall back to the default. When undeclared requirement diagnostics are disabled, target and scope requirements continue to evaluate matching dependencies instead of stopping at the undeclared check.
 
 `excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. `namespace_inference_max_segments` is a global option. Supported values are `1` and `2`, the default is `1`, and invalid values fall back to the preset-derived default. `external_dependency_policy` is also global. Supported values are `ignore` and `metadata`, the default is `ignore`, and invalid values fall back to the preset-derived default. In `metadata` mode, namespace inference still remains limited to current-compilation types; referenced assemblies contribute explicit metadata and implication edges only.
 

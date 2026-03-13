@@ -290,6 +290,7 @@ Current behavior:
 - Namespace fallback inference remains limited to types declared in the current compilation, even in `metadata` mode.
 - `DCA200` and `DCA201` still validate declared targets and scopes against the current compilation only.
 - Diagnostics for referenced implication definitions are not reported in the consuming compilation.
+- If `dependency_contract_analyzer.report_undeclared_requirement_diagnostics = false`, target/scope requirement evaluation continues after the undeclared check instead of stopping at `DCA200` / `DCA201`.
 - Type-level targets and scopes use explicit attributes first.
 - If a type has no explicit target, the analyzer infers one from the final namespace segment in the current compilation.
 - If `dependency_contract_analyzer.namespace_inference_max_segments = 2`, the analyzer also infers a trailing two-segment fallback target name in the current compilation.
@@ -472,6 +473,8 @@ Default diagnostic severities are product defaults; recommended CI severities ar
 - `dependency_contract_analyzer.analyze_properties` (default: `true`)
 - `dependency_contract_analyzer.analyze_object_creation` (default: `true`)
 - `dependency_contract_analyzer.analyze_static_members` (default: `true`)
+- `dependency_contract_analyzer.report_unused_requirement_diagnostics` (default: `true`)
+- `dependency_contract_analyzer.report_undeclared_requirement_diagnostics` (default: `true`)
 
 If an option value is missing or invalid, the analyzer falls back to the default.
 
@@ -498,7 +501,7 @@ The analyzer also supports these list-valued `.editorconfig` options:
 - `strict`: all optional dependency-source toggles enabled, namespace inference defaults to trailing two-segment fallback, and external dependency policy defaults to `metadata`
 - `relaxed`: optional dependency-source toggles disabled, namespace inference disabled, and external dependency policy defaults to `ignore`
 
-Explicit per-option settings always override the preset. `excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. List values accept comma, semicolon, or newline separators. `namespace_inference_max_segments` controls whether fallback inference uses only the final namespace segment (`1`) or both the final segment and trailing two-segment combinations (`2`). Invalid or missing values fall back to the preset-derived default. `external_dependency_policy` controls whether dependencies outside the current compilation are ignored (`ignore`) or matched against explicit metadata and implication edges from referenced assemblies (`metadata`). Invalid or missing values fall back to the preset-derived default. Exclusion lists and diagnostic severity remain independent of `behavior_preset`.
+Explicit per-option settings always override the preset. `report_unused_requirement_diagnostics` controls `DCA002`, `DCA205`, and `DCA206`. `report_undeclared_requirement_diagnostics` controls `DCA200` and `DCA201`; when it is `false`, target/scope requirement evaluation continues against matching dependencies instead of stopping at the undeclared check. `excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. List values accept comma, semicolon, or newline separators. `namespace_inference_max_segments` controls whether fallback inference uses only the final namespace segment (`1`) or both the final segment and trailing two-segment combinations (`2`). Invalid or missing values fall back to the preset-derived default. `external_dependency_policy` controls whether dependencies outside the current compilation are ignored (`ignore`) or matched against explicit metadata and implication edges from referenced assemblies (`metadata`). Invalid or missing values fall back to the preset-derived default. Exclusion lists and diagnostic severity remain independent of `behavior_preset`.
 
 ### 8.2 Contract naming rule
 
@@ -567,7 +570,8 @@ src/
    │  ├ DependencyCollectionOptions.cs
    │  ├ DependencyCollector.cs
    │  ├ ExternalDependencyOptions.cs
-   │  └ NamespaceInferenceOptions.cs
+   │  ├ NamespaceInferenceOptions.cs
+   │  └ RequirementEvaluationOptions.cs
    └ Utilities
       └ SymbolExtensions.cs
 samples/

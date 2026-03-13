@@ -26,6 +26,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Global `.editorconfig` external dependency policy with `ignore` and `metadata` modes
 - External implication-graph expansion for referenced assemblies in `metadata` mode
 - Global `.editorconfig` behavior preset with `default`, `strict`, and `relaxed` modes
+- Requirement-diagnostic switches for unused and undeclared requirement reporting
 - Dependency analysis for non-constructor method parameters
 - Dependency analysis for property types
 - Dependency analysis for `new` expressions, including target-typed object creation
@@ -51,6 +52,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Regression tests for external dependency metadata policy across dependency, target, and scope requirements
 - Regression tests for external alias/hierarchy implication graphs and silent referenced diagnostics
 - Regression tests for behavior-preset defaults and explicit override precedence
+- Regression tests for unused/undeclared requirement-diagnostic switches
 
 ### Changed
 
@@ -60,6 +62,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Stopped namespace fallback inference from flowing in through external dependency base types and interfaces
 - Merged local and referenced implication graphs when expanding provided contracts for external dependencies
 - Derived dependency-source, namespace-inference, and external-metadata defaults from `behavior_preset` while keeping explicit per-option settings authoritative
+- Allowed target/scope requirement evaluation to continue past undeclared checks when that diagnostic family is disabled via configuration
 
 ### Fixed
 

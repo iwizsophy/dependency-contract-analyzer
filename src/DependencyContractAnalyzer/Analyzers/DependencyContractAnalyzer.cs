@@ -217,6 +217,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             contractScopeAttributeSymbol,
             contractTargetAttributeSymbol,
             DependencyCollectionOptions.Create(context.Options.AnalyzerConfigOptionsProvider, namedType),
+            RequirementEvaluationOptions.Create(context.Options.AnalyzerConfigOptionsProvider, namedType),
             excludeDependencyContractSourceAttributeSymbol,
             externalDependencyOptions,
             namespaceInferenceOptions,
@@ -356,6 +357,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol? contractScopeAttributeSymbol,
         INamedTypeSymbol? contractTargetAttributeSymbol,
         DependencyCollectionOptions dependencyCollectionOptions,
+        RequirementEvaluationOptions requirementEvaluationOptions,
         INamedTypeSymbol? excludeDependencyContractSourceAttributeSymbol,
         ExternalDependencyOptions externalDependencyOptions,
         NamespaceInferenceOptions namespaceInferenceOptions,
@@ -809,7 +811,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                         requirement.ContractName));
             }
 
-            if (!hasMatchingDependency)
+            if (!hasMatchingDependency &&
+                requirementEvaluationOptions.ReportUnusedRequirementDiagnostics)
             {
                 context.ReportDiagnostic(
                     Diagnostic.Create(
@@ -833,7 +836,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                     continue;
                 }
 
-                if (!knownTargets.Contains(requirement.TargetName))
+                if (!knownTargets.Contains(requirement.TargetName) &&
+                    requirementEvaluationOptions.ReportUndeclaredRequirementDiagnostics)
                 {
                     context.ReportDiagnostic(
                         Diagnostic.Create(
@@ -895,7 +899,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                             requirement.ContractName));
                 }
 
-                if (!hasMatchingDependency)
+                if (!hasMatchingDependency &&
+                    requirementEvaluationOptions.ReportUnusedRequirementDiagnostics)
                 {
                     context.ReportDiagnostic(
                         Diagnostic.Create(
@@ -923,7 +928,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 continue;
             }
 
-            if (!knownScopes.Contains(requirement.ScopeName))
+            if (!knownScopes.Contains(requirement.ScopeName) &&
+                requirementEvaluationOptions.ReportUndeclaredRequirementDiagnostics)
             {
                 context.ReportDiagnostic(
                     Diagnostic.Create(
@@ -985,7 +991,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                         requirement.ContractName));
             }
 
-            if (!hasMatchingDependency)
+            if (!hasMatchingDependency &&
+                requirementEvaluationOptions.ReportUnusedRequirementDiagnostics)
             {
                 context.ReportDiagnostic(
                     Diagnostic.Create(
