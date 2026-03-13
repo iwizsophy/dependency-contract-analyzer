@@ -13,6 +13,7 @@ internal static class DependencyCollector
         INamedTypeSymbol type,
         Compilation compilation,
         DependencyCollectionOptions options,
+        INamedTypeSymbol? excludeDependencyContractSourceAttributeSymbol,
         CancellationToken cancellationToken)
     {
         var dependencies = ImmutableArray.CreateBuilder<DependencyDescriptor>();
@@ -20,7 +21,8 @@ internal static class DependencyCollector
 
         foreach (var constructor in type.InstanceConstructors)
         {
-            if (constructor.IsImplicitlyDeclared)
+            if (constructor.IsImplicitlyDeclared ||
+                HasExcludedDependencySource(constructor, excludeDependencyContractSourceAttributeSymbol))
             {
                 continue;
             }
@@ -33,6 +35,11 @@ internal static class DependencyCollector
 
         foreach (var member in type.GetMembers())
         {
+            if (HasExcludedDependencySource(member, excludeDependencyContractSourceAttributeSymbol))
+            {
+                continue;
+            }
+
             if (options.AnalyzeStaticMembers)
             {
                 CollectStaticMemberDependencies(
@@ -104,6 +111,31 @@ internal static class DependencyCollector
     private static bool IsMethodDependencyCandidate(IMethodSymbol method) =>
         !method.IsImplicitlyDeclared &&
         method.MethodKind is MethodKind.Ordinary or MethodKind.ExplicitInterfaceImplementation;
+
+    private static bool HasExcludedDependencySource(
+        ISymbol member,
+        INamedTypeSymbol? excludeDependencyContractSourceAttributeSymbol)
+    {
+        if (excludeDependencyContractSourceAttributeSymbol is null)
+        {
+            return false;
+        }
+
+        if (HasAttribute(member, excludeDependencyContractSourceAttributeSymbol))
+        {
+            return true;
+        }
+
+        return member switch
+        {
+            IMethodSymbol { AssociatedSymbol: { } associatedSymbol } => HasAttribute(associatedSymbol, excludeDependencyContractSourceAttributeSymbol),
+            IFieldSymbol { AssociatedSymbol: { } associatedSymbol } => HasAttribute(associatedSymbol, excludeDependencyContractSourceAttributeSymbol),
+            _ => false,
+        };
+    }
+
+    private static bool HasAttribute(ISymbol symbol, INamedTypeSymbol attributeSymbol) =>
+        symbol.GetAttributes().Any(attribute => SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, attributeSymbol));
 
     private static void CollectStaticMemberDependencies(
         INamedTypeSymbol ownerType,

@@ -49,7 +49,6 @@ Still out of scope:
 
 | Item | Reason |
 | --- | --- |
-| Member-level dependency source exclusion | Only owner-type exclusion and exact requirement suppression are implemented |
 | Namespace-based inference beyond final-segment normalization | Only the final namespace segment is inferred in the current implementation |
 
 ## 3. Attribute model
@@ -253,6 +252,17 @@ public sealed class SuppressRequiredScopeContractAttribute : Attribute
 
 These attributes suppress diagnostics for exact requirement matches on the owning class. They do not exclude dependency discovery itself.
 
+### 3.12 Member-level dependency source exclusion
+
+```csharp
+[AttributeUsage(AttributeTargets.Constructor | AttributeTargets.Method | AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false, Inherited = false)]
+public sealed class ExcludeDependencyContractSourceAttribute : Attribute
+{
+}
+```
+
+When applied to a constructor, method, property, or field, dependency extraction skips that member's declared dependency source and syntax-based dependency discovery.
+
 For DI-agnostic analysis, declare contracts on the consumed abstraction when a dependency is typed as an interface or base class.
 
 ## 4. Rule evaluation model
@@ -276,6 +286,7 @@ Current behavior:
 - If a type has no explicit scope and the assembly has no assembly-level scope, the analyzer infers one from the final namespace segment in the current compilation.
 - Assembly-level scope remains explicit metadata and suppresses scope inference.
 - Assembly/type-level `ExcludeDependencyContractAnalysisAttribute` skips analyzer execution for owner types.
+- `ExcludeDependencyContractSourceAttribute` removes dependency sources from matching constructors, methods, properties, and fields after owner-type exclusions are applied.
 - Exact-match requirement suppression attributes skip `DCA001`, `DCA002`, `DCA200`, `DCA201`, `DCA205`, and `DCA206` for the matching requirement only.
 
 ## 5. Name normalization rules
@@ -486,9 +497,10 @@ The current implementation supports:
 - `.editorconfig` severity settings
 - `.editorconfig` owner-type exclusion via `excluded_namespaces` and `excluded_types`
 - `ExcludeDependencyContractAnalysisAttribute` on assemblies and owner types
+- `ExcludeDependencyContractSourceAttribute` on constructors, methods, properties, and fields
 - `SuppressRequiredDependencyContractAttribute`, `SuppressRequiredTargetContractAttribute`, and `SuppressRequiredScopeContractAttribute` on owner types for exact requirement matches
 
-Member-level dependency source exclusion remains out of scope.
+Member-level exclusion removes dependency sources only. It does not suppress requirements by itself.
 
 ## 9. Current project layout
 
@@ -503,6 +515,7 @@ src/
    │  ├ ContractScopeAttribute.cs
    │  ├ ContractTargetAttribute.cs
    │  ├ ExcludeDependencyContractAnalysisAttribute.cs
+   │  ├ ExcludeDependencyContractSourceAttribute.cs
    │  ├ ProvidesContractAttribute.cs
    │  ├ RequiresContractOnScopeAttribute.cs
    │  ├ RequiresContractOnTargetAttribute.cs
@@ -564,6 +577,7 @@ Representative scenarios include:
 - No diagnostic when a required dependency appears only through static member usage
 - `DCA002` when method parameter, property, object creation, or static-member dependency analysis is disabled through `.editorconfig`
 - No diagnostic when the owner type is excluded through `.editorconfig` namespace or type exclusion settings
+- `DCA002`, `DCA205`, or `DCA206` when the only matching dependency source is excluded at member level
 - No diagnostic when a matching dependency, target, or scope requirement is suppressed on the owner type
 - `DCA001` when a matching dependency does not provide the required contract
 - `DCA002` when `RequiresDependencyContract` references an unused dependency type
@@ -576,7 +590,6 @@ Representative scenarios include:
 ## 12. Future extensions
 
 - EditorConfig-based policy control beyond dependency collection toggles
-- Member-level dependency source exclusion
 - Richer namespace metadata inference beyond final-segment normalization
 
 ## 13. Non-goals

@@ -176,9 +176,10 @@ public sealed class SnapshotCache
 - `.editorconfig` による severity 設定
 - `.editorconfig` の `excluded_namespaces` / `excluded_types` による owner type exclusion
 - assembly / owner type に付ける `[ExcludeDependencyContractAnalysis]`
+- constructor / method / property / field に付ける `[ExcludeDependencyContractSource]` による member source exclusion
 - owner type に付ける `[SuppressRequiredDependencyContract]` / `[SuppressRequiredTargetContract]` / `[SuppressRequiredScopeContract]` による exact-match suppression
 
-member-level dependency source exclusion は引き続き非対応です。
+member-level exclusion は dependency source だけを外し、対応する requirement 自体は suppress しません。
 
 ## 非対象
 

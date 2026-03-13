@@ -176,9 +176,10 @@ The current implementation supports:
 - `.editorconfig` severity settings
 - `.editorconfig` owner-type exclusion through `excluded_namespaces` and `excluded_types`
 - `[ExcludeDependencyContractAnalysis]` on assemblies and owner types
+- `[ExcludeDependencyContractSource]` on constructors, methods, properties, and fields to ignore dependency sources from that member
 - `[SuppressRequiredDependencyContract]`, `[SuppressRequiredTargetContract]`, and `[SuppressRequiredScopeContract]` on owner types for exact requirement matches
 
-Member-level dependency source exclusion remains out of scope.
+Member-level exclusion removes dependency sources only. It does not suppress matching requirements by itself.
 
 ## Non-goals
 

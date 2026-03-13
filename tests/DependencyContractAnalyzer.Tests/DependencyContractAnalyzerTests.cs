@@ -1057,6 +1057,190 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task ReportsUnusedDependenciesWhenConstructorSourceIsExcluded()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [ProvidesContract("thread-safe")]
+            public sealed class Foo
+            {
+            }
+
+            [ProvidesContract("thread-safe")]
+            public static class Clock
+            {
+                public static int CurrentHour => 12;
+            }
+
+            [{|#0:RequiresDependencyContract(typeof(IFoo), "thread-safe")|}]
+            [{|#1:RequiresDependencyContract(typeof(Foo), "thread-safe")|}]
+            [{|#2:RequiresDependencyContract(typeof(Clock), "thread-safe")|}]
+            public sealed class Consumer
+            {
+                [ExcludeDependencyContractSource]
+                public Consumer(IFoo foo)
+                {
+                    var created = new Foo();
+                    _ = Clock.CurrentHour;
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredDependencyType)
+                .WithLocation(0)
+                .WithArguments("IFoo"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredDependencyType)
+                .WithLocation(1)
+                .WithArguments("Foo"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredDependencyType)
+                .WithLocation(2)
+                .WithArguments("Clock"));
+    }
+
+    [Fact]
+    public async Task ReportsUnusedDependenciesWhenMethodSourceIsExcluded()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [ProvidesContract("thread-safe")]
+            public sealed class Foo
+            {
+            }
+
+            [ProvidesContract("thread-safe")]
+            public static class Clock
+            {
+                public static int CurrentHour() => 12;
+            }
+
+            [{|#0:RequiresDependencyContract(typeof(IFoo), "thread-safe")|}]
+            [{|#1:RequiresDependencyContract(typeof(Foo), "thread-safe")|}]
+            [{|#2:RequiresDependencyContract(typeof(Clock), "thread-safe")|}]
+            public sealed class Consumer
+            {
+                [ExcludeDependencyContractSource]
+                public void Execute(IFoo foo)
+                {
+                    var created = new Foo();
+                    _ = Clock.CurrentHour();
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredDependencyType)
+                .WithLocation(0)
+                .WithArguments("IFoo"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredDependencyType)
+                .WithLocation(1)
+                .WithArguments("Foo"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredDependencyType)
+                .WithLocation(2)
+                .WithArguments("Clock"));
+    }
+
+    [Fact]
+    public async Task KeepsOtherDependencySourcesWhenOnlyOneMethodIsExcluded()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                [ExcludeDependencyContractSource]
+                public void Ignored(IFoo foo)
+                {
+                }
+
+                public void Used(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsUnusedDependencyWhenPropertySourceIsExcluded()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class Foo
+            {
+            }
+
+            [{|#0:RequiresDependencyContract(typeof(Foo), "thread-safe")|}]
+            public sealed class Consumer
+            {
+                [ExcludeDependencyContractSource]
+                public Foo Service => new();
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredDependencyType)
+                .WithLocation(0)
+                .WithArguments("Foo"));
+    }
+
+    [Fact]
+    public async Task ReportsUnusedTargetAndScopeWhenFieldSourceIsExcluded()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            [ContractScope("repository")]
+            [ProvidesContract("thread-safe")]
+            public sealed class Repository
+            {
+            }
+
+            [{|#0:RequiresContractOnTarget("repository", "thread-safe")|}]
+            [{|#1:RequiresContractOnScope("repository", "thread-safe")|}]
+            public sealed class Consumer
+            {
+                [ExcludeDependencyContractSource]
+                private readonly Repository _repository = new();
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredTarget, DiagnosticSeverity.Info)
+                .WithLocation(0)
+                .WithArguments("repository"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredScope, DiagnosticSeverity.Info)
+                .WithLocation(1)
+                .WithArguments("repository"));
+    }
+
+    [Fact]
     public async Task ReportsNoDiagnosticWhenTargetedStaticUsageProvidesRequiredContract()
     {
         const string source = """

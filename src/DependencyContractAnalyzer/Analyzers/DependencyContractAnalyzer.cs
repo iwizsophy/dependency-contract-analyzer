@@ -21,6 +21,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
     private const string ContractScopeAttributeMetadataName = "DependencyContractAnalyzer.ContractScopeAttribute";
     private const string ContractTargetAttributeMetadataName = "DependencyContractAnalyzer.ContractTargetAttribute";
     private const string ExcludeDependencyContractAnalysisAttributeMetadataName = "DependencyContractAnalyzer.ExcludeDependencyContractAnalysisAttribute";
+    private const string ExcludeDependencyContractSourceAttributeMetadataName = "DependencyContractAnalyzer.ExcludeDependencyContractSourceAttribute";
     private const string ProvidesContractAttributeMetadataName = "DependencyContractAnalyzer.ProvidesContractAttribute";
     private const string RequiresContractOnScopeAttributeMetadataName = "DependencyContractAnalyzer.RequiresContractOnScopeAttribute";
     private const string RequiresContractOnTargetAttributeMetadataName = "DependencyContractAnalyzer.RequiresContractOnTargetAttribute";
@@ -68,6 +69,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 startContext.Compilation.GetTypeByMetadataName(ProvidesContractAttributeMetadataName);
             var excludeDependencyContractAnalysisAttributeSymbol =
                 startContext.Compilation.GetTypeByMetadataName(ExcludeDependencyContractAnalysisAttributeMetadataName);
+            var excludeDependencyContractSourceAttributeSymbol =
+                startContext.Compilation.GetTypeByMetadataName(ExcludeDependencyContractSourceAttributeMetadataName);
             var contractScopeAttributeSymbol =
                 startContext.Compilation.GetTypeByMetadataName(ContractScopeAttributeMetadataName);
             var contractTargetAttributeSymbol =
@@ -121,6 +124,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                         contractScopeAttributeSymbol,
                         contractTargetAttributeSymbol,
                         excludeDependencyContractAnalysisAttributeSymbol,
+                        excludeDependencyContractSourceAttributeSymbol,
                         contractAliasResolver,
                         knownScopes,
                         knownTargets,
@@ -141,6 +145,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol? contractScopeAttributeSymbol,
         INamedTypeSymbol? contractTargetAttributeSymbol,
         INamedTypeSymbol? excludeDependencyContractAnalysisAttributeSymbol,
+        INamedTypeSymbol? excludeDependencyContractSourceAttributeSymbol,
         ContractAliasResolver contractAliasResolver,
         ImmutableHashSet<string> knownScopes,
         ImmutableHashSet<string> knownTargets,
@@ -193,6 +198,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             contractScopeAttributeSymbol,
             contractTargetAttributeSymbol,
             DependencyCollectionOptions.Create(context.Options.AnalyzerConfigOptionsProvider, namedType),
+            excludeDependencyContractSourceAttributeSymbol,
             contractAliasResolver,
             knownScopes,
             knownTargets,
@@ -328,6 +334,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol? contractScopeAttributeSymbol,
         INamedTypeSymbol? contractTargetAttributeSymbol,
         DependencyCollectionOptions dependencyCollectionOptions,
+        INamedTypeSymbol? excludeDependencyContractSourceAttributeSymbol,
         ContractAliasResolver contractAliasResolver,
         ImmutableHashSet<string> knownScopes,
         ImmutableHashSet<string> knownTargets,
@@ -718,6 +725,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             namedType,
             context.Compilation,
             dependencyCollectionOptions,
+            excludeDependencyContractSourceAttributeSymbol,
             context.CancellationToken);
         var providedContractCache = new Dictionary<INamedTypeSymbol, ImmutableHashSet<string>>(SymbolEqualityComparer.Default);
         var targetCache = new Dictionary<INamedTypeSymbol, ImmutableHashSet<string>>(SymbolEqualityComparer.Default);
