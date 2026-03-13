@@ -40,6 +40,9 @@
     <None Include="Attributes\RequiresContractOnScopeAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\RequiresContractOnScopeAttribute.cs" Visible="false" />
     <None Include="Attributes\RequiresContractOnTargetAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\RequiresContractOnTargetAttribute.cs" Visible="false" />
     <None Include="Attributes\RequiresDependencyContractAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\RequiresDependencyContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredDependencyContractAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\SuppressRequiredDependencyContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredTargetContractAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\SuppressRequiredTargetContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredScopeContractAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\SuppressRequiredScopeContractAttribute.cs" Visible="false" />
     <None Include="Attributes\ContractAliasAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ContractAliasAttribute.cs" Visible="false" />
     <None Include="Attributes\ContractHierarchyAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ContractHierarchyAttribute.cs" Visible="false" />
     <None Include="Attributes\ContractScopeAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ContractScopeAttribute.cs" Visible="false" />
@@ -49,6 +52,9 @@
     <None Include="Attributes\RequiresContractOnScopeAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\RequiresContractOnScopeAttribute.cs" Visible="false" />
     <None Include="Attributes\RequiresContractOnTargetAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\RequiresContractOnTargetAttribute.cs" Visible="false" />
     <None Include="Attributes\RequiresDependencyContractAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\RequiresDependencyContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredDependencyContractAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\SuppressRequiredDependencyContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredTargetContractAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\SuppressRequiredTargetContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredScopeContractAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\SuppressRequiredScopeContractAttribute.cs" Visible="false" />
     <None Include="build\DependencyContractAnalyzer.props" Pack="true" PackagePath="build\DependencyContractAnalyzer.props" Visible="false" />
     <None Include="buildTransitive\DependencyContractAnalyzer.props" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.props" Visible="false" />
   </ItemGroup>

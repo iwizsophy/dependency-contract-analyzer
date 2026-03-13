@@ -853,6 +853,210 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task SuppressesMatchingDependencyRequirementDiagnostics()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            public interface IBar
+            {
+            }
+
+            [SuppressRequiredDependencyContract(typeof(IFoo), "thread-safe")]
+            [SuppressRequiredDependencyContract(typeof(IBar), "retry-safe")]
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            [RequiresDependencyContract(typeof(IBar), "retry-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task SuppressesMatchingTargetRequirementDiagnostics()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            public interface IRepository
+            {
+            }
+
+            [ContractTarget("service")]
+            public interface IService
+            {
+            }
+
+            [SuppressRequiredTargetContract("repository", "thread-safe")]
+            [SuppressRequiredTargetContract("service", "thread-safe")]
+            [SuppressRequiredTargetContract("gateway", "thread-safe")]
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            [RequiresContractOnTarget("service", "thread-safe")]
+            [RequiresContractOnTarget("gateway", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task SuppressesMatchingScopeRequirementDiagnostics()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractScope("platform")]
+
+            [ContractScope("repository")]
+            public interface IRepository
+            {
+            }
+
+            [ContractScope("service")]
+            public interface IService
+            {
+            }
+
+            [SuppressRequiredScopeContract("repository", "thread-safe")]
+            [SuppressRequiredScopeContract("service", "thread-safe")]
+            [SuppressRequiredScopeContract("gateway", "thread-safe")]
+            [SuppressRequiredScopeContract("platform", "thread-safe")]
+            [RequiresContractOnScope("repository", "thread-safe")]
+            [RequiresContractOnScope("service", "thread-safe")]
+            [RequiresContractOnScope("gateway", "thread-safe")]
+            [RequiresContractOnScope("platform", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticsForInvalidSuppressionAttributes()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [{|#0:SuppressRequiredDependencyContract(typeof(IFoo), "")|}]
+            [{|#1:SuppressRequiredDependencyContract(typeof(IFoo), "THREAD-SAFE")|}]
+            [{|#2:SuppressRequiredTargetContract("", "thread-safe")|}]
+            [{|#3:SuppressRequiredScopeContract(" ", "thread-safe")|}]
+            [{|#4:RequiresDependencyContract(typeof(IFoo), "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyContractName).WithLocation(0),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(1)
+                .WithArguments("THREAD-SAFE"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyTargetName).WithLocation(2),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyScopeName).WithLocation(3),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.MissingRequiredContract)
+                .WithLocation(4)
+                .WithArguments("IFoo", "thread-safe"));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticForDuplicateSuppressionAttributes()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            [ContractScope("repository")]
+            public interface IRepository
+            {
+            }
+
+            [SuppressRequiredDependencyContract(typeof(IRepository), "thread-safe")]
+            [{|#0:SuppressRequiredDependencyContract(typeof(IRepository), " thread-safe ")|}]
+            [SuppressRequiredTargetContract("repository", "thread-safe")]
+            [{|#1:SuppressRequiredTargetContract(" repository ", "thread-safe")|}]
+            [SuppressRequiredScopeContract("repository", "thread-safe")]
+            [{|#2:SuppressRequiredScopeContract(" repository ", "thread-safe")|}]
+            [RequiresDependencyContract(typeof(IRepository), "thread-safe")]
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.DuplicateContractDeclaration)
+                .WithLocation(0)
+                .WithArguments("thread-safe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.DuplicateContractDeclaration)
+                .WithLocation(1)
+                .WithArguments("thread-safe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.DuplicateContractDeclaration)
+                .WithLocation(2)
+                .WithArguments("thread-safe"));
+    }
+
+    [Fact]
+    public async Task DoesNotSuppressRequirementWhenSuppressionDoesNotExactlyMatch()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [SuppressRequiredDependencyContract(typeof(IFoo), "retry-safe")]
+            [{|#0:RequiresDependencyContract(typeof(IFoo), "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.MissingRequiredContract)
+                .WithLocation(0)
+                .WithArguments("IFoo", "thread-safe"));
+    }
+
+    [Fact]
     public async Task ReportsNoDiagnosticWhenTargetedStaticUsageProvidesRequiredContract()
     {
         const string source = """

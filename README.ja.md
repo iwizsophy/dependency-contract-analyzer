@@ -165,7 +165,7 @@ public sealed class SnapshotCache
 
 - `DCA202`、`DCA203`、`DCA204` は CI では `Error` へ昇格推奨
 - `DCA205`、`DCA206` は通常は `Info` のまま推奨
-- `DCA101` は lower-kebab-case の contract 名と alias / hierarchy endpoint のみを対象とし、target / scope 名には適用しません
+- `DCA101` は lower-kebab-case の contract 名、requirement suppression の contract 引数、alias / hierarchy endpoint のみを対象とし、target / scope 名には適用しません
 
 ## Suppression モデル
 
@@ -176,8 +176,9 @@ public sealed class SnapshotCache
 - `.editorconfig` による severity 設定
 - `.editorconfig` の `excluded_namespaces` / `excluded_types` による owner type exclusion
 - assembly / owner type に付ける `[ExcludeDependencyContractAnalysis]`
+- owner type に付ける `[SuppressRequiredDependencyContract]` / `[SuppressRequiredTargetContract]` / `[SuppressRequiredScopeContract]` による exact-match suppression
 
-requirement 単位 suppression と member-level dependency source exclusion は引き続き非対応です。
+member-level dependency source exclusion は引き続き非対応です。
 
 ## 非対象
 

@@ -165,7 +165,7 @@ The four `analyze_*` options default to `true`. Constructor parameters, field ty
 
 - Promote `DCA202`, `DCA203`, and `DCA204` to `Error` in CI.
 - Keep `DCA205` and `DCA206` at `Info` unless the codebase is already stable enough to treat stale requirements as build-blocking.
-- `DCA101` validates lower-kebab-case contract names and alias or hierarchy endpoints only. It does not apply to target or scope names.
+- `DCA101` validates lower-kebab-case contract names, requirement-suppression contract arguments, and alias or hierarchy endpoints only. It does not apply to target or scope names.
 
 ## Suppression model
 
@@ -176,8 +176,9 @@ The current implementation supports:
 - `.editorconfig` severity settings
 - `.editorconfig` owner-type exclusion through `excluded_namespaces` and `excluded_types`
 - `[ExcludeDependencyContractAnalysis]` on assemblies and owner types
+- `[SuppressRequiredDependencyContract]`, `[SuppressRequiredTargetContract]`, and `[SuppressRequiredScopeContract]` on owner types for exact requirement matches
 
-Requirement-level suppression and member-level dependency source exclusion remain out of scope.
+Member-level dependency source exclusion remains out of scope.
 
 ## Non-goals
 

@@ -35,7 +35,7 @@ This is not only an analyzer for attributes. It is a static architecture verific
     |
     +-- contract matching
     +-- alias / implication resolution
-    +-- standard Roslyn suppression and owner-type exclusions
+    +-- standard Roslyn suppression, exact requirement suppression, and owner-type exclusions
     +-- diagnostics
 ```
 
@@ -450,7 +450,7 @@ Inside that evaluation:
 - `DCA101`: contract naming format violation
 - `DCA102`: duplicate contract declaration
 
-`DCA101` applies only to contract names and alias or hierarchy endpoints. It does not apply to target names or scope names, and the enforced v1 format is lower-kebab-case.
+`DCA101` applies only to contract names, requirement-suppression contract arguments, and alias or hierarchy endpoints. It does not apply to target names or scope names, and the enforced v1 format is lower-kebab-case.
 
 ### Rule-definition diagnostics
 
@@ -489,4 +489,4 @@ Current recommended delivery roadmap for this repository:
 
 If delivery risk changes, target and scope can be swapped without changing the end-state architecture.
 
-The current `.editorconfig` surface covers diagnostic severity, dependency collection toggles for method parameters, properties, object creation, and static member usage, and owner-type exclusion by namespace or fully qualified type name. Custom exclusion attributes are implemented for assemblies and owner types. Namespace-based target/scope inference is implemented only for final-segment fallback names in the current compilation. Richer namespace heuristics and finer-grained custom exclusion models remain out of scope.
+The current `.editorconfig` surface covers diagnostic severity, dependency collection toggles for method parameters, properties, object creation, and static member usage, and owner-type exclusion by namespace or fully qualified type name. Custom exclusion attributes are implemented for assemblies and owner types. Exact-match requirement suppression attributes are implemented on owner types for dependency, target, and scope requirements. Namespace-based target/scope inference is implemented only for final-segment fallback names in the current compilation. Richer namespace heuristics and finer-grained member-level exclusion models remain out of scope.

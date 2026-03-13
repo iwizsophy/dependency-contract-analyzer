@@ -49,6 +49,7 @@ Still out of scope:
 
 | Item | Reason |
 | --- | --- |
+| Member-level dependency source exclusion | Only owner-type exclusion and exact requirement suppression are implemented |
 | Namespace-based inference beyond final-segment normalization | Only the final namespace segment is inferred in the current implementation |
 
 ## 3. Attribute model
@@ -203,6 +204,55 @@ public sealed class ExcludeDependencyContractAnalysisAttribute : Attribute
 
 When applied to an assembly or owner type, analyzer execution for that owner type is skipped.
 
+### 3.11 Requirement suppression attributes
+
+```csharp
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public sealed class SuppressRequiredDependencyContractAttribute : Attribute
+{
+    public Type DependencyType { get; }
+    public string ContractName { get; }
+
+    public SuppressRequiredDependencyContractAttribute(Type dependencyType, string contractName)
+    {
+        DependencyType = dependencyType;
+        ContractName = contractName;
+    }
+}
+```
+
+```csharp
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public sealed class SuppressRequiredTargetContractAttribute : Attribute
+{
+    public string TargetName { get; }
+    public string ContractName { get; }
+
+    public SuppressRequiredTargetContractAttribute(string targetName, string contractName)
+    {
+        TargetName = targetName;
+        ContractName = contractName;
+    }
+}
+```
+
+```csharp
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+public sealed class SuppressRequiredScopeContractAttribute : Attribute
+{
+    public string ScopeName { get; }
+    public string ContractName { get; }
+
+    public SuppressRequiredScopeContractAttribute(string scopeName, string contractName)
+    {
+        ScopeName = scopeName;
+        ContractName = contractName;
+    }
+}
+```
+
+These attributes suppress diagnostics for exact requirement matches on the owning class. They do not exclude dependency discovery itself.
+
 For DI-agnostic analysis, declare contracts on the consumed abstraction when a dependency is typed as an interface or base class.
 
 ## 4. Rule evaluation model
@@ -226,6 +276,7 @@ Current behavior:
 - If a type has no explicit scope and the assembly has no assembly-level scope, the analyzer infers one from the final namespace segment in the current compilation.
 - Assembly-level scope remains explicit metadata and suppresses scope inference.
 - Assembly/type-level `ExcludeDependencyContractAnalysisAttribute` skips analyzer execution for owner types.
+- Exact-match requirement suppression attributes skip `DCA001`, `DCA002`, `DCA200`, `DCA201`, `DCA205`, and `DCA206` for the matching requirement only.
 
 ## 5. Name normalization rules
 
@@ -411,6 +462,7 @@ The analyzer also supports these list-valued `.editorconfig` options:
 - Required format: lower-kebab-case
 - Regex: `^[a-z0-9]+(-[a-z0-9]+)*$`
 - Applies only to contract names and alias or hierarchy endpoints
+- Also applies to the contract name arguments of requirement suppression attributes
 - Does not apply to target names or scope names
 
 Covered names:
@@ -419,6 +471,9 @@ Covered names:
 - the contract name argument of `RequiresDependencyContract`
 - the contract name argument of `RequiresContractOnTarget`
 - the contract name argument of `RequiresContractOnScope`
+- the contract name argument of `SuppressRequiredDependencyContract`
+- the contract name argument of `SuppressRequiredTargetContract`
+- the contract name argument of `SuppressRequiredScopeContract`
 - both `from` and `to` arguments of `ContractAlias`
 - both `child` and `parent` arguments of `ContractHierarchy`
 
@@ -431,8 +486,9 @@ The current implementation supports:
 - `.editorconfig` severity settings
 - `.editorconfig` owner-type exclusion via `excluded_namespaces` and `excluded_types`
 - `ExcludeDependencyContractAnalysisAttribute` on assemblies and owner types
+- `SuppressRequiredDependencyContractAttribute`, `SuppressRequiredTargetContractAttribute`, and `SuppressRequiredScopeContractAttribute` on owner types for exact requirement matches
 
-Requirement-level exclusions and member-level dependency source exclusion remain out of scope.
+Member-level dependency source exclusion remains out of scope.
 
 ## 9. Current project layout
 
@@ -450,7 +506,10 @@ src/
    │  ├ ProvidesContractAttribute.cs
    │  ├ RequiresContractOnScopeAttribute.cs
    │  ├ RequiresContractOnTargetAttribute.cs
-   │  └ RequiresDependencyContractAttribute.cs
+   │  ├ RequiresDependencyContractAttribute.cs
+   │  ├ SuppressRequiredDependencyContractAttribute.cs
+   │  ├ SuppressRequiredScopeContractAttribute.cs
+   │  └ SuppressRequiredTargetContractAttribute.cs
    ├ Diagnostics
    │  └ DiagnosticDescriptors.cs
    ├ Helpers
@@ -505,6 +564,7 @@ Representative scenarios include:
 - No diagnostic when a required dependency appears only through static member usage
 - `DCA002` when method parameter, property, object creation, or static-member dependency analysis is disabled through `.editorconfig`
 - No diagnostic when the owner type is excluded through `.editorconfig` namespace or type exclusion settings
+- No diagnostic when a matching dependency, target, or scope requirement is suppressed on the owner type
 - `DCA001` when a matching dependency does not provide the required contract
 - `DCA002` when `RequiresDependencyContract` references an unused dependency type
 - Scope-based matching through type-level and assembly-level scopes
@@ -517,7 +577,6 @@ Representative scenarios include:
 
 - EditorConfig-based policy control beyond dependency collection toggles
 - Member-level dependency source exclusion
-- Requirement-level exclusion / suppression
 - Richer namespace metadata inference beyond final-segment normalization
 
 ## 13. Non-goals

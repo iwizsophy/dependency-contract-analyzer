@@ -9,5 +9,8 @@
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\RequiresContractOnScopeAttribute.cs" Link="DependencyContractAnalyzer.Attributes\RequiresContractOnScopeAttribute.cs" Visible="false" />
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\RequiresContractOnTargetAttribute.cs" Link="DependencyContractAnalyzer.Attributes\RequiresContractOnTargetAttribute.cs" Visible="false" />
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\RequiresDependencyContractAttribute.cs" Link="DependencyContractAnalyzer.Attributes\RequiresDependencyContractAttribute.cs" Visible="false" />
+    <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\SuppressRequiredDependencyContractAttribute.cs" Link="DependencyContractAnalyzer.Attributes\SuppressRequiredDependencyContractAttribute.cs" Visible="false" />
+    <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\SuppressRequiredTargetContractAttribute.cs" Link="DependencyContractAnalyzer.Attributes\SuppressRequiredTargetContractAttribute.cs" Visible="false" />
+    <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\SuppressRequiredScopeContractAttribute.cs" Link="DependencyContractAnalyzer.Attributes\SuppressRequiredScopeContractAttribute.cs" Visible="false" />
   </ItemGroup>
 </Project>
