@@ -283,7 +283,11 @@ Current behavior:
 - `RequiresDependencyContract` reports `DCA002` when the declared dependency type is not used.
 - `RequiresContractOnTarget` evaluates only dependencies whose declared targets match the normalized target name.
 - `RequiresContractOnScope` evaluates only dependencies whose declared scopes match the normalized scope name.
-- Dependencies outside the current compilation assembly are ignored for missing-contract checks.
+- Dependencies outside the current compilation assembly are ignored by default.
+- If `dependency_contract_analyzer.external_dependency_policy = metadata`, the analyzer reads explicit provided-contract metadata from matching external dependency types before evaluating `DCA001`.
+- If `dependency_contract_analyzer.external_dependency_policy = metadata`, `RequiresContractOnTarget` and `RequiresContractOnScope` also read explicit target and scope metadata from matching external dependency types and assemblies.
+- Namespace fallback inference remains limited to types declared in the current compilation, even in `metadata` mode.
+- `DCA200` and `DCA201` still validate declared targets and scopes against the current compilation only.
 - Type-level targets and scopes use explicit attributes first.
 - If a type has no explicit target, the analyzer infers one from the final namespace segment in the current compilation.
 - If `dependency_contract_analyzer.namespace_inference_max_segments = 2`, the analyzer also infers a trailing two-segment fallback target name in the current compilation.
@@ -432,6 +436,8 @@ Provided contracts are expanded through the transitive implication closure befor
 
 Assembly-level scopes act as default scopes in addition to type-level scope declarations.
 
+When `dependency_contract_analyzer.external_dependency_policy = metadata`, the analyzer also reads explicit provided contracts, targets, and scopes from referenced assemblies for dependency matching. Referenced assemblies do not contribute namespace-inferred names, and undeclared target/scope validation remains current-compilation-only.
+
 ## 8. Diagnostics
 
 | ID | Default severity | Meaning |
@@ -471,12 +477,16 @@ The analyzer also supports this global integer `.editorconfig` option:
 
 - `dependency_contract_analyzer.namespace_inference_max_segments` (default: `1`, supported values: `1`, `2`)
 
+The analyzer also supports this global string `.editorconfig` option:
+
+- `dependency_contract_analyzer.external_dependency_policy` (default: `ignore`, supported values: `ignore`, `metadata`)
+
 The analyzer also supports these list-valued `.editorconfig` options:
 
 - `dependency_contract_analyzer.excluded_namespaces`
 - `dependency_contract_analyzer.excluded_types`
 
-`excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. List values accept comma, semicolon, or newline separators. `namespace_inference_max_segments` controls whether fallback inference uses only the final namespace segment (`1`) or both the final segment and trailing two-segment combinations (`2`).
+`excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. List values accept comma, semicolon, or newline separators. `namespace_inference_max_segments` controls whether fallback inference uses only the final namespace segment (`1`) or both the final segment and trailing two-segment combinations (`2`). `external_dependency_policy` controls whether dependencies outside the current compilation are ignored (`ignore`) or matched against explicit metadata from referenced assemblies (`metadata`). Invalid values fall back to the default.
 
 ### 8.2 Contract naming rule
 

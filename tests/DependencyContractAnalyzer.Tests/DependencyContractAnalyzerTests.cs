@@ -317,6 +317,158 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task ReportsDiagnosticForExternalDependencyWhenMetadataPolicyIsEnabled()
+    {
+        const string source = """
+            using System;
+            using DependencyContractAnalyzer;
+
+            [RequiresDependencyContract(typeof(IDisposable), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IDisposable dependency)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.MissingRequiredContract, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("IDisposable", diagnostic.GetMessage());
+        Assert.Contains("thread-safe", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task ReadsProvidedContractsFromExternalDependencyMetadata()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using ExternalContracts;
+
+            [RequiresDependencyContract(typeof(IExternalWorker), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IExternalWorker worker)
+                {
+                }
+            }
+            """;
+        const string externalBody = """
+            namespace ExternalContracts
+            {
+                [DependencyContractAnalyzer.ProvidesContract("thread-safe")]
+                public interface IExternalWorker
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            new[] { CreateExternalAssemblySource(externalBody) },
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task ReadsTargetMetadataFromExternalDependencyWhenMetadataPolicyIsEnabled()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using ExternalContracts;
+
+            [ContractTarget("repository")]
+            public sealed class TargetMarker
+            {
+            }
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+        const string externalBody = """
+            namespace ExternalContracts
+            {
+                [DependencyContractAnalyzer.ContractTarget("repository")]
+                [DependencyContractAnalyzer.ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+            """;
+        var additionalReferenceSources = new[] { CreateExternalAssemblySource(externalBody) };
+
+        var ignoreDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            additionalReferenceSources);
+        var metadataDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            additionalReferenceSources,
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+
+        var ignoreDiagnostic = Assert.Single(ignoreDiagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredTarget, ignoreDiagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Info, ignoreDiagnostic.Severity);
+        Assert.Contains("repository", ignoreDiagnostic.GetMessage());
+        Assert.Empty(metadataDiagnostics);
+    }
+
+    [Fact]
+    public async Task ReadsScopeMetadataFromExternalDependencyWhenMetadataPolicyIsEnabled()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using ExternalContracts;
+
+            [assembly: ContractScope("repository")]
+
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+        const string externalBody = """
+            [assembly: DependencyContractAnalyzer.ContractScope("repository")]
+
+            namespace ExternalContracts
+            {
+                [DependencyContractAnalyzer.ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+            """;
+        var additionalReferenceSources = new[] { CreateExternalAssemblySource(externalBody) };
+
+        var ignoreDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            additionalReferenceSources);
+        var metadataDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            additionalReferenceSources,
+            ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
+
+        var ignoreDiagnostic = Assert.Single(ignoreDiagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredScope, ignoreDiagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Info, ignoreDiagnostic.Severity);
+        Assert.Contains("repository", ignoreDiagnostic.GetMessage());
+        Assert.Empty(metadataDiagnostics);
+    }
+
+    [Fact]
     public async Task ReportsNoDiagnosticWhenMethodParameterProvidesRequiredContract()
     {
         const string source = """
@@ -2233,6 +2385,49 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task DoesNotInferTargetFromExternalImplementedInterfaceNamespace()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using ExternalContracts;
+
+            [ContractTarget("external-contracts")]
+            public sealed class TargetMarker
+            {
+            }
+
+            public sealed class UserRepository : IRepository
+            {
+            }
+
+            [RequiresContractOnTarget("external-contracts", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+        const string externalBody = """
+            namespace ExternalContracts
+            {
+                public interface IRepository
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            new[] { CreateExternalAssemblySource(externalBody) });
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredTarget, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Info, diagnostic.Severity);
+        Assert.Contains("external-contracts", diagnostic.GetMessage());
+    }
+
+    [Fact]
     public async Task UsesTargetDeclaredOnImplementedInterfaces()
     {
         const string source = """
@@ -2636,4 +2831,36 @@ public sealed class DependencyContractAnalyzerTests
                 .WithLocation(1)
                 .WithArguments("b -> a"));
     }
+
+    private static string CreateExternalAssemblySource(string body) =>
+        body + "\r\n" + ExternalAttributeSource;
+
+    private const string ExternalAttributeSource = """
+        namespace DependencyContractAnalyzer
+        {
+            [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Interface, AllowMultiple = true, Inherited = true)]
+            internal sealed class ProvidesContractAttribute : System.Attribute
+            {
+                public ProvidesContractAttribute(string name)
+                {
+                }
+            }
+
+            [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Interface, AllowMultiple = true, Inherited = true)]
+            internal sealed class ContractTargetAttribute : System.Attribute
+            {
+                public ContractTargetAttribute(string name)
+                {
+                }
+            }
+
+            [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Interface | System.AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
+            internal sealed class ContractScopeAttribute : System.Attribute
+            {
+                public ContractScopeAttribute(string name)
+                {
+                }
+            }
+        }
+        """;
 }

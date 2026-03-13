@@ -97,6 +97,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 startContext.Compilation.Assembly,
                 contractAliasAttributeSymbol,
                 contractHierarchyAttributeSymbol);
+            var externalDependencyOptions = ExternalDependencyOptions.Create(startContext.Options.AnalyzerConfigOptionsProvider);
             var namespaceInferenceOptions = NamespaceInferenceOptions.Create(startContext.Options.AnalyzerConfigOptionsProvider);
             var knownTargets = contractTargetAttributeSymbol is null
                 ? CreateEmptyNameSet()
@@ -126,6 +127,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                         contractTargetAttributeSymbol,
                         excludeDependencyContractAnalysisAttributeSymbol,
                         excludeDependencyContractSourceAttributeSymbol,
+                        externalDependencyOptions,
                         namespaceInferenceOptions,
                         contractAliasResolver,
                         knownScopes,
@@ -148,6 +150,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol? contractTargetAttributeSymbol,
         INamedTypeSymbol? excludeDependencyContractAnalysisAttributeSymbol,
         INamedTypeSymbol? excludeDependencyContractSourceAttributeSymbol,
+        ExternalDependencyOptions externalDependencyOptions,
         NamespaceInferenceOptions namespaceInferenceOptions,
         ContractAliasResolver contractAliasResolver,
         ImmutableHashSet<string> knownScopes,
@@ -202,6 +205,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             contractTargetAttributeSymbol,
             DependencyCollectionOptions.Create(context.Options.AnalyzerConfigOptionsProvider, namedType),
             excludeDependencyContractSourceAttributeSymbol,
+            externalDependencyOptions,
             namespaceInferenceOptions,
             contractAliasResolver,
             knownScopes,
@@ -339,6 +343,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol? contractTargetAttributeSymbol,
         DependencyCollectionOptions dependencyCollectionOptions,
         INamedTypeSymbol? excludeDependencyContractSourceAttributeSymbol,
+        ExternalDependencyOptions externalDependencyOptions,
         NamespaceInferenceOptions namespaceInferenceOptions,
         ContractAliasResolver contractAliasResolver,
         ImmutableHashSet<string> knownScopes,
@@ -759,7 +764,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
                 hasMatchingDependency = true;
 
-                if (dependency.Type.IsExternalTo(context.Compilation.Assembly))
+                if (dependency.Type.IsExternalTo(context.Compilation.Assembly) &&
+                    externalDependencyOptions.Policy == ExternalDependencyPolicy.Ignore)
                 {
                     continue;
                 }
@@ -823,14 +829,21 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 var hasMatchingDependency = false;
                 foreach (var dependency in dependencies)
                 {
-                    if (dependency.Type.IsExternalTo(context.Compilation.Assembly))
+                    var isExternalDependency = dependency.Type.IsExternalTo(context.Compilation.Assembly);
+                    if (isExternalDependency &&
+                        externalDependencyOptions.Policy == ExternalDependencyPolicy.Ignore)
                     {
                         continue;
                     }
 
                     if (!targetCache.TryGetValue(dependency.Type, out var targets))
                     {
-                        targets = GetTargets(dependency.Type, contractTargetAttributeSymbol, namespaceInferenceOptions);
+                        targets = GetTargets(
+                            dependency.Type,
+                            contractTargetAttributeSymbol,
+                            namespaceInferenceOptions,
+                            context.Compilation.Assembly,
+                            allowNamespaceInference: !isExternalDependency);
                         targetCache.Add(dependency.Type, targets);
                     }
 
@@ -904,14 +917,21 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             var hasMatchingDependency = false;
             foreach (var dependency in dependencies)
             {
-                if (dependency.Type.IsExternalTo(context.Compilation.Assembly))
+                var isExternalDependency = dependency.Type.IsExternalTo(context.Compilation.Assembly);
+                if (isExternalDependency &&
+                    externalDependencyOptions.Policy == ExternalDependencyPolicy.Ignore)
                 {
                     continue;
                 }
 
                 if (!scopeCache.TryGetValue(dependency.Type, out var scopes))
                 {
-                    scopes = GetScopes(dependency.Type, contractScopeAttributeSymbol, namespaceInferenceOptions);
+                    scopes = GetScopes(
+                        dependency.Type,
+                        contractScopeAttributeSymbol,
+                        namespaceInferenceOptions,
+                        context.Compilation.Assembly,
+                        allowNamespaceInference: !isExternalDependency);
                     scopeCache.Add(dependency.Type, scopes);
                 }
 
@@ -974,7 +994,12 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 continue;
             }
 
-            AddNormalizedNames(current.GetAttributes(), providesContractAttributeSymbol, 0, contracts);
+            AddNormalizedNames(
+                current.GetAttributes(),
+                providesContractAttributeSymbol,
+                ProvidesContractAttributeMetadataName,
+                0,
+                contracts);
 
             if (current.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
             {
@@ -993,7 +1018,9 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
     private static ImmutableHashSet<string> GetTargets(
         INamedTypeSymbol type,
         INamedTypeSymbol contractTargetAttributeSymbol,
-        NamespaceInferenceOptions namespaceInferenceOptions)
+        NamespaceInferenceOptions namespaceInferenceOptions,
+        IAssemblySymbol compilationAssembly,
+        bool allowNamespaceInference = true)
     {
         var targets = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
         var toVisit = new Stack<INamedTypeSymbol>();
@@ -1009,7 +1036,12 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 continue;
             }
 
-            AddResolvedTargetNames(current, contractTargetAttributeSymbol, namespaceInferenceOptions, targets);
+            AddResolvedTargetNames(
+                current,
+                contractTargetAttributeSymbol,
+                namespaceInferenceOptions,
+                targets,
+                allowNamespaceInference && !current.IsExternalTo(compilationAssembly));
 
             if (current.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
             {
@@ -1028,12 +1060,15 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
     private static ImmutableHashSet<string> GetScopes(
         INamedTypeSymbol type,
         INamedTypeSymbol contractScopeAttributeSymbol,
-        NamespaceInferenceOptions namespaceInferenceOptions)
+        NamespaceInferenceOptions namespaceInferenceOptions,
+        IAssemblySymbol compilationAssembly,
+        bool allowNamespaceInference = true)
     {
         var scopes = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
         var hasAssemblyLevelScopes = AddNormalizedNames(
             type.ContainingAssembly.GetAttributes(),
             contractScopeAttributeSymbol,
+            ContractScopeAttributeMetadataName,
             0,
             scopes);
         var toVisit = new Stack<INamedTypeSymbol>();
@@ -1049,7 +1084,13 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 continue;
             }
 
-            AddResolvedScopeNames(current, contractScopeAttributeSymbol, namespaceInferenceOptions, scopes, hasAssemblyLevelScopes);
+            AddResolvedScopeNames(
+                current,
+                contractScopeAttributeSymbol,
+                namespaceInferenceOptions,
+                scopes,
+                hasAssemblyLevelScopes,
+                allowNamespaceInference && !current.IsExternalTo(compilationAssembly));
 
             if (current.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
             {
@@ -1084,6 +1125,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         var hasAssemblyLevelScopes = AddNormalizedNames(
             assembly.GetAttributes(),
             contractScopeAttributeSymbol,
+            ContractScopeAttributeMetadataName,
             0,
             knownNames);
         AddKnownScopes(assembly.GlobalNamespace, contractScopeAttributeSymbol, namespaceInferenceOptions, knownNames, hasAssemblyLevelScopes);
@@ -1209,7 +1251,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
     private static bool AddNormalizedNames(
         ImmutableArray<AttributeData> attributes,
-        INamedTypeSymbol expectedAttributeSymbol,
+        INamedTypeSymbol? expectedAttributeSymbol,
+        string expectedAttributeMetadataName,
         int argumentIndex,
         ImmutableHashSet<string>.Builder values)
     {
@@ -1217,7 +1260,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
         foreach (var attribute in attributes)
         {
-            if (!attribute.AttributeClass.SymbolEquals(expectedAttributeSymbol) ||
+            if (!HasMatchingAttributeClass(attribute, expectedAttributeSymbol, expectedAttributeMetadataName) ||
                 !TryGetStringArgument(attribute, argumentIndex, out var value))
             {
                 continue;
@@ -1323,9 +1366,16 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol type,
         INamedTypeSymbol contractTargetAttributeSymbol,
         NamespaceInferenceOptions namespaceInferenceOptions,
-        ImmutableHashSet<string>.Builder targetNames)
+        ImmutableHashSet<string>.Builder targetNames,
+        bool allowNamespaceInference = true)
     {
-        if (AddNormalizedNames(type.GetAttributes(), contractTargetAttributeSymbol, 0, targetNames))
+        if (AddNormalizedNames(
+                type.GetAttributes(),
+                contractTargetAttributeSymbol,
+                ContractTargetAttributeMetadataName,
+                0,
+                targetNames) ||
+            !allowNamespaceInference)
         {
             return;
         }
@@ -1341,10 +1391,17 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol contractScopeAttributeSymbol,
         NamespaceInferenceOptions namespaceInferenceOptions,
         ImmutableHashSet<string>.Builder scopeNames,
-        bool hasAssemblyLevelScopes)
+        bool hasAssemblyLevelScopes,
+        bool allowNamespaceInference = true)
     {
-        if (AddNormalizedNames(type.GetAttributes(), contractScopeAttributeSymbol, 0, scopeNames) ||
-            hasAssemblyLevelScopes)
+        if (AddNormalizedNames(
+                type.GetAttributes(),
+                contractScopeAttributeSymbol,
+                ContractScopeAttributeMetadataName,
+                0,
+                scopeNames) ||
+            hasAssemblyLevelScopes ||
+            !allowNamespaceInference)
         {
             return;
         }
@@ -1353,6 +1410,46 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         {
             scopeNames.Add(inferredName);
         }
+    }
+
+    private static bool HasMatchingAttributeClass(
+        AttributeData attribute,
+        INamedTypeSymbol? expectedAttributeSymbol,
+        string expectedAttributeMetadataName)
+    {
+        var attributeClass = attribute.AttributeClass;
+        return attributeClass is not null &&
+            (attributeClass.SymbolEquals(expectedAttributeSymbol) ||
+             string.Equals(
+                 GetFullyQualifiedMetadataName(attributeClass),
+                 expectedAttributeMetadataName,
+                 StringComparison.Ordinal));
+    }
+
+    private static string GetFullyQualifiedMetadataName(INamedTypeSymbol symbol)
+    {
+        var parts = new Stack<string>();
+        ISymbol? current = symbol;
+
+        while (current is not null)
+        {
+            switch (current)
+            {
+                case INamedTypeSymbol namedType:
+                    parts.Push(namedType.MetadataName);
+                    current = namedType.ContainingSymbol;
+                    break;
+                case INamespaceSymbol namespaceSymbol when !namespaceSymbol.IsGlobalNamespace:
+                    parts.Push(namespaceSymbol.MetadataName);
+                    current = namespaceSymbol.ContainingSymbol;
+                    break;
+                default:
+                    current = null;
+                    break;
+            }
+        }
+
+        return string.Join(".", parts);
     }
 
     private interface IRequirement

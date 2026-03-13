@@ -16,7 +16,13 @@ namespace DependencyContractAnalyzer.Tests;
 
 internal static class DependencyContractAnalyzerVerifier
 {
-    private static readonly ImmutableArray<MetadataReference> DefaultMetadataReferences = CreateDefaultMetadataReferences();
+    private static readonly MetadataReference AnalyzerAssemblyReference =
+        MetadataReference.CreateFromFile(typeof(ProvidesContractAttribute).Assembly.Location);
+
+    private static readonly ImmutableArray<MetadataReference> PlatformMetadataReferences = CreatePlatformMetadataReferences();
+
+    private static readonly ImmutableArray<MetadataReference> DefaultMetadataReferences =
+        PlatformMetadataReferences.Add(AnalyzerAssemblyReference);
 
     public static DiagnosticResult Diagnostic(
         string diagnosticId,
@@ -32,16 +38,50 @@ internal static class DependencyContractAnalyzerVerifier
             TestCode = source,
         };
 
-        test.TestState.AdditionalReferences.Add(
-            MetadataReference.CreateFromFile(typeof(ProvidesContractAttribute).Assembly.Location));
+        test.TestState.AdditionalReferences.Add(AnalyzerAssemblyReference);
 
         test.ExpectedDiagnostics.AddRange(expectedDiagnostics);
         await test.RunAsync();
     }
 
-    public static async Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsWithOptionsAsync(
+    public static Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsWithOptionsAsync(
         string source,
         params (string Key, string Value)[] options)
+    {
+        return GetAnalyzerDiagnosticsAsync(
+            source,
+            options,
+            ImmutableArray<MetadataReference>.Empty);
+    }
+
+    public static Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsWithAdditionalReferenceSourcesAsync(
+        string source,
+        string[] additionalReferenceSources,
+        params (string Key, string Value)[] options)
+    {
+        var additionalReferences = additionalReferenceSources
+            .Select(CreateMetadataReferenceFromSource)
+            .ToImmutableArray();
+
+        return GetAnalyzerDiagnosticsAsync(source, options, additionalReferences);
+    }
+
+    public static Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+        string source,
+        string[] additionalReferenceSources,
+        params (string Key, string Value)[] options)
+    {
+        var additionalReferences = additionalReferenceSources
+            .Select(CreateMetadataReferenceFromSource)
+            .ToImmutableArray();
+
+        return GetAnalyzerDiagnosticsWithoutAnalyzerReferenceAsync(source, options, additionalReferences);
+    }
+
+    private static async Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsAsync(
+        string source,
+        IEnumerable<(string Key, string Value)> options,
+        ImmutableArray<MetadataReference> additionalReferences)
     {
         var syntaxTree = CSharpSyntaxTree.ParseText(
             source,
@@ -50,7 +90,55 @@ internal static class DependencyContractAnalyzerVerifier
         var compilation = CSharpCompilation.Create(
             assemblyName: "DependencyContractAnalyzer.Tests.EditorConfig",
             syntaxTrees: new[] { syntaxTree },
-            references: DefaultMetadataReferences,
+            references: DefaultMetadataReferences.AddRange(additionalReferences),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        var compilationErrors = compilation.GetDiagnostics()
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .Select(static diagnostic => diagnostic.ToString())
+            .ToImmutableArray();
+        if (!compilationErrors.IsDefaultOrEmpty)
+        {
+            throw new InvalidOperationException(string.Join(Environment.NewLine, compilationErrors));
+        }
+
+        var analyzer = new DependencyContractAnalyzerDiagnosticAnalyzer();
+        var analyzerOptions = new AnalyzerOptions(
+            ImmutableArray<AdditionalText>.Empty,
+            new TestAnalyzerConfigOptionsProvider(options));
+        var compilationWithAnalyzers = compilation.WithAnalyzers(
+            ImmutableArray.Create<DiagnosticAnalyzer>(analyzer),
+            new CompilationWithAnalyzersOptions(
+                analyzerOptions,
+                onAnalyzerException: null,
+                concurrentAnalysis: false,
+                logAnalyzerExecutionTime: false,
+                reportSuppressedDiagnostics: false));
+
+        return (await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync())
+            .OrderBy(static diagnostic => diagnostic.Location.SourceSpan.Start)
+            .ToImmutableArray();
+    }
+
+    private static async Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsWithoutAnalyzerReferenceAsync(
+        string source,
+        IEnumerable<(string Key, string Value)> options,
+        ImmutableArray<MetadataReference> additionalReferences)
+    {
+        var syntaxTrees = new[]
+        {
+            CSharpSyntaxTree.ParseText(
+                SourceDefinedAttributeSource,
+                new CSharpParseOptions(LanguageVersion.Preview),
+                path: "/0/DependencyContractAnalyzer.Attributes.cs"),
+            CSharpSyntaxTree.ParseText(
+                source,
+                new CSharpParseOptions(LanguageVersion.Preview),
+                path: "/0/Test0.cs"),
+        };
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "DependencyContractAnalyzer.Tests.SourceDefinedAttributes",
+            syntaxTrees: syntaxTrees,
+            references: PlatformMetadataReferences.AddRange(additionalReferences),
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         var compilationErrors = compilation.GetDiagnostics()
             .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
@@ -116,15 +204,101 @@ internal static class DependencyContractAnalyzerVerifier
             _options.TryGetValue(key, out value!);
     }
 
-    private static ImmutableArray<MetadataReference> CreateDefaultMetadataReferences()
+    private static MetadataReference CreateMetadataReferenceFromSource(string source)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(
+            source,
+            new CSharpParseOptions(LanguageVersion.Preview),
+            path: "/0/External.cs");
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "DependencyContractAnalyzer.Tests.External." + Guid.NewGuid().ToString("N"),
+            syntaxTrees: new[] { syntaxTree },
+            references: PlatformMetadataReferences,
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        var errors = compilation.GetDiagnostics()
+            .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .Select(static diagnostic => diagnostic.ToString())
+            .ToImmutableArray();
+        if (!errors.IsDefaultOrEmpty)
+        {
+            throw new InvalidOperationException(string.Join(Environment.NewLine, errors));
+        }
+
+        using var stream = new MemoryStream();
+        var emitResult = compilation.Emit(stream);
+        if (!emitResult.Success)
+        {
+            var emitErrors = emitResult.Diagnostics
+                .Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+                .Select(static diagnostic => diagnostic.ToString());
+            throw new InvalidOperationException(string.Join(Environment.NewLine, emitErrors));
+        }
+
+        return MetadataReference.CreateFromImage(stream.ToArray());
+    }
+
+    private static ImmutableArray<MetadataReference> CreatePlatformMetadataReferences()
     {
         var trustedPlatformAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries) ??
             Array.Empty<string>();
-        var references = trustedPlatformAssemblies
+        return trustedPlatformAssemblies
             .Select(static path => (MetadataReference)MetadataReference.CreateFromFile(path))
             .ToImmutableArray();
-
-        return references.Add(MetadataReference.CreateFromFile(typeof(ProvidesContractAttribute).Assembly.Location));
     }
+
+    private const string SourceDefinedAttributeSource = """
+        using System;
+
+        namespace DependencyContractAnalyzer
+        {
+            [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = true, Inherited = true)]
+            public sealed class ProvidesContractAttribute : Attribute
+            {
+                public ProvidesContractAttribute(string name)
+                {
+                }
+            }
+
+            [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+            public sealed class RequiresDependencyContractAttribute : Attribute
+            {
+                public RequiresDependencyContractAttribute(Type dependencyType, string contractName)
+                {
+                }
+            }
+
+            [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = true, Inherited = true)]
+            public sealed class ContractTargetAttribute : Attribute
+            {
+                public ContractTargetAttribute(string name)
+                {
+                }
+            }
+
+            [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+            public sealed class RequiresContractOnTargetAttribute : Attribute
+            {
+                public RequiresContractOnTargetAttribute(string targetName, string contractName)
+                {
+                }
+            }
+
+            [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
+            public sealed class ContractScopeAttribute : Attribute
+            {
+                public ContractScopeAttribute(string name)
+                {
+                }
+            }
+
+            [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
+            public sealed class RequiresContractOnScopeAttribute : Attribute
+            {
+                public RequiresContractOnScopeAttribute(string scopeName, string contractName)
+                {
+                }
+            }
+        }
+        """;
 }
