@@ -34,15 +34,17 @@ internal readonly struct BehaviorPresetOptions
 
     public static BehaviorPresetOptions Create(AnalyzerConfigOptionsProvider analyzerConfigOptionsProvider)
     {
-        if (!analyzerConfigOptionsProvider.GlobalOptions.TryGetValue(BehaviorPresetKey, out var rawValue) ||
-            string.IsNullOrWhiteSpace(rawValue))
+        var normalizedValue = AnalyzerConfigOptionReader.GetNormalizedGlobalOption(
+            analyzerConfigOptionsProvider,
+            BehaviorPresetKey);
+        if (normalizedValue is null)
         {
             return Default;
         }
 
         // Presets are global because they seed defaults for both source-scoped and
         // compilation-scoped options from one consistent baseline.
-        return rawValue.Trim().ToLowerInvariant() switch
+        return normalizedValue switch
         {
             "default" => Default,
             "strict" => new BehaviorPresetOptions(BehaviorPreset.Strict),

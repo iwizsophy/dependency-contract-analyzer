@@ -19,16 +19,18 @@ internal readonly struct ExternalDependencyOptions
     {
         var behaviorPreset = BehaviorPresetOptions.Create(analyzerConfigOptionsProvider);
         var defaultPolicy = behaviorPreset.DefaultExternalDependencyPolicy;
+        var normalizedValue = AnalyzerConfigOptionReader.GetNormalizedGlobalOption(
+            analyzerConfigOptionsProvider,
+            ExternalDependencyPolicyKey);
 
         // External dependency handling is a compilation-wide concern because known
         // metadata and implication graphs are shared across analyzed types.
-        if (!analyzerConfigOptionsProvider.GlobalOptions.TryGetValue(ExternalDependencyPolicyKey, out var rawValue) ||
-            string.IsNullOrWhiteSpace(rawValue))
+        if (normalizedValue is null)
         {
             return new ExternalDependencyOptions(defaultPolicy);
         }
 
-        return rawValue.Trim().ToLowerInvariant() switch
+        return normalizedValue switch
         {
             "ignore" => Default,
             "metadata" => new ExternalDependencyOptions(ExternalDependencyPolicy.Metadata),
