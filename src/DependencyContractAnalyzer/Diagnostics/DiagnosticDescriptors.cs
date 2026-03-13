@@ -23,9 +23,49 @@ public static class DiagnosticIds
     public const string EmptyContractName = "DCA100";
 
     /// <summary>
+    /// Contract name violates the naming format.
+    /// </summary>
+    public const string ContractNamingFormatViolation = "DCA101";
+
+    /// <summary>
     /// Contract declaration is duplicated.
     /// </summary>
     public const string DuplicateContractDeclaration = "DCA102";
+
+    /// <summary>
+    /// Alias definition is cyclic.
+    /// </summary>
+    public const string CyclicAliasDefinition = "DCA202";
+
+    /// <summary>
+    /// Required target is undeclared in the compilation.
+    /// </summary>
+    public const string UndeclaredRequiredTarget = "DCA200";
+
+    /// <summary>
+    /// Required scope is undeclared in the compilation.
+    /// </summary>
+    public const string UndeclaredRequiredScope = "DCA201";
+
+    /// <summary>
+    /// Scope name is empty or whitespace.
+    /// </summary>
+    public const string EmptyScopeName = "DCA203";
+
+    /// <summary>
+    /// Target name is empty or whitespace.
+    /// </summary>
+    public const string EmptyTargetName = "DCA204";
+
+    /// <summary>
+    /// Required target is not used by any analyzable dependency.
+    /// </summary>
+    public const string UnusedRequiredTarget = "DCA205";
+
+    /// <summary>
+    /// Required scope is not used by any analyzable dependency.
+    /// </summary>
+    public const string UnusedRequiredScope = "DCA206";
 }
 
 internal static class DiagnosticDescriptors
@@ -59,11 +99,83 @@ internal static class DiagnosticDescriptors
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true);
 
+    public static readonly DiagnosticDescriptor ContractNamingFormatViolation =
+        new(
+            DiagnosticIds.ContractNamingFormatViolation,
+            "Contract name violates the naming format",
+            "Contract name '{0}' must use lower-kebab-case.",
+            Category,
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor UndeclaredRequiredTarget =
+        new(
+            DiagnosticIds.UndeclaredRequiredTarget,
+            "Required target is undeclared",
+            "Target '{0}' required by this type is not declared anywhere in the compilation.",
+            Category,
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor UndeclaredRequiredScope =
+        new(
+            DiagnosticIds.UndeclaredRequiredScope,
+            "Required scope is undeclared",
+            "Scope '{0}' required by this type is not declared anywhere in the compilation.",
+            Category,
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor EmptyScopeName =
+        new(
+            DiagnosticIds.EmptyScopeName,
+            "Scope name is empty",
+            "Scope name must not be empty.",
+            Category,
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor EmptyTargetName =
+        new(
+            DiagnosticIds.EmptyTargetName,
+            "Target name is empty",
+            "Target name must not be empty.",
+            Category,
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor UnusedRequiredTarget =
+        new(
+            DiagnosticIds.UnusedRequiredTarget,
+            "Required target is not used",
+            "Target '{0}' specified in RequiresContractOnTarget is not used by any dependency of this type.",
+            Category,
+            DiagnosticSeverity.Info,
+            isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor UnusedRequiredScope =
+        new(
+            DiagnosticIds.UnusedRequiredScope,
+            "Required scope is not used",
+            "Scope '{0}' specified in RequiresContractOnScope is not used by any dependency of this type.",
+            Category,
+            DiagnosticSeverity.Info,
+            isEnabledByDefault: true);
+
     public static readonly DiagnosticDescriptor DuplicateContractDeclaration =
         new(
             DiagnosticIds.DuplicateContractDeclaration,
             "Contract is declared multiple times",
             "Contract '{0}' is declared multiple times.",
+            Category,
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+
+    public static readonly DiagnosticDescriptor CyclicAliasDefinition =
+        new(
+            DiagnosticIds.CyclicAliasDefinition,
+            "Contract alias definition is cyclic",
+            "Contract alias '{0}' participates in a cycle.",
             Category,
             DiagnosticSeverity.Warning,
             isEnabledByDefault: true);

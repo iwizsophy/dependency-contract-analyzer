@@ -10,7 +10,7 @@
 
 ## 典型的なローカル検証
 
-ソースプロジェクトが揃っている状態で、リポジトリルートから次を実行します。
+リポジトリルートから次を実行します。
 
 ```powershell
 dotnet restore DependencyContractAnalyzer.slnx
@@ -24,11 +24,12 @@ dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
 dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
 ```
 
-## 想定プロジェクト構成
+## プロジェクト構成
 
-初期実装では次の構成を想定しています。
+現在のリポジトリ構成は次のとおりです。
 
 - `src/DependencyContractAnalyzer`: Analyzer、本体属性、Diagnostic、補助ロジック
+- `samples/DependencyContractAnalyzer.Sample`: 実行可能な consumer 例と intentional な valid / invalid ケース
 - `tests/DependencyContractAnalyzer.Tests`: `Microsoft.CodeAnalysis.Testing` ベースの単体テスト
 - `docs/`: コントリビューター向け、公開運用向け、仕様書
 
@@ -38,8 +39,10 @@ dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c 
 - Analyzer パスの性能や API の明確さに有効な箇所では `ImmutableArray` を使う
 - シンボル比較には `SymbolEqualityComparer.Default` を使う
 - 契約名は trim 後に ordinal の大文字小文字無視で比較する
-- 初回リリースではコンストラクタ、フィールド、継承、インタフェース実装に対象を限定する
+- 初回リリースではコンストラクタ、コンストラクタ以外のメソッド引数、プロパティ型、フィールド、`new` 式、static メンバー利用、継承、インタフェース実装に対象を限定する
 
 ## リリース
 
-NuGet.org への公開方針は `docs/trusted-publishing.ja.md` を参照してください。
+- CI 検証は `.github/workflows/ci.yml` で定義しています。
+- NuGet.org への公開方針は `docs/trusted-publishing.ja.md` を参照してください。
+- リリース publish は `.github/workflows/publish.yml` で定義しています。

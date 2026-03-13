@@ -16,7 +16,12 @@ namespace DependencyContractAnalyzer.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAnalyzer
 {
+    private const string ContractAliasAttributeMetadataName = "DependencyContractAnalyzer.ContractAliasAttribute";
+    private const string ContractScopeAttributeMetadataName = "DependencyContractAnalyzer.ContractScopeAttribute";
+    private const string ContractTargetAttributeMetadataName = "DependencyContractAnalyzer.ContractTargetAttribute";
     private const string ProvidesContractAttributeMetadataName = "DependencyContractAnalyzer.ProvidesContractAttribute";
+    private const string RequiresContractOnScopeAttributeMetadataName = "DependencyContractAnalyzer.RequiresContractOnScopeAttribute";
+    private const string RequiresContractOnTargetAttributeMetadataName = "DependencyContractAnalyzer.RequiresContractOnTargetAttribute";
     private const string RequiresDependencyContractAttributeMetadataName = "DependencyContractAnalyzer.RequiresDependencyContractAttribute";
 
     private static readonly SymbolDisplayFormat MinimalSymbolDisplayFormat =
@@ -32,6 +37,14 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             DiagnosticDescriptors.MissingRequiredContract,
             DiagnosticDescriptors.UnusedRequiredDependencyType,
             DiagnosticDescriptors.EmptyContractName,
+            DiagnosticDescriptors.ContractNamingFormatViolation,
+            DiagnosticDescriptors.UndeclaredRequiredTarget,
+            DiagnosticDescriptors.UndeclaredRequiredScope,
+            DiagnosticDescriptors.CyclicAliasDefinition,
+            DiagnosticDescriptors.EmptyScopeName,
+            DiagnosticDescriptors.EmptyTargetName,
+            DiagnosticDescriptors.UnusedRequiredTarget,
+            DiagnosticDescriptors.UnusedRequiredScope,
             DiagnosticDescriptors.DuplicateContractDeclaration);
 
     /// <inheritdoc />
@@ -42,8 +55,18 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
         context.RegisterCompilationStartAction(static startContext =>
         {
+            var contractAliasAttributeSymbol =
+                startContext.Compilation.GetTypeByMetadataName(ContractAliasAttributeMetadataName);
             var providesContractAttributeSymbol =
                 startContext.Compilation.GetTypeByMetadataName(ProvidesContractAttributeMetadataName);
+            var contractScopeAttributeSymbol =
+                startContext.Compilation.GetTypeByMetadataName(ContractScopeAttributeMetadataName);
+            var contractTargetAttributeSymbol =
+                startContext.Compilation.GetTypeByMetadataName(ContractTargetAttributeMetadataName);
+            var requiresContractOnScopeAttributeSymbol =
+                startContext.Compilation.GetTypeByMetadataName(RequiresContractOnScopeAttributeMetadataName);
+            var requiresContractOnTargetAttributeSymbol =
+                startContext.Compilation.GetTypeByMetadataName(RequiresContractOnTargetAttributeMetadataName);
             var requiresDependencyContractAttributeSymbol =
                 startContext.Compilation.GetTypeByMetadataName(RequiresDependencyContractAttributeMetadataName);
 
@@ -52,12 +75,41 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 return;
             }
 
+            var contractAliasResolver = ContractAliasResolver.Create(
+                startContext.Compilation.Assembly,
+                contractAliasAttributeSymbol);
+            var knownTargets = contractTargetAttributeSymbol is null
+                ? CreateEmptyNameSet()
+                : CollectKnownNames(startContext.Compilation.Assembly, contractTargetAttributeSymbol, includeAssemblyLevelDeclarations: false);
+            var knownScopes = contractScopeAttributeSymbol is null
+                ? CreateEmptyNameSet()
+                : CollectKnownNames(startContext.Compilation.Assembly, contractScopeAttributeSymbol, includeAssemblyLevelDeclarations: true);
+
+            if (!contractAliasResolver.Diagnostics.IsDefaultOrEmpty)
+            {
+                startContext.RegisterCompilationEndAction(
+                    compilationContext =>
+                    {
+                        foreach (var diagnostic in contractAliasResolver.Diagnostics)
+                        {
+                            compilationContext.ReportDiagnostic(diagnostic);
+                        }
+                    });
+            }
+
             startContext.RegisterSymbolAction(
                 symbolContext =>
                 {
                     AnalyzeNamedType(
                         symbolContext,
+                        contractScopeAttributeSymbol,
+                        contractTargetAttributeSymbol,
+                        contractAliasResolver,
+                        knownScopes,
+                        knownTargets,
                         providesContractAttributeSymbol,
+                        requiresContractOnScopeAttributeSymbol,
+                        requiresContractOnTargetAttributeSymbol,
                         requiresDependencyContractAttributeSymbol);
                 },
                 SymbolKind.NamedType);
@@ -66,13 +118,30 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
     private static void AnalyzeNamedType(
         SymbolAnalysisContext context,
+        INamedTypeSymbol? contractScopeAttributeSymbol,
+        INamedTypeSymbol? contractTargetAttributeSymbol,
+        ContractAliasResolver contractAliasResolver,
+        ImmutableHashSet<string> knownScopes,
+        ImmutableHashSet<string> knownTargets,
         INamedTypeSymbol providesContractAttributeSymbol,
+        INamedTypeSymbol? requiresContractOnScopeAttributeSymbol,
+        INamedTypeSymbol? requiresContractOnTargetAttributeSymbol,
         INamedTypeSymbol requiresDependencyContractAttributeSymbol)
     {
         var namedType = (INamedTypeSymbol)context.Symbol;
         if (namedType.TypeKind is not (TypeKind.Class or TypeKind.Interface))
         {
             return;
+        }
+
+        if (contractScopeAttributeSymbol is not null)
+        {
+            AnalyzeDeclaredScopes(context, namedType, contractScopeAttributeSymbol);
+        }
+
+        if (contractTargetAttributeSymbol is not null)
+        {
+            AnalyzeDeclaredTargets(context, namedType, contractTargetAttributeSymbol);
         }
 
         AnalyzeProvidedContracts(context, namedType, providesContractAttributeSymbol);
@@ -85,8 +154,74 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         AnalyzeRequirements(
             context,
             namedType,
+            contractScopeAttributeSymbol,
+            contractTargetAttributeSymbol,
+            DependencyCollectionOptions.Create(context.Options.AnalyzerConfigOptionsProvider, namedType),
+            contractAliasResolver,
+            knownScopes,
+            knownTargets,
             providesContractAttributeSymbol,
+            requiresContractOnScopeAttributeSymbol,
+            requiresContractOnTargetAttributeSymbol,
             requiresDependencyContractAttributeSymbol);
+    }
+
+    private static void AnalyzeDeclaredScopes(
+        SymbolAnalysisContext context,
+        INamedTypeSymbol namedType,
+        INamedTypeSymbol contractScopeAttributeSymbol)
+    {
+        foreach (var attribute in namedType.GetAttributes())
+        {
+            if (!attribute.AttributeClass.SymbolEquals(contractScopeAttributeSymbol))
+            {
+                continue;
+            }
+
+            if (!TryGetStringArgument(attribute, 0, out var scopeName))
+            {
+                continue;
+            }
+
+            if (ContractNameNormalizer.Normalize(scopeName) is not null)
+            {
+                continue;
+            }
+
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.EmptyScopeName,
+                    GetAttributeLocation(attribute, namedType)));
+        }
+    }
+
+    private static void AnalyzeDeclaredTargets(
+        SymbolAnalysisContext context,
+        INamedTypeSymbol namedType,
+        INamedTypeSymbol contractTargetAttributeSymbol)
+    {
+        foreach (var attribute in namedType.GetAttributes())
+        {
+            if (!attribute.AttributeClass.SymbolEquals(contractTargetAttributeSymbol))
+            {
+                continue;
+            }
+
+            if (!TryGetStringArgument(attribute, 0, out var targetName))
+            {
+                continue;
+            }
+
+            if (ContractNameNormalizer.Normalize(targetName) is not null)
+            {
+                continue;
+            }
+
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.EmptyTargetName,
+                    GetAttributeLocation(attribute, namedType)));
+        }
     }
 
     private static void AnalyzeProvidedContracts(
@@ -117,6 +252,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                         GetAttributeLocation(attribute, namedType)));
                 continue;
             }
+
+            ReportInvalidContractName(context, normalizedContractName, attribute, namedType);
 
             if (!duplicateCandidates.TryGetValue(normalizedContractName, out var attributes))
             {
@@ -149,11 +286,19 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
     private static void AnalyzeRequirements(
         SymbolAnalysisContext context,
         INamedTypeSymbol namedType,
+        INamedTypeSymbol? contractScopeAttributeSymbol,
+        INamedTypeSymbol? contractTargetAttributeSymbol,
+        DependencyCollectionOptions dependencyCollectionOptions,
+        ContractAliasResolver contractAliasResolver,
+        ImmutableHashSet<string> knownScopes,
+        ImmutableHashSet<string> knownTargets,
         INamedTypeSymbol providesContractAttributeSymbol,
+        INamedTypeSymbol? requiresContractOnScopeAttributeSymbol,
+        INamedTypeSymbol? requiresContractOnTargetAttributeSymbol,
         INamedTypeSymbol requiresDependencyContractAttributeSymbol)
     {
-        var requirements = new List<RequirementDescriptor>();
-        var duplicateCandidates = new Dictionary<string, List<RequirementDescriptor>>(StringComparer.Ordinal);
+        var dependencyTypeRequirements = new List<RequirementDescriptor>();
+        var duplicateDependencyCandidates = new Dictionary<string, List<RequirementDescriptor>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var attribute in namedType.GetAttributes())
         {
@@ -178,70 +323,182 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 continue;
             }
 
+            ReportInvalidContractName(context, normalizedContractName, attribute, namedType);
+
             var requirement = new RequirementDescriptor(attribute, dependencyType, normalizedContractName);
-            requirements.Add(requirement);
+            dependencyTypeRequirements.Add(requirement);
 
             var duplicateKey = GetDuplicateRequirementKey(dependencyType, normalizedContractName);
-            if (!duplicateCandidates.TryGetValue(duplicateKey, out var duplicates))
+            if (!duplicateDependencyCandidates.TryGetValue(duplicateKey, out var duplicates))
             {
                 duplicates = new List<RequirementDescriptor>();
-                duplicateCandidates.Add(duplicateKey, duplicates);
+                duplicateDependencyCandidates.Add(duplicateKey, duplicates);
             }
 
             duplicates.Add(requirement);
         }
 
-        if (requirements.Count == 0)
+        var targetRequirements = new List<TargetRequirementDescriptor>();
+        var duplicateTargetCandidates = new Dictionary<string, List<TargetRequirementDescriptor>>(StringComparer.OrdinalIgnoreCase);
+
+        if (contractTargetAttributeSymbol is not null && requiresContractOnTargetAttributeSymbol is not null)
+        {
+            foreach (var attribute in namedType.GetAttributes())
+            {
+                if (!attribute.AttributeClass.SymbolEquals(requiresContractOnTargetAttributeSymbol))
+                {
+                    continue;
+                }
+
+                var hasTargetName = TryGetStringArgument(attribute, 0, out var targetName);
+                var hasContractName = TryGetStringArgument(attribute, 1, out var contractName);
+
+                var normalizedTargetName = hasTargetName
+                    ? ContractNameNormalizer.Normalize(targetName)
+                    : null;
+                if (normalizedTargetName is null)
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.EmptyTargetName,
+                            GetAttributeLocation(attribute, namedType)));
+                }
+
+                var normalizedContractName = hasContractName
+                    ? ContractNameNormalizer.Normalize(contractName)
+                    : null;
+                if (normalizedContractName is null)
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.EmptyContractName,
+                            GetAttributeLocation(attribute, namedType)));
+                }
+
+                if (normalizedTargetName is null || normalizedContractName is null)
+                {
+                    continue;
+                }
+
+                ReportInvalidContractName(context, normalizedContractName, attribute, namedType);
+
+                var requirement = new TargetRequirementDescriptor(attribute, normalizedTargetName, normalizedContractName);
+                targetRequirements.Add(requirement);
+
+                var duplicateKey = normalizedTargetName + "|" + normalizedContractName;
+                if (!duplicateTargetCandidates.TryGetValue(duplicateKey, out var duplicates))
+                {
+                    duplicates = new List<TargetRequirementDescriptor>();
+                    duplicateTargetCandidates.Add(duplicateKey, duplicates);
+                }
+
+                duplicates.Add(requirement);
+            }
+        }
+
+        var scopeRequirements = new List<ScopeRequirementDescriptor>();
+        var duplicateScopeCandidates = new Dictionary<string, List<ScopeRequirementDescriptor>>(StringComparer.OrdinalIgnoreCase);
+
+        if (contractScopeAttributeSymbol is not null && requiresContractOnScopeAttributeSymbol is not null)
+        {
+            foreach (var attribute in namedType.GetAttributes())
+            {
+                if (!attribute.AttributeClass.SymbolEquals(requiresContractOnScopeAttributeSymbol))
+                {
+                    continue;
+                }
+
+                var hasScopeName = TryGetStringArgument(attribute, 0, out var scopeName);
+                var hasContractName = TryGetStringArgument(attribute, 1, out var contractName);
+
+                var normalizedScopeName = hasScopeName
+                    ? ContractNameNormalizer.Normalize(scopeName)
+                    : null;
+                if (normalizedScopeName is null)
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.EmptyScopeName,
+                            GetAttributeLocation(attribute, namedType)));
+                }
+
+                var normalizedContractName = hasContractName
+                    ? ContractNameNormalizer.Normalize(contractName)
+                    : null;
+                if (normalizedContractName is null)
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.EmptyContractName,
+                            GetAttributeLocation(attribute, namedType)));
+                }
+
+                if (normalizedScopeName is null || normalizedContractName is null)
+                {
+                    continue;
+                }
+
+                ReportInvalidContractName(context, normalizedContractName, attribute, namedType);
+
+                var requirement = new ScopeRequirementDescriptor(attribute, normalizedScopeName, normalizedContractName);
+                scopeRequirements.Add(requirement);
+
+                var duplicateKey = normalizedScopeName + "|" + normalizedContractName;
+                if (!duplicateScopeCandidates.TryGetValue(duplicateKey, out var duplicates))
+                {
+                    duplicates = new List<ScopeRequirementDescriptor>();
+                    duplicateScopeCandidates.Add(duplicateKey, duplicates);
+                }
+
+                duplicates.Add(requirement);
+            }
+        }
+
+        if (dependencyTypeRequirements.Count == 0 && targetRequirements.Count == 0 && scopeRequirements.Count == 0)
         {
             return;
         }
 
-        var duplicateRequirements = new HashSet<AttributeData>();
-        foreach (var entry in duplicateCandidates)
-        {
-            if (entry.Value.Count < 2)
-            {
-                continue;
-            }
+        var duplicateDependencyRequirements = GetDuplicateAttributes(
+            context,
+            namedType,
+            duplicateDependencyCandidates);
+        var duplicateTargetRequirements = GetDuplicateAttributes(
+            context,
+            namedType,
+            duplicateTargetCandidates);
+        var duplicateScopeRequirements = GetDuplicateAttributes(
+            context,
+            namedType,
+            duplicateScopeCandidates);
 
-            for (var index = 1; index < entry.Value.Count; index++)
-            {
-                var requirement = entry.Value[index];
-                duplicateRequirements.Add(requirement.Attribute);
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        DiagnosticDescriptors.DuplicateContractDeclaration,
-                        GetAttributeLocation(requirement.Attribute, namedType),
-                        requirement.ContractName));
-            }
-        }
-
-        var dependencies = DependencyCollector.Collect(namedType);
+        var dependencies = DependencyCollector.Collect(
+            namedType,
+            context.Compilation,
+            dependencyCollectionOptions,
+            context.CancellationToken);
         var providedContractCache = new Dictionary<INamedTypeSymbol, ImmutableHashSet<string>>(SymbolEqualityComparer.Default);
+        var targetCache = new Dictionary<INamedTypeSymbol, ImmutableHashSet<string>>(SymbolEqualityComparer.Default);
+        var scopeCache = new Dictionary<INamedTypeSymbol, ImmutableHashSet<string>>(SymbolEqualityComparer.Default);
 
-        foreach (var requirement in requirements)
+        foreach (var requirement in dependencyTypeRequirements)
         {
-            if (duplicateRequirements.Contains(requirement.Attribute))
+            if (duplicateDependencyRequirements.Contains(requirement.Attribute))
             {
                 continue;
             }
 
-            var matchingDependencies = dependencies
-                .Where(dependency => dependency.Type.MatchesRequiredDependencyType(requirement.DependencyType))
-                .ToImmutableArray();
+            var hasMatchingDependency = false;
 
-            if (matchingDependencies.IsDefaultOrEmpty)
+            foreach (var dependency in dependencies)
             {
-                context.ReportDiagnostic(
-                    Diagnostic.Create(
-                        DiagnosticDescriptors.UnusedRequiredDependencyType,
-                        GetAttributeLocation(requirement.Attribute, namedType),
-                        requirement.DependencyType.ToDisplayString(MinimalSymbolDisplayFormat)));
-                continue;
-            }
+                if (!dependency.Type.MatchesRequiredDependencyType(requirement.DependencyType))
+                {
+                    continue;
+                }
 
-            foreach (var dependency in matchingDependencies)
-            {
+                hasMatchingDependency = true;
+
                 if (dependency.Type.IsExternalTo(context.Compilation.Assembly))
                 {
                     continue;
@@ -249,7 +506,10 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
                 if (!providedContractCache.TryGetValue(dependency.Type, out var providedContracts))
                 {
-                    providedContracts = GetProvidedContracts(dependency.Type, providesContractAttributeSymbol);
+                    providedContracts = GetProvidedContracts(
+                        dependency.Type,
+                        providesContractAttributeSymbol,
+                        contractAliasResolver);
                     providedContractCache.Add(dependency.Type, providedContracts);
                 }
 
@@ -265,12 +525,170 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                         dependency.Type.ToDisplayString(MinimalSymbolDisplayFormat),
                         requirement.ContractName));
             }
+
+            if (!hasMatchingDependency)
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        DiagnosticDescriptors.UnusedRequiredDependencyType,
+                        GetAttributeLocation(requirement.Attribute, namedType),
+                        requirement.DependencyType.ToDisplayString(MinimalSymbolDisplayFormat)));
+            }
+        }
+
+        if (contractTargetAttributeSymbol is not null)
+        {
+            foreach (var requirement in targetRequirements)
+            {
+                if (duplicateTargetRequirements.Contains(requirement.Attribute))
+                {
+                    continue;
+                }
+
+                if (!knownTargets.Contains(requirement.TargetName))
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.UndeclaredRequiredTarget,
+                            GetAttributeLocation(requirement.Attribute, namedType),
+                            requirement.TargetName));
+                    continue;
+                }
+
+                var hasMatchingDependency = false;
+                foreach (var dependency in dependencies)
+                {
+                    if (dependency.Type.IsExternalTo(context.Compilation.Assembly))
+                    {
+                        continue;
+                    }
+
+                    if (!targetCache.TryGetValue(dependency.Type, out var targets))
+                    {
+                        targets = GetTargets(dependency.Type, contractTargetAttributeSymbol);
+                        targetCache.Add(dependency.Type, targets);
+                    }
+
+                    if (!targets.Contains(requirement.TargetName))
+                    {
+                        continue;
+                    }
+
+                    hasMatchingDependency = true;
+
+                    if (!providedContractCache.TryGetValue(dependency.Type, out var providedContracts))
+                    {
+                        providedContracts = GetProvidedContracts(
+                            dependency.Type,
+                            providesContractAttributeSymbol,
+                            contractAliasResolver);
+                        providedContractCache.Add(dependency.Type, providedContracts);
+                    }
+
+                    if (providedContracts.Contains(requirement.ContractName))
+                    {
+                        continue;
+                    }
+
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.MissingRequiredContract,
+                            GetAttributeLocation(requirement.Attribute, namedType),
+                            dependency.Type.ToDisplayString(MinimalSymbolDisplayFormat),
+                            requirement.ContractName));
+                }
+
+                if (!hasMatchingDependency)
+                {
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.UnusedRequiredTarget,
+                            GetAttributeLocation(requirement.Attribute, namedType),
+                            requirement.TargetName));
+                }
+            }
+        }
+
+        if (contractScopeAttributeSymbol is null)
+        {
+            return;
+        }
+
+        foreach (var requirement in scopeRequirements)
+        {
+            if (duplicateScopeRequirements.Contains(requirement.Attribute))
+            {
+                continue;
+            }
+
+            if (!knownScopes.Contains(requirement.ScopeName))
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        DiagnosticDescriptors.UndeclaredRequiredScope,
+                        GetAttributeLocation(requirement.Attribute, namedType),
+                        requirement.ScopeName));
+                continue;
+            }
+
+            var hasMatchingDependency = false;
+            foreach (var dependency in dependencies)
+            {
+                if (dependency.Type.IsExternalTo(context.Compilation.Assembly))
+                {
+                    continue;
+                }
+
+                if (!scopeCache.TryGetValue(dependency.Type, out var scopes))
+                {
+                    scopes = GetScopes(dependency.Type, contractScopeAttributeSymbol);
+                    scopeCache.Add(dependency.Type, scopes);
+                }
+
+                if (!scopes.Contains(requirement.ScopeName))
+                {
+                    continue;
+                }
+
+                hasMatchingDependency = true;
+
+                if (!providedContractCache.TryGetValue(dependency.Type, out var providedContracts))
+                {
+                    providedContracts = GetProvidedContracts(
+                        dependency.Type,
+                        providesContractAttributeSymbol,
+                        contractAliasResolver);
+                    providedContractCache.Add(dependency.Type, providedContracts);
+                }
+
+                if (providedContracts.Contains(requirement.ContractName))
+                {
+                    continue;
+                }
+
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        DiagnosticDescriptors.MissingRequiredContract,
+                        GetAttributeLocation(requirement.Attribute, namedType),
+                        dependency.Type.ToDisplayString(MinimalSymbolDisplayFormat),
+                        requirement.ContractName));
+            }
+
+            if (!hasMatchingDependency)
+            {
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        DiagnosticDescriptors.UnusedRequiredScope,
+                        GetAttributeLocation(requirement.Attribute, namedType),
+                        requirement.ScopeName));
+            }
         }
     }
 
     private static ImmutableHashSet<string> GetProvidedContracts(
         INamedTypeSymbol type,
-        INamedTypeSymbol providesContractAttributeSymbol)
+        INamedTypeSymbol providesContractAttributeSymbol,
+        ContractAliasResolver contractAliasResolver)
     {
         var contracts = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
         var toVisit = new Stack<INamedTypeSymbol>();
@@ -286,20 +704,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 continue;
             }
 
-            foreach (var attribute in current.GetAttributes())
-            {
-                if (!attribute.AttributeClass.SymbolEquals(providesContractAttributeSymbol) ||
-                    !TryGetStringArgument(attribute, 0, out var contractName))
-                {
-                    continue;
-                }
-
-                var normalizedContractName = ContractNameNormalizer.Normalize(contractName);
-                if (normalizedContractName is not null)
-                {
-                    contracts.Add(normalizedContractName);
-                }
-            }
+            AddNormalizedNames(current.GetAttributes(), providesContractAttributeSymbol, 0, contracts);
 
             if (current.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
             {
@@ -312,7 +717,196 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             }
         }
 
-        return contracts.ToImmutable();
+        return contractAliasResolver.Expand(contracts.ToImmutable());
+    }
+
+    private static ImmutableHashSet<string> GetTargets(
+        INamedTypeSymbol type,
+        INamedTypeSymbol contractTargetAttributeSymbol)
+    {
+        var targets = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
+        var toVisit = new Stack<INamedTypeSymbol>();
+        var visited = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+
+        toVisit.Push(type);
+
+        while (toVisit.Count > 0)
+        {
+            var current = toVisit.Pop();
+            if (!visited.Add(current))
+            {
+                continue;
+            }
+
+            AddNormalizedNames(current.GetAttributes(), contractTargetAttributeSymbol, 0, targets);
+
+            if (current.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
+            {
+                toVisit.Push(baseType);
+            }
+
+            foreach (var interfaceType in current.Interfaces)
+            {
+                toVisit.Push(interfaceType);
+            }
+        }
+
+        return targets.ToImmutable();
+    }
+
+    private static ImmutableHashSet<string> GetScopes(
+        INamedTypeSymbol type,
+        INamedTypeSymbol contractScopeAttributeSymbol)
+    {
+        var scopes = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
+        var toVisit = new Stack<INamedTypeSymbol>();
+        var visited = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+
+        toVisit.Push(type);
+
+        while (toVisit.Count > 0)
+        {
+            var current = toVisit.Pop();
+            if (!visited.Add(current))
+            {
+                continue;
+            }
+
+            AddNormalizedNames(current.GetAttributes(), contractScopeAttributeSymbol, 0, scopes);
+
+            if (current.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
+            {
+                toVisit.Push(baseType);
+            }
+
+            foreach (var interfaceType in current.Interfaces)
+            {
+                toVisit.Push(interfaceType);
+            }
+        }
+
+        AddNormalizedNames(type.ContainingAssembly.GetAttributes(), contractScopeAttributeSymbol, 0, scopes);
+
+        return scopes.ToImmutable();
+    }
+
+    private static ImmutableHashSet<string> CollectKnownNames(
+        IAssemblySymbol assembly,
+        INamedTypeSymbol attributeSymbol,
+        bool includeAssemblyLevelDeclarations)
+    {
+        var knownNames = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
+
+        if (includeAssemblyLevelDeclarations)
+        {
+            AddNormalizedNames(assembly.GetAttributes(), attributeSymbol, 0, knownNames);
+        }
+
+        AddKnownNames(assembly.GlobalNamespace, attributeSymbol, knownNames);
+        return knownNames.ToImmutable();
+    }
+
+    private static void AddKnownNames(
+        INamespaceSymbol namespaceSymbol,
+        INamedTypeSymbol attributeSymbol,
+        ImmutableHashSet<string>.Builder knownNames)
+    {
+        foreach (var type in namespaceSymbol.GetTypeMembers())
+        {
+            AddKnownNames(type, attributeSymbol, knownNames);
+        }
+
+        foreach (var nestedNamespace in namespaceSymbol.GetNamespaceMembers())
+        {
+            AddKnownNames(nestedNamespace, attributeSymbol, knownNames);
+        }
+    }
+
+    private static void AddKnownNames(
+        INamedTypeSymbol type,
+        INamedTypeSymbol attributeSymbol,
+        ImmutableHashSet<string>.Builder knownNames)
+    {
+        AddNormalizedNames(type.GetAttributes(), attributeSymbol, 0, knownNames);
+
+        foreach (var nestedType in type.GetTypeMembers())
+        {
+            AddKnownNames(nestedType, attributeSymbol, knownNames);
+        }
+    }
+
+    private static ImmutableHashSet<string> CreateEmptyNameSet() =>
+        ImmutableHashSet.Create<string>(StringComparer.OrdinalIgnoreCase);
+
+    private static HashSet<AttributeData> GetDuplicateAttributes<TRequirement>(
+        SymbolAnalysisContext context,
+        INamedTypeSymbol namedType,
+        Dictionary<string, List<TRequirement>> duplicateCandidates)
+        where TRequirement : struct, IRequirement
+    {
+        var duplicateAttributes = new HashSet<AttributeData>();
+
+        foreach (var entry in duplicateCandidates)
+        {
+            if (entry.Value.Count < 2)
+            {
+                continue;
+            }
+
+            var diagnosticContractName = entry.Value[0].ContractName;
+            for (var index = 1; index < entry.Value.Count; index++)
+            {
+                var requirement = entry.Value[index];
+                duplicateAttributes.Add(requirement.Attribute);
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        DiagnosticDescriptors.DuplicateContractDeclaration,
+                        GetAttributeLocation(requirement.Attribute, namedType),
+                        diagnosticContractName));
+            }
+        }
+
+        return duplicateAttributes;
+    }
+
+    private static void ReportInvalidContractName(
+        SymbolAnalysisContext context,
+        string contractName,
+        AttributeData attribute,
+        ISymbol fallbackSymbol)
+    {
+        if (ContractNameFormat.IsLowerKebabCase(contractName))
+        {
+            return;
+        }
+
+        context.ReportDiagnostic(
+            Diagnostic.Create(
+                DiagnosticDescriptors.ContractNamingFormatViolation,
+                GetAttributeLocation(attribute, fallbackSymbol),
+                contractName));
+    }
+
+    private static void AddNormalizedNames(
+        ImmutableArray<AttributeData> attributes,
+        INamedTypeSymbol expectedAttributeSymbol,
+        int argumentIndex,
+        ImmutableHashSet<string>.Builder values)
+    {
+        foreach (var attribute in attributes)
+        {
+            if (!attribute.AttributeClass.SymbolEquals(expectedAttributeSymbol) ||
+                !TryGetStringArgument(attribute, argumentIndex, out var value))
+            {
+                continue;
+            }
+
+            var normalizedValue = ContractNameNormalizer.Normalize(value);
+            if (normalizedValue is not null)
+            {
+                values.Add(normalizedValue);
+            }
+        }
     }
 
     private static bool TryGetNamedTypeArgument(AttributeData attribute, int index, out INamedTypeSymbol dependencyType)
@@ -354,7 +948,14 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
     private static string GetDuplicateRequirementKey(INamedTypeSymbol dependencyType, string contractName) =>
         dependencyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + "|" + contractName;
 
-    private readonly struct RequirementDescriptor
+    private interface IRequirement
+    {
+        AttributeData Attribute { get; }
+
+        string ContractName { get; }
+    }
+
+    private readonly struct RequirementDescriptor : IRequirement
     {
         public RequirementDescriptor(
             AttributeData attribute,
@@ -369,6 +970,44 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         public AttributeData Attribute { get; }
 
         public INamedTypeSymbol DependencyType { get; }
+
+        public string ContractName { get; }
+    }
+
+    private readonly struct TargetRequirementDescriptor : IRequirement
+    {
+        public TargetRequirementDescriptor(
+            AttributeData attribute,
+            string targetName,
+            string contractName)
+        {
+            Attribute = attribute;
+            TargetName = targetName;
+            ContractName = contractName;
+        }
+
+        public AttributeData Attribute { get; }
+
+        public string TargetName { get; }
+
+        public string ContractName { get; }
+    }
+
+    private readonly struct ScopeRequirementDescriptor : IRequirement
+    {
+        public ScopeRequirementDescriptor(
+            AttributeData attribute,
+            string scopeName,
+            string contractName)
+        {
+            Attribute = attribute;
+            ScopeName = scopeName;
+            ContractName = contractName;
+        }
+
+        public AttributeData Attribute { get; }
+
+        public string ScopeName { get; }
 
         public string ContractName { get; }
     }

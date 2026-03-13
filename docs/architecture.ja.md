@@ -39,7 +39,7 @@
     |
     +-- 契約一致判定
     +-- Alias / 包含関係解決
-    +-- 除外と suppression
+    +-- v1 では Roslyn 標準 suppression のみ
     +-- Diagnostic 発行
 ```
 
@@ -210,6 +210,8 @@ public sealed class ContractAliasAttribute : Attribute
 
 `immutable` を提供していれば `thread-safe` 要求を満たすとみなします。
 
+v1 では alias が唯一の契約階層表現であり、有向・推移的・循環禁止のグラフとして扱います。
+
 ## 4. ルール評価の優先順位
 
 ルールエンジン内での評価順は明示した方がよいです。
@@ -228,7 +230,11 @@ public sealed class ContractAliasAttribute : Attribute
 ```text
 Consumer Type
    +-- constructor parameter
+   +-- method parameter
+   +-- property
    +-- field
+   +-- new expression
+   +-- static member usage
    +-- base type
    +-- interface
 ```
@@ -365,7 +371,11 @@ internal enum RequirementKind
 internal enum DependencyKind
 {
     ConstructorParameter,
+    MethodParameter,
+    Property,
     Field,
+    ObjectCreation,
+    StaticMemberAccess,
     BaseType,
     InterfaceImplementation
 }
@@ -420,11 +430,17 @@ Evaluate(consumer, dependency) -> violations
 - `DCA101`: 契約名フォーマット違反
 - `DCA102`: 重複契約指定
 
+`DCA101` は contract 名と alias endpoint のみを対象とし、target 名 / scope 名には適用しません。v1 で適用する形式は lower-kebab-case です。
+
 ### ルール定義診断
 
 - `DCA200`: 存在しない target を要求
 - `DCA201`: 存在しない scope を要求
 - `DCA202`: alias が循環している
+- `DCA203`: scope 名が空
+- `DCA204`: target 名が空
+- `DCA205`: target 要求に一致する依存が存在しない
+- `DCA206`: scope 要求に一致する依存が存在しない
 
 ## 11. OSS として強い理由
 
@@ -452,3 +468,5 @@ Evaluate(consumer, dependency) -> violations
 4. v4: `ContractAlias`, alias 解決, 循環検知
 
 実装リスクや需要に応じて v2 と v3 は入れ替えても、最終形のアーキテクチャ自体は変わりません。
+
+現在の `.editorconfig` 対応は Diagnostic severity に加え、method parameter / property / object creation / static member 利用の依存抽出トグルを含みます。namespace ベース推定や独自 exclusion モデルは引き続き非対応です。

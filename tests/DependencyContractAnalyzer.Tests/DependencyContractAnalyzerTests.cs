@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using DependencyContractAnalyzer.Diagnostics;
+using Microsoft.CodeAnalysis;
 using Xunit;
 
 namespace DependencyContractAnalyzer.Tests;
@@ -124,6 +125,64 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task ReportsDiagnosticWhenContractNameViolatesLowerKebabCase()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: {|#0:ContractAlias("immutable", "ThreadSafe")|}]
+            [assembly: {|#1:ContractAlias("thread_safe", "thread-safe")|}]
+
+            [{|#2:ProvidesContract("ThreadSafe")|}]
+            public interface IFoo
+            {
+            }
+
+            [ContractTarget("ThreadSafe")]
+            [ContractScope("ThreadSafe")]
+            [{|#3:RequiresDependencyContract(typeof(IFoo), "thread_safe")|}]
+            [{|#4:RequiresContractOnTarget("ThreadSafe", "Thread.Safe")|}]
+            [{|#5:RequiresContractOnScope("ThreadSafe", "THREAD-SAFE")|}]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(0)
+                .WithArguments("ThreadSafe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(1)
+                .WithArguments("thread_safe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(2)
+                .WithArguments("ThreadSafe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(3)
+                .WithArguments("thread_safe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(4)
+                .WithArguments("Thread.Safe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(5)
+                .WithArguments("THREAD-SAFE"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.MissingRequiredContract)
+                .WithLocation(3)
+                .WithArguments("IFoo", "thread_safe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredTarget, DiagnosticSeverity.Info)
+                .WithLocation(4)
+                .WithArguments("ThreadSafe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredScope, DiagnosticSeverity.Info)
+                .WithLocation(5)
+                .WithArguments("ThreadSafe"));
+    }
+
+    [Fact]
     public async Task ReportsDiagnosticWhenContractIsDeclaredMultipleTimes()
     {
         const string source = """
@@ -140,7 +199,10 @@ public sealed class DependencyContractAnalyzerTests
             source,
             DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.DuplicateContractDeclaration)
                 .WithLocation(1)
-                .WithArguments("thread-safe"));
+                .WithArguments("thread-safe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(1)
+                .WithArguments("THREAD-SAFE"));
     }
 
     [Fact]
@@ -149,7 +211,7 @@ public sealed class DependencyContractAnalyzerTests
         const string source = """
             using DependencyContractAnalyzer;
 
-            [ProvidesContract(" THREAD-SAFE ")]
+            [{|#0:ProvidesContract(" THREAD-SAFE ")|}]
             public interface IFoo
             {
             }
@@ -167,7 +229,42 @@ public sealed class DependencyContractAnalyzerTests
             }
             """;
 
-        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(0)
+                .WithArguments("THREAD-SAFE"));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenDependencyRequirementIsDeclaredMultipleTimes()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [{|#0:RequiresDependencyContract(typeof(IFoo), "thread-safe")|}]
+            [{|#1:RequiresDependencyContract(typeof(IFoo), " THREAD-SAFE ")|}]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.DuplicateContractDeclaration)
+                .WithLocation(1)
+                .WithArguments("thread-safe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(1)
+                .WithArguments("THREAD-SAFE"));
     }
 
     [Fact]
@@ -217,5 +314,1107 @@ public sealed class DependencyContractAnalyzerTests
             """;
 
         await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenMethodParameterProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public void Execute(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenMethodParameterAnalysisIsDisabledByEditorConfig()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public void Execute(IFoo foo)
+                {
+                }
+            }
+            """;
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.analyze_method_parameters", "false"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("IFoo", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenTargetedMethodParameterProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            [ProvidesContract("thread-safe")]
+            public interface IRepository
+            {
+            }
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public void Execute(IRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenScopedMethodParameterProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractScope("repository")]
+            [ProvidesContract("thread-safe")]
+            public interface IRepository
+            {
+            }
+
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public void Execute(IRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenPropertyDependencyProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public IFoo Foo { get; set; }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenPropertyAnalysisIsDisabledByEditorConfig()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public IFoo Foo { get; set; }
+            }
+            """;
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.analyze_properties", "false"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("IFoo", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenTargetedPropertyProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            [ProvidesContract("thread-safe")]
+            public interface IRepository
+            {
+            }
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public IRepository Repository { get; set; }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenScopedPropertyProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractScope("repository")]
+            [ProvidesContract("thread-safe")]
+            public interface IRepository
+            {
+            }
+
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public IRepository Repository { get; set; }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenCreatedTypeProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class Foo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(Foo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public void Execute()
+                {
+                    Foo foo = new();
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenObjectCreationAnalysisIsDisabledByEditorConfig()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class Foo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(Foo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public void Execute()
+                {
+                    Foo foo = new();
+                }
+            }
+            """;
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.analyze_object_creation", "false"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("Foo", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenTargetedCreatedTypeProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public void Execute()
+                {
+                    var repository = new UserRepository();
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenScopedCreatedTypeProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractScope("repository")]
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public void Execute()
+                {
+                    var repository = new UserRepository();
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenStaticUsageProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using static Clock;
+
+            [ProvidesContract("thread-safe")]
+            public static class Clock
+            {
+                public static int UtcHour => 12;
+            }
+
+            [RequiresDependencyContract(typeof(Clock), "thread-safe")]
+            public sealed class Consumer
+            {
+                public int Read() => UtcHour;
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenStaticUsageAnalysisIsDisabledByEditorConfig()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using static Clock;
+
+            [ProvidesContract("thread-safe")]
+            public static class Clock
+            {
+                public static int UtcHour => 12;
+            }
+
+            [RequiresDependencyContract(typeof(Clock), "thread-safe")]
+            public sealed class Consumer
+            {
+                public int Read() => UtcHour;
+            }
+            """;
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.analyze_static_members", "false"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("Clock", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenTargetedStaticUsageProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            [ProvidesContract("thread-safe")]
+            public static class RepositoryClock
+            {
+                public static int CurrentHour() => 12;
+            }
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public int Read() => RepositoryClock.CurrentHour();
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenScopedStaticUsageProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractScope("repository")]
+            [ProvidesContract("thread-safe")]
+            public static class RepositoryClock
+            {
+                public static int CurrentHour => 12;
+            }
+
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public int Read() => RepositoryClock.CurrentHour;
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenScopedDependencyProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractScope("repository")]
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenScopedDependencyDoesNotProvideRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractScope("repository")]
+            public sealed class UserRepository
+            {
+            }
+
+            [{|#0:RequiresContractOnScope("repository", "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.MissingRequiredContract)
+                .WithLocation(0)
+                .WithArguments("UserRepository", "thread-safe"));
+    }
+
+    [Fact]
+    public async Task IgnoresDependenciesOutsideRequiredScope()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractScope("repository")]
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [ContractScope("cache")]
+            public sealed class UserCache
+            {
+            }
+
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository, UserCache cache)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenScopeNameIsEmpty()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [{|#0:RequiresContractOnScope("   ", "thread-safe")|}]
+            [{|#1:RequiresContractOnScope("repository", "")|}]
+            public sealed class Consumer
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyScopeName).WithLocation(0),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyContractName).WithLocation(1));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenScopeRequirementIsDeclaredMultipleTimes()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [{|#0:RequiresContractOnScope("repository", "thread-safe")|}]
+            [{|#1:RequiresContractOnScope(" REPOSITORY ", " THREAD-SAFE ")|}]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+
+            [ContractScope("repository")]
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.DuplicateContractDeclaration)
+                .WithLocation(1)
+                .WithArguments("thread-safe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(1)
+                .WithArguments("THREAD-SAFE"));
+    }
+
+    [Fact]
+    public async Task MatchesScopeNamesIgnoringCaseAndWhitespace()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractScope(" REPOSITORY ")]
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task UsesScopeDeclaredOnImplementedInterfaces()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractScope("repository")]
+            [ProvidesContract("thread-safe")]
+            public interface IRepository
+            {
+            }
+
+            public sealed class UserRepository : IRepository
+            {
+            }
+
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                private readonly UserRepository _repository;
+
+                public Consumer(UserRepository repository)
+                {
+                    _repository = repository;
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task UsesAssemblyScopeAsDefaultScope()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractScope("repository")]
+
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnScope("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task CombinesTypeAndAssemblyScopesWhenMatchingDependencies()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractScope("repository")]
+
+            [ContractScope("cache")]
+            public sealed class UserRepository
+            {
+            }
+
+            [{|#0:RequiresContractOnScope("repository", "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.MissingRequiredContract)
+                .WithLocation(0)
+                .WithArguments("UserRepository", "thread-safe"));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenRequiredScopeIsUndeclaredInCompilation()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [{|#0:RequiresContractOnScope("reposotiry", "thread-safe")|}]
+            public sealed class Consumer
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredScope)
+                .WithLocation(0)
+                .WithArguments("reposotiry"));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenKnownScopeIsUnusedByDependencies()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractScope("repository")]
+            public sealed class UserRepository
+            {
+            }
+
+            public interface ILogger
+            {
+            }
+
+            [{|#0:RequiresContractOnScope("repository", "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(ILogger logger)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredScope, DiagnosticSeverity.Info)
+                .WithLocation(0)
+                .WithArguments("repository"));
+    }
+
+    [Fact]
+    public async Task UsesAssemblyLevelScopeForUndeclaredValidation()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractScope("repository")]
+
+            [{|#0:RequiresContractOnScope("repository", "thread-safe")|}]
+            public sealed class Consumer
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredScope, DiagnosticSeverity.Info)
+                .WithLocation(0)
+                .WithArguments("repository"));
+    }
+
+    [Fact]
+    public async Task ReportsNoDiagnosticWhenTargetedDependencyProvidesRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenTargetedDependencyDoesNotProvideRequiredContract()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            public sealed class UserRepository
+            {
+            }
+
+            [{|#0:RequiresContractOnTarget("repository", "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.MissingRequiredContract)
+                .WithLocation(0)
+                .WithArguments("UserRepository", "thread-safe"));
+    }
+
+    [Fact]
+    public async Task IgnoresDependenciesOutsideRequiredTarget()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [ContractTarget("cache")]
+            public sealed class UserCache
+            {
+            }
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository, UserCache cache)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenTargetNameIsEmpty()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [{|#0:ContractTarget("   ")|}]
+            public sealed class UserRepository
+            {
+            }
+
+            [{|#1:RequiresContractOnTarget("   ", "thread-safe")|}]
+            [{|#2:RequiresContractOnTarget("repository", "")|}]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyTargetName).WithLocation(0),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyTargetName).WithLocation(1),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyContractName).WithLocation(2));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenTargetRequirementIsDeclaredMultipleTimes()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [{|#0:RequiresContractOnTarget("repository", "thread-safe")|}]
+            [{|#1:RequiresContractOnTarget(" REPOSITORY ", " THREAD-SAFE ")|}]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+
+            [ContractTarget("repository")]
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.DuplicateContractDeclaration)
+                .WithLocation(1)
+                .WithArguments("thread-safe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(1)
+                .WithArguments("THREAD-SAFE"));
+    }
+
+    [Fact]
+    public async Task MatchesTargetNamesIgnoringCaseAndWhitespace()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget(" REPOSITORY ")]
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task UsesTargetDeclaredOnImplementedInterfaces()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            [ProvidesContract("thread-safe")]
+            public interface IRepository
+            {
+            }
+
+            public sealed class UserRepository : IRepository
+            {
+            }
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                private readonly UserRepository _repository;
+
+                public Consumer(UserRepository repository)
+                {
+                    _repository = repository;
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task MatchesAnyDeclaredTargetOnDependency()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            [ContractTarget("read-model")]
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnTarget("read-model", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenRequiredTargetIsUndeclaredInCompilation()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [{|#0:RequiresContractOnTarget("reposotiry", "thread-safe")|}]
+            public sealed class Consumer
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredTarget)
+                .WithLocation(0)
+                .WithArguments("reposotiry"));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenKnownTargetIsUnusedByDependencies()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            public sealed class UserRepository
+            {
+            }
+
+            public interface ILogger
+            {
+            }
+
+            [{|#0:RequiresContractOnTarget("repository", "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(ILogger logger)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredTarget, DiagnosticSeverity.Info)
+                .WithLocation(0)
+                .WithArguments("repository"));
+    }
+
+    [Fact]
+    public async Task ResolvesAliasForDependencyRequirement()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractAlias("immutable", "thread-safe")]
+
+            [ProvidesContract("immutable")]
+            public interface ICache
+            {
+            }
+
+            public sealed class ImmutableCache : ICache
+            {
+            }
+
+            [RequiresDependencyContract(typeof(ICache), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(ICache cache)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ResolvesMultiStepAliasForTargetRequirement()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractAlias("immutable", "thread-safe")]
+            [assembly: ContractAlias("thread-safe", "retry-safe")]
+
+            [ContractTarget("repository")]
+            [ProvidesContract("immutable")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnTarget("repository", "retry-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenAliasNameIsEmpty()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: {|#0:ContractAlias("   ", "thread-safe")|}]
+            [assembly: {|#1:ContractAlias("immutable", "   ")|}]
+
+            public sealed class Marker
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyContractName).WithLocation(0),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyContractName).WithLocation(1));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenAliasIsDeclaredMultipleTimes()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractAlias("immutable", "thread-safe")]
+            [assembly: {|#0:ContractAlias(" IMMUTABLE ", " THREAD-SAFE ")|}]
+
+            public sealed class Marker
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.DuplicateContractDeclaration)
+                .WithLocation(0)
+                .WithArguments("immutable -> thread-safe"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(0)
+                .WithArguments("IMMUTABLE"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.ContractNamingFormatViolation)
+                .WithLocation(0)
+                .WithArguments("THREAD-SAFE"));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenAliasDefinitionIsCyclic()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: {|#0:ContractAlias("a", "b")|}]
+            [assembly: {|#1:ContractAlias("b", "a")|}]
+
+            public sealed class Marker
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.CyclicAliasDefinition)
+                .WithLocation(0)
+                .WithArguments("a -> b"),
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.CyclicAliasDefinition)
+                .WithLocation(1)
+                .WithArguments("b -> a"));
     }
 }

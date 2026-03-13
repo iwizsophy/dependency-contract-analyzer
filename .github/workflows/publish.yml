@@ -1,0 +1,85 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      publish_to_nuget:
+        description: Push generated packages to nuget.org
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    env:
+      NUGET_PUBLISH_USER: ${{ vars.NUGET_PUBLISH_USER }}
+      SHOULD_PUBLISH: ${{ github.event_name == 'push' || inputs.publish_to_nuget }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: |
+            Directory.Build.props
+            src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj
+            tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj
+
+      - name: Validate publish configuration
+        if: env.SHOULD_PUBLISH == 'true'
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:NUGET_PUBLISH_USER)) {
+            throw "Repository variable NUGET_PUBLISH_USER must be configured before publishing."
+          }
+
+      - name: Restore
+        run: dotnet restore DependencyContractAnalyzer.slnx
+
+      - name: Build
+        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
+
+      - name: Pack
+        run: dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+      - name: Authenticate to NuGet
+        if: env.SHOULD_PUBLISH == 'true'
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ env.NUGET_PUBLISH_USER }}
+
+      - name: Publish packages
+        if: env.SHOULD_PUBLISH == 'true'
+        shell: pwsh
+        run: |
+          Get-ChildItem artifacts\*.nupkg |
+            Where-Object { $_.Name -notlike "*.symbols.nupkg" } |
+            ForEach-Object {
+              dotnet nuget push $_.FullName `
+                --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" `
+                --source https://www.nuget.org/api/v2/package `
+                --skip-duplicate
+            }

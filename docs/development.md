@@ -10,7 +10,7 @@ This document is for maintainers and contributors.
 
 ## Typical local validation
 
-Run from the repository root once source projects are present:
+Run from the repository root:
 
 ```powershell
 dotnet restore DependencyContractAnalyzer.slnx
@@ -24,11 +24,12 @@ Local package output:
 dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
 ```
 
-## Planned project layout
+## Project layout
 
-The initial implementation is expected to follow this structure:
+The repository currently follows this structure:
 
 - `src/DependencyContractAnalyzer`: analyzer, diagnostics, attributes, and helper logic
+- `samples/DependencyContractAnalyzer.Sample`: runnable consumer example with intentional valid and invalid analyzer cases
 - `tests/DependencyContractAnalyzer.Tests`: unit tests built on `Microsoft.CodeAnalysis.Testing`
 - `docs/`: contributor, release, and specification documentation
 
@@ -38,8 +39,10 @@ The initial implementation is expected to follow this structure:
 - Use `ImmutableArray` where it improves analyzer-path performance or API clarity.
 - Use `SymbolEqualityComparer.Default` for symbol comparisons.
 - Normalize contract names with trimming and ordinal case-insensitive comparison.
-- Keep the first release scope limited to constructor parameters, fields, base types, and implemented interfaces.
+- Keep the first release scope limited to constructor parameters, non-constructor method parameters, property types, fields, `new` expressions, static member usage, base types, and implemented interfaces.
 
 ## Release
 
-For NuGet.org publishing guidance, see `docs/trusted-publishing.md`.
+- CI validation is defined in `.github/workflows/ci.yml`.
+- NuGet.org publishing guidance is documented in `docs/trusted-publishing.md`.
+- Release publishing is defined in `.github/workflows/publish.yml`.

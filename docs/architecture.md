@@ -35,7 +35,7 @@ This is not only an analyzer for attributes. It is a static architecture verific
     |
     +-- contract matching
     +-- alias / implication resolution
-    +-- exclusions and suppression
+    +-- standard Roslyn suppression in v1
     +-- diagnostics
 ```
 
@@ -204,6 +204,8 @@ Meaning:
 
 `immutable` satisfies `thread-safe`.
 
+In v1, aliases are the only contract-hierarchy mechanism. The model is a directed, transitive alias graph with cycle rejection.
+
 ## 4. Rule evaluation precedence
 
 Evaluation precedence inside the rule engine should be explicit:
@@ -222,7 +224,11 @@ Initially, dependencies can stay limited to strong type relationships:
 ```text
 Consumer Type
    +-- constructor parameter
+   +-- method parameter
+   +-- property
    +-- field
+   +-- new expression
+   +-- static member usage
    +-- base type
    +-- interface
 ```
@@ -359,7 +365,11 @@ internal enum RequirementKind
 internal enum DependencyKind
 {
     ConstructorParameter,
+    MethodParameter,
+    Property,
     Field,
+    ObjectCreation,
+    StaticMemberAccess,
     BaseType,
     InterfaceImplementation
 }
@@ -414,11 +424,17 @@ Inside that evaluation:
 - `DCA101`: contract naming format violation
 - `DCA102`: duplicate contract declaration
 
+`DCA101` applies only to contract names and alias endpoints. It does not apply to target names or scope names, and the enforced v1 format is lower-kebab-case.
+
 ### Rule-definition diagnostics
 
 - `DCA200`: unknown target required
 - `DCA201`: unknown scope required
 - `DCA202`: cyclic alias definition
+- `DCA203`: empty scope name
+- `DCA204`: empty target name
+- `DCA205`: unused target requirement
+- `DCA206`: unused scope requirement
 
 ## 11. Why this is strong as OSS
 
@@ -446,3 +462,5 @@ Current recommended delivery roadmap for this repository:
 4. v4: `ContractAlias`, alias resolution, cycle detection
 
 If delivery risk changes, target and scope can be swapped without changing the end-state architecture.
+
+The current `.editorconfig` surface covers diagnostic severity and dependency collection toggles for method parameters, properties, object creation, and static member usage. Namespace-based target/scope inference and custom exclusion models remain out of scope.
