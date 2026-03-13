@@ -69,6 +69,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Consolidated duplicated analyzer-config helper logic and test-verifier compilation setup into shared implementations
 - Consolidated duplicated test attribute-source fixtures into a shared helper for verifier and external-metadata tests
 - Consolidated duplicated target/scope requirement collection and evaluation into shared analyzer helpers
+- Consolidated duplicated target/scope name-resolution traversal and known-name collection into shared analyzer helpers
 - Stabilized test-verifier diagnostic ordering with deterministic tie-breakers for same-location diagnostics
 - Consolidated global analyzer option parsing so fallback and normalization rules live in one helper
 - Stopped namespace fallback inference from flowing in through external dependency base types and interfaces
