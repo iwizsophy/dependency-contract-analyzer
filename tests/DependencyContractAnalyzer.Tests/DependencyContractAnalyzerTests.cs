@@ -612,6 +612,219 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task StrictBehaviorPresetUsesExternalMetadataByDefault()
+    {
+        const string source = """
+            using System;
+            using DependencyContractAnalyzer;
+
+            [RequiresDependencyContract(typeof(IDisposable), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IDisposable dependency)
+                {
+                }
+            }
+            """;
+
+        var defaultDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(source);
+        var strictDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "strict"));
+
+        Assert.Empty(defaultDiagnostics);
+
+        var strictDiagnostic = Assert.Single(strictDiagnostics);
+        Assert.Equal(DiagnosticIds.MissingRequiredContract, strictDiagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, strictDiagnostic.Severity);
+        Assert.Contains("IDisposable", strictDiagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task ExplicitExternalDependencyPolicyOverridesStrictBehaviorPreset()
+    {
+        const string source = """
+            using System;
+            using DependencyContractAnalyzer;
+
+            [RequiresDependencyContract(typeof(IDisposable), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IDisposable dependency)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "strict"),
+            ("dependency_contract_analyzer.external_dependency_policy", "ignore"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task RelaxedBehaviorPresetDisablesMethodParameterAnalysisByDefault()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public void Execute(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "relaxed"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("IFoo", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task ExplicitSourceToggleOverridesRelaxedBehaviorPreset()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public void Execute(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "relaxed"),
+            ("dependency_contract_analyzer.analyze_method_parameters", "true"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task StrictBehaviorPresetUsesTwoSegmentNamespaceInferenceByDefault()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            namespace MyCompany.ReadModels.Query
+            {
+                [ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+
+            [RequiresContractOnTarget("read-models-query", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(MyCompany.ReadModels.Query.UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        var defaultDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(source);
+        var strictDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "strict"));
+
+        var defaultDiagnostic = Assert.Single(defaultDiagnostics);
+        Assert.Equal(DiagnosticIds.UndeclaredRequiredTarget, defaultDiagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, defaultDiagnostic.Severity);
+        Assert.Contains("read-models-query", defaultDiagnostic.GetMessage());
+        Assert.Empty(strictDiagnostics);
+    }
+
+    [Fact]
+    public async Task RelaxedBehaviorPresetDisablesNamespaceInferenceByDefault()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            namespace MyCompany.Repository
+            {
+                [ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(MyCompany.Repository.UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        var defaultDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(source);
+        var relaxedDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "relaxed"));
+
+        Assert.Empty(defaultDiagnostics);
+
+        var relaxedDiagnostic = Assert.Single(relaxedDiagnostics);
+        Assert.Equal(DiagnosticIds.UndeclaredRequiredTarget, relaxedDiagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, relaxedDiagnostic.Severity);
+        Assert.Contains("repository", relaxedDiagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task ExplicitNamespaceInferenceSettingOverridesRelaxedBehaviorPreset()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            namespace MyCompany.ReadModels.Query
+            {
+                [ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+
+            [RequiresContractOnTarget("read-models-query", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(MyCompany.ReadModels.Query.UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "relaxed"),
+            ("dependency_contract_analyzer.namespace_inference_max_segments", "2"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public async Task ReportsNoDiagnosticWhenMethodParameterProvidesRequiredContract()
     {
         const string source = """

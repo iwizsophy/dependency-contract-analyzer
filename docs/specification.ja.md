@@ -463,7 +463,7 @@ Severity は `.editorconfig` により変更可能です。
 
 ### 8.1 EditorConfig option
 
-`DependencyContractAnalyzer` は次の boolean `.editorconfig` option をサポートします。
+`DependencyContractAnalyzer` は次の boolean `.editorconfig` option をサポートします。これらの既定値は `behavior_preset = default` を前提にしています。
 
 - `dependency_contract_analyzer.analyze_fields`（既定: `true`）
 - `dependency_contract_analyzer.analyze_base_types`（既定: `true`）
@@ -483,12 +483,22 @@ Severity は `.editorconfig` により変更可能です。
 
 - `dependency_contract_analyzer.external_dependency_policy`（既定: `ignore`、対応値: `ignore`、`metadata`）
 
+あわせて、次の global preset `.editorconfig` option もサポートします。
+
+- `dependency_contract_analyzer.behavior_preset`（既定: `default`、対応値: `default`、`strict`、`relaxed`）
+
 あわせて、次の list-valued `.editorconfig` option もサポートします。
 
 - `dependency_contract_analyzer.excluded_namespaces`
 - `dependency_contract_analyzer.excluded_types`
 
-`excluded_namespaces` は列挙した namespace とその subnamespace 配下の owner type 解析をスキップします。`excluded_types` は fully qualified owner type 名を指定して解析をスキップします。list 値は comma、semicolon、newline 区切りを受け付けます。`namespace_inference_max_segments` は fallback 推定に最終セグメントのみを使うか（`1`）、最終セグメントに加えて trailing 2-segment 組み合わせも使うか（`2`）を制御します。`external_dependency_policy` は current compilation 外 dependency を無視するか（`ignore`）、参照先 assembly の explicit metadata と implication edge と照合するか（`metadata`）を制御します。不正値は既定値へフォールバックします。
+`behavior_preset` は他 option の default 挙動をまとめて切り替える preset です。
+
+- `default`: 現在の製品既定値
+- `strict`: すべての optional dependency-source toggle を有効化し、namespace inference の既定を trailing 2-segment fallback にし、external dependency policy の既定を `metadata` にします
+- `relaxed`: optional dependency-source toggle を無効化し、namespace inference を無効化し、external dependency policy の既定を `ignore` にします
+
+個別 option は常に preset より優先します。`excluded_namespaces` は列挙した namespace とその subnamespace 配下の owner type 解析をスキップします。`excluded_types` は fully qualified owner type 名を指定して解析をスキップします。list 値は comma、semicolon、newline 区切りを受け付けます。`namespace_inference_max_segments` は fallback 推定に最終セグメントのみを使うか（`1`）、最終セグメントに加えて trailing 2-segment 組み合わせも使うか（`2`）を制御します。不正値や未指定時は preset 由来の既定値へフォールバックします。`external_dependency_policy` は current compilation 外 dependency を無視するか（`ignore`）、参照先 assembly の explicit metadata と implication edge と照合するか（`metadata`）を制御します。不正値や未指定時は preset 由来の既定値へフォールバックします。exclusion list と diagnostic severity は `behavior_preset` とは独立です。
 
 ### 8.2 命名ルール
 
@@ -550,9 +560,14 @@ src/
    ├ Diagnostics
    │  └ DiagnosticDescriptors.cs
    ├ Helpers
+   │  ├ AnalysisExclusionOptions.cs
+   │  ├ BehaviorPresetOptions.cs
    │  ├ ContractAliasResolver.cs
    │  ├ ContractNameNormalizer.cs
-   │  └ DependencyCollector.cs
+   │  ├ DependencyCollectionOptions.cs
+   │  ├ DependencyCollector.cs
+   │  ├ ExternalDependencyOptions.cs
+   │  └ NamespaceInferenceOptions.cs
    └ Utilities
       └ SymbolExtensions.cs
 samples/

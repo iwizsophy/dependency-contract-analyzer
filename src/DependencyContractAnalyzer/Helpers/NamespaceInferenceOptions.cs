@@ -17,11 +17,14 @@ internal readonly struct NamespaceInferenceOptions
 
     public static NamespaceInferenceOptions Create(AnalyzerConfigOptionsProvider analyzerConfigOptionsProvider)
     {
+        var behaviorPreset = BehaviorPresetOptions.Create(analyzerConfigOptionsProvider);
+        var defaultMaxSegments = behaviorPreset.DefaultNamespaceInferenceMaxSegments;
+
         if (!analyzerConfigOptionsProvider.GlobalOptions.TryGetValue(NamespaceInferenceMaxSegmentsKey, out var rawValue) ||
             !int.TryParse(rawValue, out var parsedValue) ||
             parsedValue is < 1 or > 2)
         {
-            return Default;
+            return new NamespaceInferenceOptions(defaultMaxSegments);
         }
 
         return new NamespaceInferenceOptions(parsedValue);

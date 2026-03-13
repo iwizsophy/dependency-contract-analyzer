@@ -59,21 +59,29 @@ internal readonly struct DependencyCollectionOptions
         AnalyzerConfigOptionsProvider analyzerConfigOptionsProvider,
         INamedTypeSymbol type)
     {
+        var behaviorPreset = BehaviorPresetOptions.Create(analyzerConfigOptionsProvider);
         var sourceTree = GetSourceTree(type);
         if (sourceTree is null)
         {
-            return Default;
+            return new DependencyCollectionOptions(
+                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
+                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
+                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
+                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
+                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
+                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
+                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled);
         }
 
         var options = analyzerConfigOptionsProvider.GetOptions(sourceTree);
         return new DependencyCollectionOptions(
-            GetBooleanOption(options, AnalyzeFieldsKey, defaultValue: true),
-            GetBooleanOption(options, AnalyzeBaseTypesKey, defaultValue: true),
-            GetBooleanOption(options, AnalyzeInterfaceImplementationsKey, defaultValue: true),
-            GetBooleanOption(options, AnalyzeMethodParametersKey, defaultValue: true),
-            GetBooleanOption(options, AnalyzePropertiesKey, defaultValue: true),
-            GetBooleanOption(options, AnalyzeObjectCreationKey, defaultValue: true),
-            GetBooleanOption(options, AnalyzeStaticMembersKey, defaultValue: true));
+            GetBooleanOption(options, AnalyzeFieldsKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
+            GetBooleanOption(options, AnalyzeBaseTypesKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
+            GetBooleanOption(options, AnalyzeInterfaceImplementationsKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
+            GetBooleanOption(options, AnalyzeMethodParametersKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
+            GetBooleanOption(options, AnalyzePropertiesKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
+            GetBooleanOption(options, AnalyzeObjectCreationKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
+            GetBooleanOption(options, AnalyzeStaticMembersKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled));
     }
 
     private static SyntaxTree? GetSourceTree(INamedTypeSymbol type)

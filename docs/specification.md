@@ -463,7 +463,7 @@ Default diagnostic severities are product defaults; recommended CI severities ar
 
 ### 8.1 EditorConfig options
 
-`DependencyContractAnalyzer` supports the following boolean `.editorconfig` options:
+`DependencyContractAnalyzer` supports the following boolean `.editorconfig` options. These defaults apply under `behavior_preset = default`:
 
 - `dependency_contract_analyzer.analyze_fields` (default: `true`)
 - `dependency_contract_analyzer.analyze_base_types` (default: `true`)
@@ -483,12 +483,22 @@ The analyzer also supports this global string `.editorconfig` option:
 
 - `dependency_contract_analyzer.external_dependency_policy` (default: `ignore`, supported values: `ignore`, `metadata`)
 
+The analyzer also supports this global preset `.editorconfig` option:
+
+- `dependency_contract_analyzer.behavior_preset` (default: `default`, supported values: `default`, `strict`, `relaxed`)
+
 The analyzer also supports these list-valued `.editorconfig` options:
 
 - `dependency_contract_analyzer.excluded_namespaces`
 - `dependency_contract_analyzer.excluded_types`
 
-`excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. List values accept comma, semicolon, or newline separators. `namespace_inference_max_segments` controls whether fallback inference uses only the final namespace segment (`1`) or both the final segment and trailing two-segment combinations (`2`). `external_dependency_policy` controls whether dependencies outside the current compilation are ignored (`ignore`) or matched against explicit metadata and implication edges from referenced assemblies (`metadata`). Invalid values fall back to the default.
+`behavior_preset` shifts the default behavior of other options without replacing them.
+
+- `default`: current product defaults
+- `strict`: all optional dependency-source toggles enabled, namespace inference defaults to trailing two-segment fallback, and external dependency policy defaults to `metadata`
+- `relaxed`: optional dependency-source toggles disabled, namespace inference disabled, and external dependency policy defaults to `ignore`
+
+Explicit per-option settings always override the preset. `excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. List values accept comma, semicolon, or newline separators. `namespace_inference_max_segments` controls whether fallback inference uses only the final namespace segment (`1`) or both the final segment and trailing two-segment combinations (`2`). Invalid or missing values fall back to the preset-derived default. `external_dependency_policy` controls whether dependencies outside the current compilation are ignored (`ignore`) or matched against explicit metadata and implication edges from referenced assemblies (`metadata`). Invalid or missing values fall back to the preset-derived default. Exclusion lists and diagnostic severity remain independent of `behavior_preset`.
 
 ### 8.2 Contract naming rule
 
@@ -550,9 +560,14 @@ src/
    ├ Diagnostics
    │  └ DiagnosticDescriptors.cs
    ├ Helpers
+   │  ├ AnalysisExclusionOptions.cs
+   │  ├ BehaviorPresetOptions.cs
    │  ├ ContractAliasResolver.cs
    │  ├ ContractNameNormalizer.cs
-   │  └ DependencyCollector.cs
+   │  ├ DependencyCollectionOptions.cs
+   │  ├ DependencyCollector.cs
+   │  ├ ExternalDependencyOptions.cs
+   │  └ NamespaceInferenceOptions.cs
    └ Utilities
       └ SymbolExtensions.cs
 samples/

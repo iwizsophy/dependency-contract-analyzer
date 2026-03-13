@@ -150,6 +150,7 @@ These are product defaults. All diagnostics remain configurable through `.editor
 
 `.editorconfig` also supports dependency collection policy toggles for these optional dependency sources:
 
+- `dependency_contract_analyzer.behavior_preset`
 - `dependency_contract_analyzer.analyze_fields`
 - `dependency_contract_analyzer.analyze_base_types`
 - `dependency_contract_analyzer.analyze_interface_implementations`
@@ -162,9 +163,17 @@ These are product defaults. All diagnostics remain configurable through `.editor
 - `dependency_contract_analyzer.namespace_inference_max_segments`
 - `dependency_contract_analyzer.external_dependency_policy`
 
-All `analyze_*` options default to `true`. Constructor parameters remain enabled.
+Under `behavior_preset = default`, all `analyze_*` options default to `true`. Constructor parameters remain enabled regardless of the preset.
 
-`excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. `namespace_inference_max_segments` is a global option. Supported values are `1` and `2`, the default is `1`, and invalid values fall back to the default. `external_dependency_policy` is also global. Supported values are `ignore` and `metadata`, the default is `ignore`, and invalid values fall back to the default. In `metadata` mode, namespace inference still remains limited to current-compilation types; referenced assemblies contribute explicit metadata and implication edges only.
+`behavior_preset` is a global option. Supported values are `default`, `strict`, and `relaxed`; invalid values fall back to `default`.
+
+- `default`: the current product defaults
+- `strict`: enables all optional dependency-source toggles, uses `namespace_inference_max_segments = 2`, and defaults `external_dependency_policy` to `metadata`
+- `relaxed`: disables optional dependency-source toggles, disables namespace inference, and defaults `external_dependency_policy` to `ignore`
+
+Explicit per-option settings always override the preset. For example, `analyze_method_parameters = true`, `namespace_inference_max_segments = 2`, or `external_dependency_policy = metadata` each take precedence over `behavior_preset`. Exclusion lists and diagnostic severity remain separate controls.
+
+`excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. `namespace_inference_max_segments` is a global option. Supported values are `1` and `2`, the default is `1`, and invalid values fall back to the preset-derived default. `external_dependency_policy` is also global. Supported values are `ignore` and `metadata`, the default is `ignore`, and invalid values fall back to the preset-derived default. In `metadata` mode, namespace inference still remains limited to current-compilation types; referenced assemblies contribute explicit metadata and implication edges only.
 
 ## Recommended CI policy
 

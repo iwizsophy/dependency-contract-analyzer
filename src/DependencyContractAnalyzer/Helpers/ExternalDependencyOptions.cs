@@ -17,10 +17,12 @@ internal readonly struct ExternalDependencyOptions
 
     public static ExternalDependencyOptions Create(AnalyzerConfigOptionsProvider analyzerConfigOptionsProvider)
     {
+        var behaviorPreset = BehaviorPresetOptions.Create(analyzerConfigOptionsProvider);
+
         if (!analyzerConfigOptionsProvider.GlobalOptions.TryGetValue(ExternalDependencyPolicyKey, out var rawValue) ||
             string.IsNullOrWhiteSpace(rawValue))
         {
-            return Default;
+            return new ExternalDependencyOptions(behaviorPreset.DefaultExternalDependencyPolicy);
         }
 
         return rawValue.Trim().ToLowerInvariant() switch

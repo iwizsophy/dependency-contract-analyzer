@@ -150,6 +150,7 @@ public sealed class SnapshotCache
 
 `.editorconfig` では、次の追加依存源に対する解析トグルも設定できます。
 
+- `dependency_contract_analyzer.behavior_preset`
 - `dependency_contract_analyzer.analyze_fields`
 - `dependency_contract_analyzer.analyze_base_types`
 - `dependency_contract_analyzer.analyze_interface_implementations`
@@ -162,9 +163,17 @@ public sealed class SnapshotCache
 - `dependency_contract_analyzer.namespace_inference_max_segments`
 - `dependency_contract_analyzer.external_dependency_policy`
 
-すべての `analyze_*` option は既定で `true` です。コンストラクタ引数は常に解析対象です。
+`behavior_preset = default` では、すべての `analyze_*` option は既定で `true` です。コンストラクタ引数は preset に関係なく常に解析対象です。
 
-`excluded_namespaces` は列挙した namespace とその subnamespace 配下の owner type 解析をスキップします。`excluded_types` は fully qualified owner type 名を指定して解析をスキップします。`namespace_inference_max_segments` は global option で、`1` と `2` をサポートし、既定値は `1`、不正値は既定値へフォールバックします。`external_dependency_policy` も global option で、`ignore` と `metadata` をサポートし、既定値は `ignore`、不正値は既定値へフォールバックします。`metadata` モードでも namespace inference は current compilation 内の型に限定し、参照先 assembly からは explicit metadata と包含辺のみを使用します。
+`behavior_preset` は global option で、`default`、`strict`、`relaxed` をサポートし、不正値は `default` へフォールバックします。
+
+- `default`: 現在の製品既定値
+- `strict`: すべての optional dependency-source toggle を有効化し、`namespace_inference_max_segments = 2`、`external_dependency_policy = metadata` を既定にします
+- `relaxed`: optional dependency-source toggle を無効化し、namespace inference を無効化し、`external_dependency_policy = ignore` を既定にします
+
+個別 option は常に preset より優先します。たとえば `analyze_method_parameters = true`、`namespace_inference_max_segments = 2`、`external_dependency_policy = metadata` は `behavior_preset` より優先されます。exclusion list と diagnostic severity は別制御です。
+
+`excluded_namespaces` は列挙した namespace とその subnamespace 配下の owner type 解析をスキップします。`excluded_types` は fully qualified owner type 名を指定して解析をスキップします。`namespace_inference_max_segments` は global option で、`1` と `2` をサポートし、既定値は `1`、不正値は preset 由来の既定値へフォールバックします。`external_dependency_policy` も global option で、`ignore` と `metadata` をサポートし、既定値は `ignore`、不正値は preset 由来の既定値へフォールバックします。`metadata` モードでも namespace inference は current compilation 内の型に限定し、参照先 assembly からは explicit metadata と包含辺のみを使用します。
 
 ## 推奨 CI 運用
 
