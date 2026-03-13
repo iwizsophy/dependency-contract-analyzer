@@ -47,6 +47,8 @@ internal sealed class ContractAliasResolver
         INamedTypeSymbol? contractAliasAttributeSymbol,
         INamedTypeSymbol? contractHierarchyAttributeSymbol)
     {
+        // Referenced assemblies can contribute implication edges, but their malformed
+        // declarations should not surface diagnostics in the consuming compilation.
         return CreateCore(
             assembly,
             contractAliasAttributeSymbol,
@@ -66,6 +68,8 @@ internal sealed class ContractAliasResolver
 
             foreach (var resolver in resolvers)
             {
+                // Local and referenced graphs can unlock each other transitively,
+                // so repeat until the combined implication set stops growing.
                 var nextContracts = resolver.Expand(expandedContracts);
                 if (nextContracts.SetEquals(expandedContracts))
                 {

@@ -13,6 +13,7 @@ internal readonly struct BehaviorPresetOptions
 
     public BehaviorPreset Preset { get; }
 
+    // Presets only define fallback defaults. Explicit per-option settings still win.
     public bool DefaultOptionalDependencySourceAnalysisEnabled =>
         Preset != BehaviorPreset.Relaxed;
 

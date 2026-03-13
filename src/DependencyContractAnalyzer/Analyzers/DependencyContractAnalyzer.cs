@@ -98,6 +98,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 startContext.Compilation.Assembly,
                 contractAliasAttributeSymbol,
                 contractHierarchyAttributeSymbol);
+            // Referenced implication graphs are resolved lazily and cached per assembly.
+            // The local compilation still owns diagnostic reporting for implication problems.
             var referencedAssemblyImplicationResolverCache =
                 new ConcurrentDictionary<IAssemblySymbol, ContractAliasResolver>(SymbolEqualityComparer.Default);
             ContractAliasResolver ResolveReferencedAssemblyImplicationGraph(IAssemblySymbol assembly) =>
