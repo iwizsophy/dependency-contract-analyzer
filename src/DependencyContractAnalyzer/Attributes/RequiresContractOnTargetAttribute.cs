@@ -5,6 +5,12 @@ namespace DependencyContractAnalyzer;
 /// <summary>
 /// Declares a contract that dependencies in a specific target category must satisfy.
 /// </summary>
+/// <remarks>
+/// The analyzer resolves dependency targets from explicit <see cref="ContractTargetAttribute"/>
+/// declarations first and then falls back to configured namespace inference when no
+/// explicit target is present. Target names are normalized by trimming surrounding
+/// whitespace and are compared with ordinal case-insensitive semantics.
+/// </remarks>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public sealed class RequiresContractOnTargetAttribute : Attribute
 {
@@ -20,12 +26,12 @@ public sealed class RequiresContractOnTargetAttribute : Attribute
     }
 
     /// <summary>
-    /// Gets the dependency target category to match.
+    /// Gets the dependency target category to match after consumer-side normalization by the analyzer.
     /// </summary>
     public string TargetName { get; }
 
     /// <summary>
-    /// Gets the required contract name.
+    /// Gets the required contract name after consumer-side normalization by the analyzer.
     /// </summary>
     public string ContractName { get; }
 }

@@ -59,6 +59,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Lowered `DCA205` and `DCA206` default severity from `Warning` to `Info`
 - Updated README and development guides to describe the current repository state instead of planned-only wording
 - Kept the runnable sample project warning-free by moving representative invalid cases into sample documentation snippets
+- Expanded public attribute XML documentation to explain normalization, implication, exclusion, and exact-match suppression behavior
 - Clarified current design boundaries for alias semantics, `.editorconfig`, namespace inference, suppression, and `DCA101` naming scope
 - Stopped namespace fallback inference from flowing in through external dependency base types and interfaces
 - Merged local and referenced implication graphs when expanding provided contracts for external dependencies
