@@ -55,6 +55,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Regression tests for unused/undeclared requirement-diagnostic switches
 - Regression tests for editorconfig fallback semantics across behavior presets, namespace inference, and requirement-diagnostic switches
 - Regression tests for exclusion-list parsing and nested type exclusion behavior
+- Local and CI coverage collection via `coverlet.collector` and `XPlat Code Coverage`
 
 ### Changed
 

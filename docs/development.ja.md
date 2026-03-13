@@ -18,6 +18,14 @@ dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
 dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
 ```
 
+ローカルで Cobertura 形式の coverage を取得する場合は次を実行します。
+
+```powershell
+dotnet test tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj -c Release --collect "XPlat Code Coverage"
+```
+
+coverage ファイルは `tests/DependencyContractAnalyzer.Tests/TestResults/**/coverage.cobertura.xml` に出力されます。
+
 ローカルでの pack:
 
 ```powershell
@@ -44,5 +52,6 @@ dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c 
 ## リリース
 
 - CI 検証は `.github/workflows/ci.yml` で定義しています。
+- CI では package artifact に加えて `dotnet test` の test result / coverage artifact も保存します。
 - NuGet.org への公開方針は `docs/trusted-publishing.ja.md` を参照してください。
 - リリース publish は `.github/workflows/publish.yml` で定義しています。

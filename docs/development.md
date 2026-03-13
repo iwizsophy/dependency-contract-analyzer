@@ -18,6 +18,14 @@ dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
 dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
 ```
 
+To collect local coverage in Cobertura format:
+
+```powershell
+dotnet test tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj -c Release --collect "XPlat Code Coverage"
+```
+
+The coverage file is written under `tests/DependencyContractAnalyzer.Tests/TestResults/**/coverage.cobertura.xml`.
+
 Local package output:
 
 ```powershell
@@ -44,5 +52,6 @@ The repository currently follows this structure:
 ## Release
 
 - CI validation is defined in `.github/workflows/ci.yml`.
+- CI uploads both package artifacts and `dotnet test` coverage/test-result artifacts.
 - NuGet.org publishing guidance is documented in `docs/trusted-publishing.md`.
 - Release publishing is defined in `.github/workflows/publish.yml`.

@@ -783,6 +783,37 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task InvalidSourceToggleFallsBackToBehaviorPresetDefault()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public void Execute(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "relaxed"),
+            ("dependency_contract_analyzer.analyze_method_parameters", "invalid"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("IFoo", diagnostic.GetMessage());
+    }
+
+    [Fact]
     public async Task StrictBehaviorPresetUsesTwoSegmentNamespaceInferenceByDefault()
     {
         const string source = """

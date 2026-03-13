@@ -34,10 +34,17 @@ jobs:
         run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
 
       - name: Test
-        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
+        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-build --collect "XPlat Code Coverage" --results-directory artifacts/test-results
 
       - name: Pack
         run: dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: artifacts/test-results/**
+          if-no-files-found: error
 
       - name: Upload packages
         uses: actions/upload-artifact@v4
