@@ -100,7 +100,7 @@ internal static class DependencyContractAnalyzerVerifier
     {
         var syntaxTrees = new[]
         {
-            ParseSource(SourceDefinedAttributeSource, "/0/DependencyContractAnalyzer.Attributes.cs"),
+            ParseSource(TestAttributeSources.SourceDefinedPublicAttributes, "/0/DependencyContractAnalyzer.Attributes.cs"),
             ParseSource(source, "/0/Test0.cs"),
         };
         var compilation = CreateCompilation(
@@ -233,75 +233,4 @@ internal static class DependencyContractAnalyzerVerifier
             .Select(static path => (MetadataReference)MetadataReference.CreateFromFile(path))
             .ToImmutableArray();
     }
-
-    private const string SourceDefinedAttributeSource = """
-        using System;
-
-        namespace DependencyContractAnalyzer
-        {
-            [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = true, Inherited = true)]
-            public sealed class ProvidesContractAttribute : Attribute
-            {
-                public ProvidesContractAttribute(string name)
-                {
-                }
-            }
-
-            [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
-            public sealed class RequiresDependencyContractAttribute : Attribute
-            {
-                public RequiresDependencyContractAttribute(Type dependencyType, string contractName)
-                {
-                }
-            }
-
-            [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = true, Inherited = true)]
-            public sealed class ContractTargetAttribute : Attribute
-            {
-                public ContractTargetAttribute(string name)
-                {
-                }
-            }
-
-            [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
-            public sealed class RequiresContractOnTargetAttribute : Attribute
-            {
-                public RequiresContractOnTargetAttribute(string targetName, string contractName)
-                {
-                }
-            }
-
-            [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
-            public sealed class ContractScopeAttribute : Attribute
-            {
-                public ContractScopeAttribute(string name)
-                {
-                }
-            }
-
-            [AttributeUsage(AttributeTargets.Class, AllowMultiple = true, Inherited = false)]
-            public sealed class RequiresContractOnScopeAttribute : Attribute
-            {
-                public RequiresContractOnScopeAttribute(string scopeName, string contractName)
-                {
-                }
-            }
-
-            [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
-            public sealed class ContractAliasAttribute : Attribute
-            {
-                public ContractAliasAttribute(string from, string to)
-                {
-                }
-            }
-
-            [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
-            public sealed class ContractHierarchyAttribute : Attribute
-            {
-                public ContractHierarchyAttribute(string child, string parent)
-                {
-                }
-            }
-        }
-        """;
 }

@@ -67,6 +67,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Clarified current design boundaries for alias semantics, `.editorconfig`, namespace inference, suppression, and `DCA101` naming scope
 - Clarified the large regression suite with section comments and targeted notes for tricky metadata/preset/inference cases
 - Consolidated duplicated analyzer-config helper logic and test-verifier compilation setup into shared implementations
+- Consolidated duplicated test attribute-source fixtures into a shared helper for verifier and external-metadata tests
 - Stopped namespace fallback inference from flowing in through external dependency base types and interfaces
 - Merged local and referenced implication graphs when expanding provided contracts for external dependencies
 - Derived dependency-source, namespace-inference, and external-metadata defaults from `behavior_preset` while keeping explicit per-option settings authoritative

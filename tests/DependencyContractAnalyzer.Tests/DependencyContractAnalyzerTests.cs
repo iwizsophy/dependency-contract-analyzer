@@ -398,7 +398,7 @@ public sealed class DependencyContractAnalyzerTests
         // close over both graphs before evaluating the external dependency.
         var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
-            new[] { CreateExternalAssemblySource(externalBody) },
+            new[] { TestAttributeSources.CreateExternalAssemblySource(externalBody) },
             ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
 
         Assert.Empty(diagnostics);
@@ -433,7 +433,7 @@ public sealed class DependencyContractAnalyzerTests
 
         var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
-            new[] { CreateExternalAssemblySource(externalBody) },
+            new[] { TestAttributeSources.CreateExternalAssemblySource(externalBody) },
             ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
 
         Assert.Empty(diagnostics);
@@ -468,7 +468,7 @@ public sealed class DependencyContractAnalyzerTests
 
         var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
-            new[] { CreateExternalAssemblySource(externalBody) },
+            new[] { TestAttributeSources.CreateExternalAssemblySource(externalBody) },
             ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
 
         Assert.Empty(diagnostics);
@@ -505,7 +505,7 @@ public sealed class DependencyContractAnalyzerTests
 
         var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
-            new[] { CreateExternalAssemblySource(externalBody) },
+            new[] { TestAttributeSources.CreateExternalAssemblySource(externalBody) },
             ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
 
         Assert.Empty(diagnostics);
@@ -541,7 +541,7 @@ public sealed class DependencyContractAnalyzerTests
 
         var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
-            new[] { CreateExternalAssemblySource(externalBody) },
+            new[] { TestAttributeSources.CreateExternalAssemblySource(externalBody) },
             ("dependency_contract_analyzer.external_dependency_policy", "metadata"));
 
         Assert.Empty(diagnostics);
@@ -577,7 +577,7 @@ public sealed class DependencyContractAnalyzerTests
                 }
             }
             """;
-        var additionalReferenceSources = new[] { CreateExternalAssemblySource(externalBody) };
+        var additionalReferenceSources = new[] { TestAttributeSources.CreateExternalAssemblySource(externalBody) };
 
         var ignoreDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
@@ -622,7 +622,7 @@ public sealed class DependencyContractAnalyzerTests
                 }
             }
             """;
-        var additionalReferenceSources = new[] { CreateExternalAssemblySource(externalBody) };
+        var additionalReferenceSources = new[] { TestAttributeSources.CreateExternalAssemblySource(externalBody) };
 
         var ignoreDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
@@ -1062,7 +1062,7 @@ public sealed class DependencyContractAnalyzerTests
                 }
             }
             """;
-        var additionalReferenceSources = new[] { CreateExternalAssemblySource(externalBody) };
+        var additionalReferenceSources = new[] { TestAttributeSources.CreateExternalAssemblySource(externalBody) };
 
         var defaultDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
@@ -1109,7 +1109,7 @@ public sealed class DependencyContractAnalyzerTests
                 }
             }
             """;
-        var additionalReferenceSources = new[] { CreateExternalAssemblySource(externalBody) };
+        var additionalReferenceSources = new[] { TestAttributeSources.CreateExternalAssemblySource(externalBody) };
 
         var defaultDiagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
@@ -3229,7 +3229,7 @@ public sealed class DependencyContractAnalyzerTests
 
         var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
             source,
-            new[] { CreateExternalAssemblySource(externalBody) });
+            new[] { TestAttributeSources.CreateExternalAssemblySource(externalBody) });
 
         var diagnostic = Assert.Single(diagnostics);
         Assert.Equal(DiagnosticIds.UnusedRequiredTarget, diagnostic.Id);
@@ -3643,55 +3643,4 @@ public sealed class DependencyContractAnalyzerTests
                 .WithArguments("b -> a"));
     }
 
-    // External-reference tests append a minimal attribute surface so the synthesized
-    // assembly can emit metadata the analyzer recognizes without taking a package dependency.
-    private static string CreateExternalAssemblySource(string body) =>
-        body + "\r\n" + ExternalAttributeSource;
-
-    // This is intentionally minimal: only the referenced-assembly attributes that the
-    // analyzer reads from metadata are required for these tests.
-    private const string ExternalAttributeSource = """
-        namespace DependencyContractAnalyzer
-        {
-            [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Interface, AllowMultiple = true, Inherited = true)]
-            internal sealed class ProvidesContractAttribute : System.Attribute
-            {
-                public ProvidesContractAttribute(string name)
-                {
-                }
-            }
-
-            [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Interface, AllowMultiple = true, Inherited = true)]
-            internal sealed class ContractTargetAttribute : System.Attribute
-            {
-                public ContractTargetAttribute(string name)
-                {
-                }
-            }
-
-            [System.AttributeUsage(System.AttributeTargets.Class | System.AttributeTargets.Interface | System.AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
-            internal sealed class ContractScopeAttribute : System.Attribute
-            {
-                public ContractScopeAttribute(string name)
-                {
-                }
-            }
-
-            [System.AttributeUsage(System.AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
-            internal sealed class ContractAliasAttribute : System.Attribute
-            {
-                public ContractAliasAttribute(string from, string to)
-                {
-                }
-            }
-
-            [System.AttributeUsage(System.AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
-            internal sealed class ContractHierarchyAttribute : System.Attribute
-            {
-                public ContractHierarchyAttribute(string child, string parent)
-                {
-                }
-            }
-        }
-        """;
 }
