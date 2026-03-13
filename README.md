@@ -154,8 +154,12 @@ These are product defaults. All diagnostics remain configurable through `.editor
 - `dependency_contract_analyzer.analyze_properties`
 - `dependency_contract_analyzer.analyze_object_creation`
 - `dependency_contract_analyzer.analyze_static_members`
+- `dependency_contract_analyzer.excluded_namespaces`
+- `dependency_contract_analyzer.excluded_types`
 
-All four options default to `true`. Constructor parameters, field types, base types, and implemented interfaces remain enabled.
+The four `analyze_*` options default to `true`. Constructor parameters, field types, base types, and implemented interfaces remain enabled.
+
+`excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names.
 
 ## Recommended CI policy
 

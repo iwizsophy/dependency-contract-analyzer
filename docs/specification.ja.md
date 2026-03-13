@@ -385,6 +385,13 @@ Severity は `.editorconfig` により変更可能です。
 
 値が未設定または不正な場合は既定値へフォールバックします。
 
+あわせて、次の list-valued `.editorconfig` option もサポートします。
+
+- `dependency_contract_analyzer.excluded_namespaces`
+- `dependency_contract_analyzer.excluded_types`
+
+`excluded_namespaces` は列挙した namespace とその subnamespace 配下の owner type 解析をスキップします。`excluded_types` は fully qualified owner type 名を指定して解析をスキップします。list 値は comma、semicolon、newline 区切りを受け付けます。
+
 ### 8.2 命名ルール
 
 `DCA101` は契約名フォーマットを検証する Diagnostic です。
@@ -482,6 +489,7 @@ CompilationStart
 - `new` 式だけで依存が表現される場合も Diagnostic なし
 - static メンバー利用だけで依存が表現される場合も Diagnostic なし
 - `.editorconfig` で method parameter / property / object creation / static member の解析を無効化した場合は `DCA002`
+- `.editorconfig` で owner type を namespace / type 単位 exclusion した場合は Diagnostic なし
 - 一致する依存先が必要契約を提供していない場合は `DCA001`
 - `RequiresDependencyContract` が未使用依存型を指している場合は `DCA002`
 - 型レベル / assembly-level scope による scope マッチング

@@ -138,6 +138,12 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             return;
         }
 
+        if (AnalysisExclusionOptions.Create(context.Options.AnalyzerConfigOptionsProvider, namedType)
+            .ShouldSkipType(namedType))
+        {
+            return;
+        }
+
         if (contractScopeAttributeSymbol is not null)
         {
             AnalyzeDeclaredScopes(context, namedType, contractScopeAttributeSymbol);

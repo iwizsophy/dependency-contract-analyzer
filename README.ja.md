@@ -154,8 +154,12 @@ public sealed class SnapshotCache
 - `dependency_contract_analyzer.analyze_properties`
 - `dependency_contract_analyzer.analyze_object_creation`
 - `dependency_contract_analyzer.analyze_static_members`
+- `dependency_contract_analyzer.excluded_namespaces`
+- `dependency_contract_analyzer.excluded_types`
 
-4 つの option はすべて既定で `true` です。コンストラクタ引数、フィールド型、継承、インタフェース実装は常に解析対象です。
+4 つの `analyze_*` option はすべて既定で `true` です。コンストラクタ引数、フィールド型、継承、インタフェース実装は常に解析対象です。
+
+`excluded_namespaces` は列挙した namespace とその subnamespace 配下の owner type 解析をスキップします。`excluded_types` は fully qualified owner type 名を指定して解析をスキップします。
 
 ## 推奨 CI 運用
 

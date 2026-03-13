@@ -665,6 +665,120 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task SkipsAnalyzerWhenOwnerNamespaceIsExcludedByEditorConfig()
+    {
+        const string source = """
+            namespace MyCompany.Legacy;
+
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.excluded_namespaces", "MyCompany.Legacy"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task SkipsAnalyzerWhenOwnerSubnamespaceIsExcludedByEditorConfig()
+    {
+        const string source = """
+            namespace MyCompany.Legacy.Migrations;
+
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.excluded_namespaces", "MyCompany.Legacy"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task SkipsAnalyzerWhenOwnerTypeIsExcludedByEditorConfig()
+    {
+        const string source = """
+            namespace MyCompany.Application;
+
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.excluded_types", "MyCompany.Application.Consumer"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task DoesNotSkipAnalyzerForSiblingNamespaceExclusion()
+    {
+        const string source = """
+            namespace MyCompany.Legacyish;
+
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.excluded_namespaces", "MyCompany.Legacy"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.MissingRequiredContract, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+    }
+
+    [Fact]
     public async Task ReportsNoDiagnosticWhenTargetedStaticUsageProvidesRequiredContract()
     {
         const string source = """

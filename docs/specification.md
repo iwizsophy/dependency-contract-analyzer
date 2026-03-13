@@ -385,6 +385,13 @@ Default diagnostic severities are product defaults; recommended CI severities ar
 
 If an option value is missing or invalid, the analyzer falls back to the default.
 
+The analyzer also supports these list-valued `.editorconfig` options:
+
+- `dependency_contract_analyzer.excluded_namespaces`
+- `dependency_contract_analyzer.excluded_types`
+
+`excluded_namespaces` skips analyzer execution for owner types in the listed namespaces and their subnamespaces. `excluded_types` skips analyzer execution for listed fully qualified owner type names. List values accept comma, semicolon, or newline separators.
+
 ### 8.2 Contract naming rule
 
 `DCA101` validates contract naming format.
@@ -482,6 +489,7 @@ Representative scenarios include:
 - No diagnostic when a required dependency appears only through a `new` expression
 - No diagnostic when a required dependency appears only through static member usage
 - `DCA002` when method parameter, property, object creation, or static-member dependency analysis is disabled through `.editorconfig`
+- No diagnostic when the owner type is excluded through `.editorconfig` namespace or type exclusion settings
 - `DCA001` when a matching dependency does not provide the required contract
 - `DCA002` when `RequiresDependencyContract` references an unused dependency type
 - Scope-based matching through type-level and assembly-level scopes
