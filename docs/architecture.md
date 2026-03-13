@@ -463,4 +463,4 @@ Current recommended delivery roadmap for this repository:
 
 If delivery risk changes, target and scope can be swapped without changing the end-state architecture.
 
-The current `.editorconfig` surface covers diagnostic severity and dependency collection toggles for method parameters, properties, object creation, and static member usage. Namespace-based target/scope inference and custom exclusion models remain out of scope.
+The current `.editorconfig` surface covers diagnostic severity and dependency collection toggles for method parameters, properties, object creation, and static member usage. Namespace-based target/scope inference is implemented only for final-segment fallback names in the current compilation. Richer namespace heuristics and custom exclusion models remain out of scope.

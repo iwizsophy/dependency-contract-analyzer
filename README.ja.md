@@ -138,7 +138,7 @@ public sealed class ImmutableCache
 
 この alias がある場合、`immutable` は `thread-safe` も満たすものとして扱われます。alias の多段解決に対応し、循環 alias は `DCA202` として報告します。
 
-v1 ではこれ以上の契約階層は導入せず、契約の包含は推移的 alias closure のみで表現します。target / scope は current compilation 内で明示的に宣言された属性だけを認識し、namespace ベース推定は v1 非対応です。
+契約階層は引き続き推移的 alias closure のみです。target / scope では明示属性を優先しつつ、type-level metadata がない場合は namespace 最終セグメントから fallback 名を推定します。`ReadModel` は `read-model` として扱われます。scope は assembly-level `ContractScope` がある場合、それを明示定義として優先し namespace 推定は行いません。
 
 ## 既定 Severity
 

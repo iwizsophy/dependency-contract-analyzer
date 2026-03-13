@@ -138,7 +138,7 @@ public sealed class ImmutableCache
 
 With this alias, `immutable` also satisfies `thread-safe`. Alias chains are supported, and cyclic alias definitions are reported as `DCA202`.
 
-In v1, alias semantics stop there: contract hierarchy is modeled only by transitive alias closure. Targets and scopes are recognized only from explicit attributes declared in the current compilation. Namespace-based inference is out of scope for v1.
+Contract hierarchy still stops at transitive alias closure. For targets and scopes, explicit attributes remain the primary metadata source, and the analyzer now infers a fallback name from the final namespace segment when type-level metadata is absent. `ReadModel` becomes `read-model`. For scopes, assembly-level `ContractScope` remains explicit metadata and suppresses namespace inference.
 
 ## Default severities
 

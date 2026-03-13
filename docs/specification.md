@@ -48,7 +48,7 @@ Still out of scope:
 
 | Item | Reason |
 | --- | --- |
-| Namespace-based target or scope inference | Explicit metadata only |
+| Namespace-based inference beyond final-segment normalization | Only the final namespace segment is inferred in the current implementation |
 
 ## 3. Attribute model
 
@@ -193,8 +193,10 @@ Current behavior:
 - `RequiresContractOnTarget` evaluates only dependencies whose declared targets match the normalized target name.
 - `RequiresContractOnScope` evaluates only dependencies whose declared scopes match the normalized scope name.
 - Dependencies outside the current compilation assembly are ignored for missing-contract checks.
-- Targets and scopes are recognized only from explicit attributes declared in the current compilation.
-- Namespace-based target or scope inference is out of scope for v1.
+- Type-level targets and scopes use explicit attributes first.
+- If a type has no explicit target, the analyzer infers one from the final namespace segment in the current compilation.
+- If a type has no explicit scope and the assembly has no assembly-level scope, the analyzer infers one from the final namespace segment in the current compilation.
+- Assembly-level scope remains explicit metadata and suppresses scope inference.
 
 ## 5. Name normalization rules
 
@@ -472,7 +474,7 @@ Representative scenarios include:
 
 - Contract hierarchies beyond alias implication
 - EditorConfig-based policy control beyond dependency collection toggles
-- Namespace-based metadata inference
+- Richer namespace metadata inference beyond final-segment normalization
 
 ## 13. Non-goals
 

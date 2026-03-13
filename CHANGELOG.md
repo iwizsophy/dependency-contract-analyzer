@@ -17,6 +17,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - GitHub issue templates for bug reports and feature requests
 - Sample consumer project with representative valid and invalid analyzer usage
 - `.editorconfig` policy toggles for method parameters, properties, object creation, and static member dependency analysis
+- Namespace-based fallback inference for target and scope names from final namespace segments
 - Dependency analysis for non-constructor method parameters
 - Dependency analysis for property types
 - Dependency analysis for `new` expressions, including target-typed object creation

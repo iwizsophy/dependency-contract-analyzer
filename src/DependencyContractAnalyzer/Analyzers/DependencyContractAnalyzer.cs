@@ -80,10 +80,10 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 contractAliasAttributeSymbol);
             var knownTargets = contractTargetAttributeSymbol is null
                 ? CreateEmptyNameSet()
-                : CollectKnownNames(startContext.Compilation.Assembly, contractTargetAttributeSymbol, includeAssemblyLevelDeclarations: false);
+                : CollectKnownTargets(startContext.Compilation.Assembly, contractTargetAttributeSymbol);
             var knownScopes = contractScopeAttributeSymbol is null
                 ? CreateEmptyNameSet()
-                : CollectKnownNames(startContext.Compilation.Assembly, contractScopeAttributeSymbol, includeAssemblyLevelDeclarations: true);
+                : CollectKnownScopes(startContext.Compilation.Assembly, contractScopeAttributeSymbol);
 
             if (!contractAliasResolver.Diagnostics.IsDefaultOrEmpty)
             {
@@ -738,7 +738,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 continue;
             }
 
-            AddNormalizedNames(current.GetAttributes(), contractTargetAttributeSymbol, 0, targets);
+            AddResolvedTargetNames(current, contractTargetAttributeSymbol, targets);
 
             if (current.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
             {
@@ -759,6 +759,11 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol contractScopeAttributeSymbol)
     {
         var scopes = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
+        var hasAssemblyLevelScopes = AddNormalizedNames(
+            type.ContainingAssembly.GetAttributes(),
+            contractScopeAttributeSymbol,
+            0,
+            scopes);
         var toVisit = new Stack<INamedTypeSymbol>();
         var visited = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
@@ -772,7 +777,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 continue;
             }
 
-            AddNormalizedNames(current.GetAttributes(), contractScopeAttributeSymbol, 0, scopes);
+            AddResolvedScopeNames(current, contractScopeAttributeSymbol, scopes, hasAssemblyLevelScopes);
 
             if (current.BaseType is { SpecialType: not SpecialType.System_Object } baseType)
             {
@@ -785,53 +790,89 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             }
         }
 
-        AddNormalizedNames(type.ContainingAssembly.GetAttributes(), contractScopeAttributeSymbol, 0, scopes);
-
         return scopes.ToImmutable();
     }
 
-    private static ImmutableHashSet<string> CollectKnownNames(
+    private static ImmutableHashSet<string> CollectKnownTargets(
         IAssemblySymbol assembly,
-        INamedTypeSymbol attributeSymbol,
-        bool includeAssemblyLevelDeclarations)
+        INamedTypeSymbol contractTargetAttributeSymbol)
     {
         var knownNames = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
-
-        if (includeAssemblyLevelDeclarations)
-        {
-            AddNormalizedNames(assembly.GetAttributes(), attributeSymbol, 0, knownNames);
-        }
-
-        AddKnownNames(assembly.GlobalNamespace, attributeSymbol, knownNames);
+        AddKnownTargets(assembly.GlobalNamespace, contractTargetAttributeSymbol, knownNames);
         return knownNames.ToImmutable();
     }
 
-    private static void AddKnownNames(
+    private static ImmutableHashSet<string> CollectKnownScopes(
+        IAssemblySymbol assembly,
+        INamedTypeSymbol contractScopeAttributeSymbol)
+    {
+        var knownNames = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
+        var hasAssemblyLevelScopes = AddNormalizedNames(
+            assembly.GetAttributes(),
+            contractScopeAttributeSymbol,
+            0,
+            knownNames);
+        AddKnownScopes(assembly.GlobalNamespace, contractScopeAttributeSymbol, knownNames, hasAssemblyLevelScopes);
+        return knownNames.ToImmutable();
+    }
+
+    private static void AddKnownTargets(
         INamespaceSymbol namespaceSymbol,
-        INamedTypeSymbol attributeSymbol,
+        INamedTypeSymbol contractTargetAttributeSymbol,
         ImmutableHashSet<string>.Builder knownNames)
     {
         foreach (var type in namespaceSymbol.GetTypeMembers())
         {
-            AddKnownNames(type, attributeSymbol, knownNames);
+            AddKnownTargets(type, contractTargetAttributeSymbol, knownNames);
         }
 
         foreach (var nestedNamespace in namespaceSymbol.GetNamespaceMembers())
         {
-            AddKnownNames(nestedNamespace, attributeSymbol, knownNames);
+            AddKnownTargets(nestedNamespace, contractTargetAttributeSymbol, knownNames);
         }
     }
 
-    private static void AddKnownNames(
+    private static void AddKnownTargets(
         INamedTypeSymbol type,
-        INamedTypeSymbol attributeSymbol,
+        INamedTypeSymbol contractTargetAttributeSymbol,
         ImmutableHashSet<string>.Builder knownNames)
     {
-        AddNormalizedNames(type.GetAttributes(), attributeSymbol, 0, knownNames);
+        AddResolvedTargetNames(type, contractTargetAttributeSymbol, knownNames);
 
         foreach (var nestedType in type.GetTypeMembers())
         {
-            AddKnownNames(nestedType, attributeSymbol, knownNames);
+            AddKnownTargets(nestedType, contractTargetAttributeSymbol, knownNames);
+        }
+    }
+
+    private static void AddKnownScopes(
+        INamespaceSymbol namespaceSymbol,
+        INamedTypeSymbol contractScopeAttributeSymbol,
+        ImmutableHashSet<string>.Builder knownNames,
+        bool hasAssemblyLevelScopes)
+    {
+        foreach (var type in namespaceSymbol.GetTypeMembers())
+        {
+            AddKnownScopes(type, contractScopeAttributeSymbol, knownNames, hasAssemblyLevelScopes);
+        }
+
+        foreach (var nestedNamespace in namespaceSymbol.GetNamespaceMembers())
+        {
+            AddKnownScopes(nestedNamespace, contractScopeAttributeSymbol, knownNames, hasAssemblyLevelScopes);
+        }
+    }
+
+    private static void AddKnownScopes(
+        INamedTypeSymbol type,
+        INamedTypeSymbol contractScopeAttributeSymbol,
+        ImmutableHashSet<string>.Builder knownNames,
+        bool hasAssemblyLevelScopes)
+    {
+        AddResolvedScopeNames(type, contractScopeAttributeSymbol, knownNames, hasAssemblyLevelScopes);
+
+        foreach (var nestedType in type.GetTypeMembers())
+        {
+            AddKnownScopes(nestedType, contractScopeAttributeSymbol, knownNames, hasAssemblyLevelScopes);
         }
     }
 
@@ -887,12 +928,14 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 contractName));
     }
 
-    private static void AddNormalizedNames(
+    private static bool AddNormalizedNames(
         ImmutableArray<AttributeData> attributes,
         INamedTypeSymbol expectedAttributeSymbol,
         int argumentIndex,
         ImmutableHashSet<string>.Builder values)
     {
+        var added = false;
+
         foreach (var attribute in attributes)
         {
             if (!attribute.AttributeClass.SymbolEquals(expectedAttributeSymbol) ||
@@ -905,8 +948,11 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             if (normalizedValue is not null)
             {
                 values.Add(normalizedValue);
+                added = true;
             }
         }
+
+        return added;
     }
 
     private static bool TryGetNamedTypeArgument(AttributeData attribute, int index, out INamedTypeSymbol dependencyType)
@@ -947,6 +993,40 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
     private static string GetDuplicateRequirementKey(INamedTypeSymbol dependencyType, string contractName) =>
         dependencyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) + "|" + contractName;
+
+    private static void AddResolvedTargetNames(
+        INamedTypeSymbol type,
+        INamedTypeSymbol contractTargetAttributeSymbol,
+        ImmutableHashSet<string>.Builder targetNames)
+    {
+        if (AddNormalizedNames(type.GetAttributes(), contractTargetAttributeSymbol, 0, targetNames))
+        {
+            return;
+        }
+
+        if (NamespaceNameInference.InferName(type.ContainingNamespace) is { } inferredName)
+        {
+            targetNames.Add(inferredName);
+        }
+    }
+
+    private static void AddResolvedScopeNames(
+        INamedTypeSymbol type,
+        INamedTypeSymbol contractScopeAttributeSymbol,
+        ImmutableHashSet<string>.Builder scopeNames,
+        bool hasAssemblyLevelScopes)
+    {
+        if (AddNormalizedNames(type.GetAttributes(), contractScopeAttributeSymbol, 0, scopeNames) ||
+            hasAssemblyLevelScopes)
+        {
+            return;
+        }
+
+        if (NamespaceNameInference.InferName(type.ContainingNamespace) is { } inferredName)
+        {
+            scopeNames.Add(inferredName);
+        }
+    }
 
     private interface IRequirement
     {

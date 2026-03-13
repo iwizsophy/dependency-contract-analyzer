@@ -866,6 +866,62 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task InfersScopeFromNamespaceLeafSegment()
+    {
+        const string source = """
+            namespace MyCompany.ApplicationService;
+
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class ServiceClock
+            {
+            }
+
+            [RequiresContractOnScope("application-service", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(ServiceClock clock)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task PrefersAssemblyScopeOverNamespaceInference()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: ContractScope("application")]
+
+            namespace MyCompany.Repository;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [{|#0:RequiresContractOnScope("repository", "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredScope)
+                .WithLocation(0)
+                .WithArguments("repository"));
+    }
+
+    [Fact]
     public async Task UsesScopeDeclaredOnImplementedInterfaces()
     {
         const string source = """
@@ -1183,6 +1239,88 @@ public sealed class DependencyContractAnalyzerTests
             """;
 
         await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task InfersTargetFromNamespaceLeafSegment()
+    {
+        const string source = """
+            namespace MyCompany.ReadModel;
+
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnTarget("read-model", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
+    public async Task PrefersExplicitTargetOverNamespaceInference()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            namespace MyCompany.Repository
+            {
+                [ContractTarget("storage")]
+                [ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+
+            namespace MyCompany.Application
+            {
+                [{|#0:RequiresContractOnTarget("repository", "thread-safe")|}]
+                public sealed class Consumer
+                {
+                    public Consumer(MyCompany.Repository.UserRepository repository)
+                    {
+                    }
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredTarget)
+                .WithLocation(0)
+                .WithArguments("repository"));
+    }
+
+    [Fact]
+    public async Task DoesNotInferTargetFromExternalDependencyNamespace()
+    {
+        const string source = """
+            using System.IO;
+            using DependencyContractAnalyzer;
+
+            [{|#0:RequiresContractOnTarget("io", "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(StringReader reader)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredTarget)
+                .WithLocation(0)
+                .WithArguments("io"));
     }
 
     [Fact]
