@@ -641,6 +641,39 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task InvalidBehaviorPresetFallsBackToDefaultBehavior()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            namespace MyCompany.ReadModels.Query
+            {
+                [ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+
+            [RequiresContractOnTarget("read-models-query", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(MyCompany.ReadModels.Query.UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "invalid"));
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UndeclaredRequiredTarget, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("read-models-query", diagnostic.GetMessage());
+    }
+
+    [Fact]
     public async Task ExplicitExternalDependencyPolicyOverridesStrictBehaviorPreset()
     {
         const string source = """
@@ -872,6 +905,44 @@ public sealed class DependencyContractAnalyzerTests
             ("dependency_contract_analyzer.report_unused_requirement_diagnostics", "false"));
 
         Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task InvalidRequirementDiagnosticSwitchesFallBackToReporting()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            [RequiresContractOnTarget("repository", "thread-safe")]
+            public sealed class Consumer
+            {
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.report_unused_requirement_diagnostics", "invalid"),
+            ("dependency_contract_analyzer.report_undeclared_requirement_diagnostics", "invalid"));
+
+        Assert.Collection(
+            diagnostics,
+            diagnostic =>
+            {
+                Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+                Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+                Assert.Contains("IFoo", diagnostic.GetMessage());
+            },
+            diagnostic =>
+            {
+                Assert.Equal(DiagnosticIds.UndeclaredRequiredTarget, diagnostic.Id);
+                Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+                Assert.Contains("repository", diagnostic.GetMessage());
+            });
     }
 
     [Fact]
@@ -2816,6 +2887,36 @@ public sealed class DependencyContractAnalyzerTests
         Assert.Equal(DiagnosticIds.UndeclaredRequiredTarget, diagnostic.Id);
         Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
         Assert.Contains("read-models-query", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task FallsBackToStrictPresetNamespaceInferenceWhenConfiguredValueIsInvalid()
+    {
+        const string source = """
+            namespace MyCompany.ReadModels.Query;
+
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class UserRepository
+            {
+            }
+
+            [RequiresContractOnTarget("read-models-query", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "strict"),
+            ("dependency_contract_analyzer.namespace_inference_max_segments", "invalid"));
+
+        Assert.Empty(diagnostics);
     }
 
     [Fact]

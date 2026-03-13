@@ -53,6 +53,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Regression tests for external alias/hierarchy implication graphs and silent referenced diagnostics
 - Regression tests for behavior-preset defaults and explicit override precedence
 - Regression tests for unused/undeclared requirement-diagnostic switches
+- Regression tests for editorconfig fallback semantics across behavior presets, namespace inference, and requirement-diagnostic switches
 
 ### Changed
 
