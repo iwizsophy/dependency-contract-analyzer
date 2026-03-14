@@ -48,6 +48,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Regression tests for property-only dependencies across dependency, target, and scope rules
 - Regression tests for `new` expression dependencies across dependency, target, and scope rules
 - Regression tests for static member usage across dependency, target, and scope rules
+- Regression tests for static event usage and enum-member exclusion in static dependency analysis
 - Regression tests for `DCA101` contract naming validation
 - Regression tests for external dependency metadata policy across dependency, target, and scope requirements
 - Regression tests for external alias/hierarchy implication graphs and silent referenced diagnostics

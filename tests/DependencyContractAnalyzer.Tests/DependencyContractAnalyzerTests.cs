@@ -1635,6 +1635,38 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task ReportsNoDiagnosticWhenStaticEventUsageProvidesRequiredContract()
+    {
+        const string source = """
+            using System;
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public static class Clock
+            {
+                public static event Action? Tick;
+
+                public static void Raise() => Tick?.Invoke();
+            }
+
+            [RequiresDependencyContract(typeof(Clock), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer()
+                {
+                    Clock.Tick += OnTick;
+                }
+
+                private static void OnTick()
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
+    }
+
+    [Fact]
     public async Task ReportsDiagnosticWhenStaticUsageAnalysisIsDisabledByEditorConfig()
     {
         const string source = """
@@ -1661,6 +1693,32 @@ public sealed class DependencyContractAnalyzerTests
         Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
         Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
         Assert.Contains("Clock", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task IgnoresEnumMemberStaticUsageAsDependencySource()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            public enum Status
+            {
+                Ready,
+            }
+
+            [RequiresDependencyContract(typeof(Status), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Status Read() => Status.Ready;
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(source);
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("Status", diagnostic.GetMessage());
     }
 
     // Owner exclusion, exact-match suppression, and member-source exclusion behavior.
