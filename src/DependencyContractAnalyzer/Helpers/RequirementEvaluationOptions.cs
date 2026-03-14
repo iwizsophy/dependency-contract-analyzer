@@ -32,14 +32,8 @@ internal readonly struct RequirementEvaluationOptions
     {
         // Keep these switches source-scoped like the dependency-source toggles so
         // teams can relax migration-heavy areas without changing the whole solution.
-        var options = AnalyzerConfigOptionReader.GetSourceOptions(analyzerConfigOptionsProvider, type);
-        if (options is null)
-        {
-            return Default;
-        }
-
         return new RequirementEvaluationOptions(
-            AnalyzerConfigOptionReader.GetBooleanOption(options, ReportUnusedRequirementDiagnosticsKey, defaultValue: true),
-            AnalyzerConfigOptionReader.GetBooleanOption(options, ReportUndeclaredRequirementDiagnosticsKey, defaultValue: true));
+            AnalyzerConfigOptionReader.GetBooleanOption(analyzerConfigOptionsProvider, type, ReportUnusedRequirementDiagnosticsKey, defaultValue: true),
+            AnalyzerConfigOptionReader.GetBooleanOption(analyzerConfigOptionsProvider, type, ReportUndeclaredRequirementDiagnosticsKey, defaultValue: true));
     }
 }

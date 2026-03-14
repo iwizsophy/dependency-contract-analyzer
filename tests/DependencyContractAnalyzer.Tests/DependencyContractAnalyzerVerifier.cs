@@ -54,6 +54,21 @@ internal static class DependencyContractAnalyzerVerifier
             ImmutableArray<MetadataReference>.Empty);
     }
 
+    public static Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsWithSourcesAndPathOptionsAsync(
+        IReadOnlyList<(string Path, string Source)> sources,
+        IReadOnlyList<(string Path, (string Key, string Value)[] Options)> pathOptions,
+        params (string Key, string Value)[] globalOptions)
+    {
+        var syntaxTrees = sources
+            .Select(static sourceFile => ParseSource(sourceFile.Source, sourceFile.Path))
+            .ToArray();
+        var compilation = CreateCompilation(
+            "DependencyContractAnalyzer.Tests.MultiFile.EditorConfig",
+            syntaxTrees,
+            DefaultMetadataReferences);
+        return RunAnalyzerAsync(compilation, globalOptions, pathOptions);
+    }
+
     public static Task<ImmutableArray<Diagnostic>> GetAnalyzerDiagnosticsWithAdditionalReferenceSourcesAsync(
         string source,
         string[] additionalReferenceSources,
@@ -120,18 +135,29 @@ internal static class DependencyContractAnalyzerVerifier
 
     private sealed class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
     {
-        private readonly AnalyzerConfigOptions _options;
+        private readonly AnalyzerConfigOptions _globalOptions;
+        private readonly ImmutableDictionary<string, AnalyzerConfigOptions> _pathOptions;
 
-        public TestAnalyzerConfigOptionsProvider(IEnumerable<(string Key, string Value)> options)
+        public TestAnalyzerConfigOptionsProvider(
+            IEnumerable<(string Key, string Value)> globalOptions,
+            IEnumerable<(string Path, (string Key, string Value)[] Options)> pathOptions)
         {
-            _options = new TestAnalyzerConfigOptions(options);
+            _globalOptions = new TestAnalyzerConfigOptions(globalOptions);
+            _pathOptions = pathOptions.ToImmutableDictionary(
+                static pathOption => pathOption.Path,
+                pathOption => (AnalyzerConfigOptions)new TestAnalyzerConfigOptions(globalOptions.Concat(pathOption.Options)),
+                StringComparer.OrdinalIgnoreCase);
         }
 
-        public override AnalyzerConfigOptions GlobalOptions => _options;
+        public override AnalyzerConfigOptions GlobalOptions => _globalOptions;
 
-        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => _options;
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) =>
+            tree.FilePath is not null &&
+            _pathOptions.TryGetValue(tree.FilePath, out var options)
+                ? options
+                : _globalOptions;
 
-        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => _options;
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => _globalOptions;
     }
 
     private sealed class TestAnalyzerConfigOptions : AnalyzerConfigOptions
@@ -140,7 +166,11 @@ internal static class DependencyContractAnalyzerVerifier
 
         public TestAnalyzerConfigOptions(IEnumerable<(string Key, string Value)> options)
         {
-            _options = options.ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+            _options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var (key, value) in options)
+            {
+                _options[key] = value;
+            }
         }
 
         public override bool TryGetValue(string key, out string value) =>
@@ -194,10 +224,21 @@ internal static class DependencyContractAnalyzerVerifier
         CSharpCompilation compilation,
         IEnumerable<(string Key, string Value)> options)
     {
+        return await RunAnalyzerAsync(
+            compilation,
+            options,
+            Array.Empty<(string Path, (string Key, string Value)[] Options)>());
+    }
+
+    private static async Task<ImmutableArray<Diagnostic>> RunAnalyzerAsync(
+        CSharpCompilation compilation,
+        IEnumerable<(string Key, string Value)> globalOptions,
+        IEnumerable<(string Path, (string Key, string Value)[] Options)> pathOptions)
+    {
         var analyzer = new DependencyContractAnalyzerDiagnosticAnalyzer();
         var analyzerOptions = new AnalyzerOptions(
             ImmutableArray<AdditionalText>.Empty,
-            new TestAnalyzerConfigOptionsProvider(options));
+            new TestAnalyzerConfigOptionsProvider(globalOptions, pathOptions));
         var compilationWithAnalyzers = compilation.WithAnalyzers(
             ImmutableArray.Create<DiagnosticAnalyzer>(analyzer),
             new CompilationWithAnalyzersOptions(

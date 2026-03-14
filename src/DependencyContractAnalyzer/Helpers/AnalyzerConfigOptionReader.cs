@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 
@@ -18,28 +21,65 @@ internal static class AnalyzerConfigOptionReader
         return rawValue.Trim().ToLowerInvariant();
     }
 
-    public static AnalyzerConfigOptions? GetSourceOptions(
-        AnalyzerConfigOptionsProvider analyzerConfigOptionsProvider,
-        INamedTypeSymbol type)
-    {
-        var sourceTree = GetSourceTree(type);
-        return sourceTree is null
-            ? null
-            : analyzerConfigOptionsProvider.GetOptions(sourceTree);
-    }
-
     public static bool GetBooleanOption(
-        AnalyzerConfigOptions options,
+        AnalyzerConfigOptionsProvider analyzerConfigOptionsProvider,
+        INamedTypeSymbol type,
         string key,
         bool defaultValue)
     {
-        if (!options.TryGetValue(key, out var rawValue) ||
-            !bool.TryParse(rawValue, out var parsedValue))
+        var resolvedValue = defaultValue;
+        var hasExplicitValue = false;
+
+        foreach (var options in EnumerateSourceOptions(analyzerConfigOptionsProvider, type))
         {
-            return defaultValue;
+            if (!options.TryGetValue(key, out var rawValue) ||
+                rawValue is null ||
+                !bool.TryParse(rawValue.Trim(), out var parsedValue))
+            {
+                continue;
+            }
+
+            // Partial declarations can span editorconfig sections. Merge explicit values
+            // conservatively so a single "false" cannot be bypassed by declaration order.
+            resolvedValue = hasExplicitValue
+                ? resolvedValue && parsedValue
+                : parsedValue;
+            hasExplicitValue = true;
         }
 
-        return parsedValue;
+        return hasExplicitValue
+            ? resolvedValue
+            : defaultValue;
+    }
+
+    public static string[] GetListOption(
+        AnalyzerConfigOptionsProvider analyzerConfigOptionsProvider,
+        INamedTypeSymbol type,
+        string key)
+    {
+        var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var options in EnumerateSourceOptions(analyzerConfigOptionsProvider, type))
+        {
+            if (!options.TryGetValue(key, out var rawValue) ||
+                string.IsNullOrWhiteSpace(rawValue))
+            {
+                continue;
+            }
+
+            foreach (var value in rawValue.Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var trimmedValue = value.Trim();
+                if (trimmedValue.Length > 0)
+                {
+                    values.Add(trimmedValue);
+                }
+            }
+        }
+
+        return values.Count == 0
+            ? Array.Empty<string>()
+            : values.OrderBy(static value => value, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
     public static int GetGlobalIntOption(
@@ -60,16 +100,19 @@ internal static class AnalyzerConfigOptionReader
         return parsedValue;
     }
 
-    private static SyntaxTree? GetSourceTree(INamedTypeSymbol type)
+    private static IEnumerable<AnalyzerConfigOptions> EnumerateSourceOptions(
+        AnalyzerConfigOptionsProvider analyzerConfigOptionsProvider,
+        INamedTypeSymbol type)
     {
+        var seenSourceTrees = new HashSet<SyntaxTree>();
+
         foreach (var location in type.Locations)
         {
-            if (location.IsInSource && location.SourceTree is not null)
+            if (location is { IsInSource: true, SourceTree: { } sourceTree } &&
+                seenSourceTrees.Add(sourceTree))
             {
-                return location.SourceTree;
+                yield return analyzerConfigOptionsProvider.GetOptions(sourceTree);
             }
         }
-
-        return null;
     }
 }

@@ -57,6 +57,11 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Regression tests for exclusion-list parsing and nested type exclusion behavior
 - Local and CI coverage collection via `coverlet.collector` and `XPlat Code Coverage`
 - Regression tests for open-generic dependency matching and invalid namespace-segment inference behavior
+- Multi-file verifier coverage for path-specific analyzer config options on partial types
+
+### Fixed
+
+- Source-scoped analyzer options now merge deterministically across partial type declarations instead of depending on the first declaring file
 
 ### Changed
 

@@ -60,30 +60,17 @@ internal readonly struct DependencyCollectionOptions
         INamedTypeSymbol type)
     {
         var behaviorPreset = BehaviorPresetOptions.Create(analyzerConfigOptionsProvider);
-        var options = AnalyzerConfigOptionReader.GetSourceOptions(analyzerConfigOptionsProvider, type);
-        if (options is null)
-        {
-            // Metadata-only types cannot map back to a source-specific editorconfig
-            // section, so fall back to preset-derived defaults for all optional sources.
-            return new DependencyCollectionOptions(
-                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
-                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
-                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
-                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
-                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
-                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled,
-                behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled);
-        }
+        var defaultToggle = behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled;
 
         // Source-scoped toggles allow teams to ratchet dependency extraction up or down
         // for specific files without changing the whole compilation at once.
         return new DependencyCollectionOptions(
-            AnalyzerConfigOptionReader.GetBooleanOption(options, AnalyzeFieldsKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
-            AnalyzerConfigOptionReader.GetBooleanOption(options, AnalyzeBaseTypesKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
-            AnalyzerConfigOptionReader.GetBooleanOption(options, AnalyzeInterfaceImplementationsKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
-            AnalyzerConfigOptionReader.GetBooleanOption(options, AnalyzeMethodParametersKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
-            AnalyzerConfigOptionReader.GetBooleanOption(options, AnalyzePropertiesKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
-            AnalyzerConfigOptionReader.GetBooleanOption(options, AnalyzeObjectCreationKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled),
-            AnalyzerConfigOptionReader.GetBooleanOption(options, AnalyzeStaticMembersKey, behaviorPreset.DefaultOptionalDependencySourceAnalysisEnabled));
+            AnalyzerConfigOptionReader.GetBooleanOption(analyzerConfigOptionsProvider, type, AnalyzeFieldsKey, defaultToggle),
+            AnalyzerConfigOptionReader.GetBooleanOption(analyzerConfigOptionsProvider, type, AnalyzeBaseTypesKey, defaultToggle),
+            AnalyzerConfigOptionReader.GetBooleanOption(analyzerConfigOptionsProvider, type, AnalyzeInterfaceImplementationsKey, defaultToggle),
+            AnalyzerConfigOptionReader.GetBooleanOption(analyzerConfigOptionsProvider, type, AnalyzeMethodParametersKey, defaultToggle),
+            AnalyzerConfigOptionReader.GetBooleanOption(analyzerConfigOptionsProvider, type, AnalyzePropertiesKey, defaultToggle),
+            AnalyzerConfigOptionReader.GetBooleanOption(analyzerConfigOptionsProvider, type, AnalyzeObjectCreationKey, defaultToggle),
+            AnalyzerConfigOptionReader.GetBooleanOption(analyzerConfigOptionsProvider, type, AnalyzeStaticMembersKey, defaultToggle));
     }
 }

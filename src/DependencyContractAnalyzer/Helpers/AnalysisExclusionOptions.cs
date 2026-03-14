@@ -27,17 +27,11 @@ internal readonly struct AnalysisExclusionOptions
         AnalyzerConfigOptionsProvider analyzerConfigOptionsProvider,
         INamedTypeSymbol type)
     {
-        var options = AnalyzerConfigOptionReader.GetSourceOptions(analyzerConfigOptionsProvider, type);
-        if (options is null)
-        {
-            return new AnalysisExclusionOptions(Array.Empty<string>(), Array.Empty<string>());
-        }
-
         // Exclusion lists are source-scoped so teams can carve out migration-heavy
         // files or namespaces gradually without suppressing the entire solution.
         return new AnalysisExclusionOptions(
-            GetListOption(options, ExcludedNamespacesKey),
-            GetListOption(options, ExcludedTypesKey));
+            AnalyzerConfigOptionReader.GetListOption(analyzerConfigOptionsProvider, type, ExcludedNamespacesKey),
+            AnalyzerConfigOptionReader.GetListOption(analyzerConfigOptionsProvider, type, ExcludedTypesKey));
     }
 
     public bool ShouldSkipType(INamedTypeSymbol type)
@@ -66,21 +60,5 @@ internal readonly struct AnalysisExclusionOptions
         }
 
         return false;
-    }
-
-    private static string[] GetListOption(AnalyzerConfigOptions options, string key)
-    {
-        if (!options.TryGetValue(key, out var rawValue) ||
-            string.IsNullOrWhiteSpace(rawValue))
-        {
-            return Array.Empty<string>();
-        }
-
-        return rawValue
-            .Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
-            .Select(static value => value.Trim())
-            .Where(static value => value.Length > 0)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
     }
 }

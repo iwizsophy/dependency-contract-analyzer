@@ -842,6 +842,47 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task MergesSourceToggleAcrossPartialTypeDeclarations()
+    {
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourcesAndPathOptionsAsync(
+            new (string Path, string Source)[]
+            {
+                ("/0/Consumer.Part1.cs", """
+                    using DependencyContractAnalyzer;
+
+                    public interface IFoo
+                    {
+                    }
+
+                    [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+                    public sealed partial class Consumer
+                    {
+                    }
+                    """),
+                ("/0/Consumer.Part2.cs", """
+                    public sealed partial class Consumer
+                    {
+                        public void Execute(IFoo foo)
+                        {
+                        }
+                    }
+                    """),
+            },
+            new (string Path, (string Key, string Value)[] Options)[]
+            {
+                ("/0/Consumer.Part2.cs", new[]
+                {
+                    ("dependency_contract_analyzer.analyze_method_parameters", "false"),
+                }),
+            });
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
+        Assert.Contains("IFoo", diagnostic.GetMessage());
+    }
+
+    [Fact]
     public async Task StrictBehaviorPresetUsesTwoSegmentNamespaceInferenceByDefault()
     {
         const string source = """
@@ -1703,6 +1744,48 @@ public sealed class DependencyContractAnalyzerTests
         var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
             source,
             ("dependency_contract_analyzer.excluded_types", "MyCompany.Application.Consumer"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task SkipsAnalyzerWhenPartialTypeIsExcludedFromAnyDeclaringFile()
+    {
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourcesAndPathOptionsAsync(
+            new (string Path, string Source)[]
+            {
+                ("/0/Consumer.Part1.cs", """
+                    namespace MyCompany.Application;
+
+                    using DependencyContractAnalyzer;
+
+                    public interface IFoo
+                    {
+                    }
+
+                    [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+                    public sealed partial class Consumer
+                    {
+                        public Consumer(IFoo foo)
+                        {
+                        }
+                    }
+                    """),
+                ("/0/Consumer.Part2.cs", """
+                    namespace MyCompany.Application;
+
+                    public sealed partial class Consumer
+                    {
+                    }
+                    """),
+            },
+            new (string Path, (string Key, string Value)[] Options)[]
+            {
+                ("/0/Consumer.Part2.cs", new[]
+                {
+                    ("dependency_contract_analyzer.excluded_types", "MyCompany.Application.Consumer"),
+                }),
+            });
 
         Assert.Empty(diagnostics);
     }
