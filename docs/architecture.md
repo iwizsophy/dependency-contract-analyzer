@@ -475,29 +475,3 @@ It can express:
 - future ArchUnit-like extensions
 
 The package name can stay `DependencyContractAnalyzer`, but the design direction is much closer to an architecture analyzer platform.
-
-## 12. Delivery roadmap
-
-The repository roadmap and the rule engine precedence are separate concerns.
-
-The original staged rollout for the core feature set was the following, and the repository has now implemented all v1-v4 equivalents:
-
-1. v1: `ProvidesContract`, `RequiresDependencyContract`, strong dependency extraction, `DCA001`, `DCA002` [done]
-2. v2: `ContractScope`, `RequiresContractOnScope` [done]
-3. v3: `ContractTarget`, `RequiresContractOnTarget` [done]
-4. v4: `ContractAlias`, alias resolution, cycle detection [done]
-
-If delivery risk changed, target and scope could have been swapped without changing the end-state architecture.
-
-Beyond v4, the repository has already shipped several cross-cutting extensions:
-
-- `.editorconfig` control over dependency-source toggles, requirement-diagnostic switches, owner exclusions, and severity
-- `behavior_preset`, `namespace_inference_max_segments`, and `external_dependency_policy`
-- namespace-based fallback inference for target and scope names
-- source-scoped option merging across partial owner-type declarations
-- custom exclusion attributes and exact-match suppression attributes
-- external dependency metadata reading plus combined local/referenced implication-graph expansion
-
-If this section is read as a forward roadmap, the main remaining gap is richer namespace-based inference. The core contract model and its surrounding policy surface have already progressed beyond the original staged rollout.
-
-The current `.editorconfig` surface covers diagnostic severity, `behavior_preset`, dependency collection toggles for fields, base types, interface implementations, method parameters, properties, object creation, and static member usage, `report_unused_requirement_diagnostics`, `report_undeclared_requirement_diagnostics`, owner-type exclusion by namespace or fully qualified type name, `namespace_inference_max_segments` for leaf or trailing two-segment fallback inference, and `external_dependency_policy` for ignoring or reading explicit metadata from referenced assemblies. Custom exclusion attributes are implemented for assemblies and owner types. `ExcludeDependencyContractSourceAttribute` is implemented for constructors, methods, properties, and fields. Exact-match requirement suppression attributes are implemented on owner types for dependency, target, and scope requirements. `behavior_preset` shifts the default behavior of source toggles, namespace inference, and external dependency policy, but explicit per-option settings continue to win. Source-scoped options are merged across all partial declarations of the owner type: boolean options use conservative merge semantics so any explicit `false` wins, while list-valued exclusions union distinct values. The requirement-diagnostic switches are independent of `behavior_preset`; disabling undeclared requirement diagnostics allows target/scope evaluation to continue past the undeclared check. Namespace-based target/scope inference is implemented for final-segment fallback names by default and optional trailing two-segment fallback names in the current compilation. In `metadata` external-dependency mode, referenced assemblies contribute explicit provided-contract, target, and scope metadata plus `ContractAlias` / `ContractHierarchy` implication edges. Local and referenced implication graphs are expanded together for external dependencies, while diagnostics for referenced implication definitions remain suppressed in the consuming compilation. Static member dependency analysis includes methods, properties, fields, events, and `using static` imports, but still excludes enum members. Namespace inference and undeclared target/scope validation remain current-compilation-only unless the undeclared-diagnostic switch is disabled. Richer namespace heuristics remain out of scope.
