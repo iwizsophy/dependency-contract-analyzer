@@ -77,6 +77,8 @@ internal static class AnalyzerConfigOptionReader
             }
         }
 
+        // Keep the merged list stable so exclusion handling and regression tests do not
+        // depend on the compiler's partial-declaration location ordering.
         return values.Count == 0
             ? Array.Empty<string>()
             : values.OrderBy(static value => value, StringComparer.OrdinalIgnoreCase).ToArray();
@@ -108,6 +110,8 @@ internal static class AnalyzerConfigOptionReader
 
         foreach (var location in type.Locations)
         {
+            // Partial types can report multiple source locations; de-duplicate trees so
+            // per-file editorconfig sections are merged once each.
             if (location is { IsInSource: true, SourceTree: { } sourceTree } &&
                 seenSourceTrees.Add(sourceTree))
             {

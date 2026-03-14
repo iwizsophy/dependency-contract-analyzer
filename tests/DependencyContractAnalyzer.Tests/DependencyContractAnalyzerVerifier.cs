@@ -59,6 +59,8 @@ internal static class DependencyContractAnalyzerVerifier
         IReadOnlyList<(string Path, (string Key, string Value)[] Options)> pathOptions,
         params (string Key, string Value)[] globalOptions)
     {
+        // Path-aware analyzer config tests need explicit file names so the verifier can
+        // emulate separate editorconfig sections for partial declarations.
         var syntaxTrees = sources
             .Select(static sourceFile => ParseSource(sourceFile.Source, sourceFile.Path))
             .ToArray();
@@ -143,6 +145,8 @@ internal static class DependencyContractAnalyzerVerifier
             IEnumerable<(string Path, (string Key, string Value)[] Options)> pathOptions)
         {
             _globalOptions = new TestAnalyzerConfigOptions(globalOptions);
+            // Mirror editorconfig precedence by starting from the global option set and
+            // letting file-specific values override keys for that path only.
             _pathOptions = pathOptions.ToImmutableDictionary(
                 static pathOption => pathOption.Path,
                 pathOption => (AnalyzerConfigOptions)new TestAnalyzerConfigOptions(globalOptions.Concat(pathOption.Options)),
@@ -169,6 +173,8 @@ internal static class DependencyContractAnalyzerVerifier
             _options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var (key, value) in options)
             {
+                // Later values override earlier ones so concatenated global/path options
+                // behave like layered editorconfig entries.
                 _options[key] = value;
             }
         }
