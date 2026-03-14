@@ -486,13 +486,24 @@ Evaluate(consumer, dependency) -> violations
 
 リポジトリの実装ロードマップと、ルールエンジン内の評価優先順位は別の話です。
 
-このリポジトリでは、現時点では次の段階的導入を推奨します。
+このリポジトリで当初想定していたコア機能の段階導入は次で、現在は v1-v4 相当をすべて実装済みです。
 
-1. v1: `ProvidesContract`, `RequiresDependencyContract`, 強い依存抽出, `DCA001`, `DCA002`
-2. v2: `ContractScope`, `RequiresContractOnScope`
-3. v3: `ContractTarget`, `RequiresContractOnTarget`
-4. v4: `ContractAlias`, alias 解決, 循環検知
+1. v1: `ProvidesContract`, `RequiresDependencyContract`, 強い依存抽出, `DCA001`, `DCA002` [完了]
+2. v2: `ContractScope`, `RequiresContractOnScope` [完了]
+3. v3: `ContractTarget`, `RequiresContractOnTarget` [完了]
+4. v4: `ContractAlias`, alias 解決, 循環検知 [完了]
 
-実装リスクや需要に応じて v2 と v3 は入れ替えても、最終形のアーキテクチャ自体は変わりません。
+実装リスクや需要に応じて v2 と v3 は入れ替えても、最終形のアーキテクチャ自体は変わりませんでした。
+
+v4 以降も、現在は次の横断機能まで実装済みです。
+
+- `.editorconfig` による dependency-source toggle、requirement diagnostic switch、owner exclusion、severity 制御
+- `behavior_preset`、`namespace_inference_max_segments`、`external_dependency_policy`
+- target / scope の namespace ベース fallback 推定
+- partial owner type に対する source-scoped option の merge
+- custom exclusion 属性と exact-match suppression 属性
+- external dependency metadata 読み取りと local + referenced implication graph の統合展開
+
+今後のロードマップとして読むべき主な未対応項目は、現時点ではより高度な namespace ベース推定です。コア契約モデルとその周辺ポリシー surface は、すでに初期ロードマップを越えて実装が進んでいます。
 
 現在の `.editorconfig` 対応は Diagnostic severity に加え、`behavior_preset`、field / base type / interface implementation / method parameter / property / object creation / static member 利用の依存抽出トグル、`report_unused_requirement_diagnostics`、`report_undeclared_requirement_diagnostics`、namespace / fully qualified type 名による owner type exclusion、leaf または trailing 2-segment fallback を選ぶ `namespace_inference_max_segments`、そして参照先 assembly を無視するか explicit metadata を読むかを切り替える `external_dependency_policy` を含みます。独自 exclusion 属性は assembly と owner type に対して実装済みです。`ExcludeDependencyContractSourceAttribute` は constructor / method / property / field に対して実装済みです。dependency / target / scope requirement に対する exact-match suppression 属性も owner type に実装済みです。`behavior_preset` は source toggle、namespace inference、external dependency policy の既定挙動をまとめて切り替えますが、個別 option が常に優先します。source-scoped option は owner type のすべての partial 宣言をまとめて merge され、boolean option はどこか 1 つの宣言で明示的に `false` が指定されるとその type 全体で `false` になり、list-valued exclusion は重複を除いて union されます。requirement diagnostic switch は `behavior_preset` とは独立で、undeclared requirement diagnostic を無効化すると target / scope evaluation は undeclared check を越えて継続します。namespace ベースの target / scope 推定は既定で current compilation 内の最終セグメント fallback を使い、必要に応じて trailing 2-segment fallback も使えます。`metadata` の external dependency mode では、参照先 assembly は explicit provided-contract / target / scope metadata に加えて `ContractAlias` / `ContractHierarchy` の implication edge も供給します。local と referenced の implication graph は外部 dependency に対してまとめて展開し、参照先包含定義の診断は consumer compilation では抑止します。static member 依存解析は method / property / field / event と `using static` を含みますが、enum member は引き続き除外します。namespace inference と undeclared target / scope 判定は、undeclared diagnostic switch を無効化しない限り current compilation のままです。より高度な推定は引き続き非対応です。

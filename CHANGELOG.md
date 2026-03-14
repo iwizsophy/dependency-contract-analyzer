@@ -62,6 +62,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Changed
 
+- Corrected the architecture roadmap to mark v1-v4 as completed and describe post-v4 delivered extensions
 - Product documentation now describes partial-type source-scoped option merge semantics and the exact boundaries of static-member dependency analysis
 - Lowered `DCA205` and `DCA206` default severity from `Warning` to `Info`
 - Updated README and development guides to describe the current repository state instead of planned-only wording
