@@ -11,7 +11,7 @@ Its core concept is:
 ## Status
 
 - Implemented analyzer rules: `ProvidesContract`, `RequiresDependencyContract`, `ContractTarget`, `RequiresContractOnTarget`, `ContractScope`, `RequiresContractOnScope`, `ContractAlias`, `ContractHierarchy`
-- Dependency extraction currently covers constructor parameters, non-constructor method parameters, property types, fields, `new` expressions, static member usage, base types, and implemented interfaces
+- Dependency extraction currently covers constructor parameters, non-constructor method parameters, property types, fields, `new` expressions, static member usage (including static events and `using static` imports, but excluding enum members), base types, and implemented interfaces
 - Package ID: `DependencyContractAnalyzer`
 - Implementation scope for the first release is tracked in [docs/specification.md](docs/specification.md)
 - The intended end-state architecture is tracked in [docs/architecture.md](docs/architecture.md)
@@ -174,6 +174,8 @@ Under `behavior_preset = default`, all `analyze_*` options default to `true`. Co
 - `relaxed`: disables optional dependency-source toggles, disables namespace inference, and defaults `external_dependency_policy` to `ignore`
 
 Explicit per-option settings always override the preset. For example, `analyze_method_parameters = true`, `namespace_inference_max_segments = 2`, or `external_dependency_policy = metadata` each take precedence over `behavior_preset`. Exclusion lists and diagnostic severity remain separate controls.
+
+Source-scoped options apply across all declaring files of a partial owner type. Boolean source-scoped options (`analyze_*`, `report_*`) merge conservatively, so any explicit `false` disables that option for the type. List-valued source-scoped options (`excluded_namespaces`, `excluded_types`) merge by distinct union across declarations. Global options such as `behavior_preset`, `namespace_inference_max_segments`, and `external_dependency_policy` remain compilation-wide.
 
 `report_unused_requirement_diagnostics` controls `DCA002`, `DCA205`, and `DCA206`. `report_undeclared_requirement_diagnostics` controls `DCA200` and `DCA201`. Both default to `true`, and invalid values fall back to the default. When undeclared requirement diagnostics are disabled, target and scope requirements continue to evaluate matching dependencies instead of stopping at the undeclared check.
 

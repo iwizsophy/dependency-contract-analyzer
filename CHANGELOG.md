@@ -60,12 +60,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Regression tests for open-generic dependency matching and invalid namespace-segment inference behavior
 - Multi-file verifier coverage for path-specific analyzer config options on partial types
 
-### Fixed
-
-- Source-scoped analyzer options now merge deterministically across partial type declarations instead of depending on the first declaring file
-
 ### Changed
 
+- Product documentation now describes partial-type source-scoped option merge semantics and the exact boundaries of static-member dependency analysis
 - Lowered `DCA205` and `DCA206` default severity from `Warning` to `Info`
 - Updated README and development guides to describe the current repository state instead of planned-only wording
 - Kept the runnable sample project warning-free by moving representative invalid cases into sample documentation snippets
@@ -85,6 +82,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Fixed
 
+- Source-scoped analyzer options now merge deterministically across partial type declarations instead of depending on the first declaring file
 - Aligned invalid `external_dependency_policy` values with the documented preset-derived fallback behavior
 
 ### Removed

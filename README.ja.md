@@ -11,7 +11,7 @@
 ## 現在の状態
 
 - 実装済み Analyzer ルール: `ProvidesContract`, `RequiresDependencyContract`, `ContractTarget`, `RequiresContractOnTarget`, `ContractScope`, `RequiresContractOnScope`, `ContractAlias`, `ContractHierarchy`
-- 依存抽出の対象は現在、コンストラクタ引数、コンストラクタ以外のメソッド引数、プロパティ型、フィールド型、`new` 式、static メンバー利用、継承、実装インタフェースです
+- 依存抽出の対象は現在、コンストラクタ引数、コンストラクタ以外のメソッド引数、プロパティ型、フィールド型、`new` 式、static メンバー利用（static event と `using static` を含み、enum member は除外）、継承、実装インタフェースです
 - パッケージ ID は `DependencyContractAnalyzer` です
 - 初期実装スコープは [docs/specification.ja.md](docs/specification.ja.md) にまとめています
 - 最終完成形の設計は [docs/architecture.ja.md](docs/architecture.ja.md) にまとめています
@@ -174,6 +174,8 @@ public sealed class SnapshotCache
 - `relaxed`: optional dependency-source toggle を無効化し、namespace inference を無効化し、`external_dependency_policy = ignore` を既定にします
 
 個別 option は常に preset より優先します。たとえば `analyze_method_parameters = true`、`namespace_inference_max_segments = 2`、`external_dependency_policy = metadata` は `behavior_preset` より優先されます。exclusion list と diagnostic severity は別制御です。
+
+source-scoped option は partial owner type のすべての宣言ファイルをまとめて評価します。boolean の source-scoped option（`analyze_*`、`report_*`）は保守的に merge され、どこか 1 つの宣言で明示的に `false` が指定されるとその type 全体で無効になります。list-valued の source-scoped option（`excluded_namespaces`、`excluded_types`）は宣言全体で重複を除いて union されます。`behavior_preset`、`namespace_inference_max_segments`、`external_dependency_policy` のような global option は compilation 単位のままです。
 
 `report_unused_requirement_diagnostics` は `DCA002`、`DCA205`、`DCA206` を制御し、`report_undeclared_requirement_diagnostics` は `DCA200`、`DCA201` を制御します。どちらも既定値は `true` で、不正値は既定値へフォールバックします。undeclared requirement diagnostics を無効化した場合、target / scope requirement は undeclared check で停止せず、そのまま一致する dependency 評価を続けます。
 
