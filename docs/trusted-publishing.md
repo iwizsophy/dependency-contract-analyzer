@@ -28,8 +28,7 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 - Manual `workflow_dispatch` runs are validation-only, may build/test/pack/upload artifacts, and do not publish packages.
 - Manual validation runs are allowed only on `develop` and `main`.
 - Published release tags must point to commits already merged into `main`.
-- Annotated tags are required immediately. Workflow-level validation may
-  be added later as separately tracked automation.
+- The publish workflow validates that release tags are annotated tags.
 - The current `publish.yml` workflow publishes to `nuget.org` only. `nugettest.org` validation is not supported by the current workflow.
 - GitHub Releases should be created from release tags on `main`.
 - Release notes should reference `CHANGELOG.md`.

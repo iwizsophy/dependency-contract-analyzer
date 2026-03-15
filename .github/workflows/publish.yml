@@ -57,6 +57,26 @@ jobs:
             throw "Release tags must use the format v<major>.<minor>.<patch>."
           }
 
+      - name: Validate release tag is annotated
+        if: env.SHOULD_PUBLISH == 'true'
+        shell: pwsh
+        run: |
+          $tagRef = "refs/tags/$env:GITHUB_REF_NAME"
+
+          git fetch origin "$tagRef:$tagRef" --force
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to fetch release tag metadata."
+          }
+
+          $objectType = (git cat-file -t $tagRef).Trim()
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to resolve release tag object type."
+          }
+
+          if ($objectType -ne 'tag') {
+            throw "Release tags must be annotated tags."
+          }
+
       - name: Validate tag commit is on main
         if: env.SHOULD_PUBLISH == 'true'
         shell: pwsh

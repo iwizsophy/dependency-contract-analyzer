@@ -144,8 +144,7 @@ Releases must use a Pull Request from `develop` into `main`.
 -   GitHub Releases are created from release tags on `main`
 -   manual publish workflow dispatches are validation-only and may run
     only for `develop` and `main`
--   annotated tags are required immediately; workflow-level validation
-    may follow as separately tracked automation work
+-   publish workflow validation enforces annotated release tags
 
 The current required status check is `build-test-pack`. If CI is split
 into multiple jobs later, update the required-check policy at the same
