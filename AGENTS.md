@@ -128,10 +128,6 @@ Direct pushes to `main` or `develop` are not allowed. All changes must
 be merged via Pull Requests with at least one approval and passing
 checks.
 
-`master` is transitional only. Keep it until `main` has been aligned and
-all references have been removed, then delete it. Track `master`
-retirement in a separate GitHub Issue.
-
 ------------------------------------------------------------------------
 
 # Release Flow

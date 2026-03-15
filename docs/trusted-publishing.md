@@ -40,9 +40,6 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 - `develop`: default branch and integration branch
 - `main`: stable release branch for nuget.org publishing
 
-`master` should be retired after branch migration is completed and all
-references are removed.
-
 ## Release checklist
 
 - `CHANGELOG.md` updated

@@ -40,8 +40,6 @@
 - `develop`: default branch 兼 integration branch
 - `main`: nuget.org 向け安定版 release branch
 
-`master` はブランチ移行と参照整理が完了した後に廃止します。
-
 ## Release チェックリスト
 
 - `CHANGELOG.md` を更新済み
