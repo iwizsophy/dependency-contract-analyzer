@@ -25,9 +25,9 @@
 
 .NET アプリケーションには、スレッドセーフ性、インフラ境界、副作用制約のように型システムだけでは表現しにくい設計前提が存在します。この Analyzer はそうした前提を属性で明示し、実際の型依存に対して機械的に検証できるようにします。
 
-## 初回リリースの対象スコープ
+## 依存抽出スコープ
 
-初期版では以下のみを解析対象に絞ります。
+依存抽出は strong type relationship に意図的に限定しています。
 
 - コンストラクタ引数
 - コンストラクタ以外のメソッド引数
@@ -37,6 +37,8 @@
 - static メンバー利用
 - 継承
 - インタフェース実装
+
+属性参照、generic constraint、`typeof` 参照、return type などの弱い symbol relationship は対象外です。
 
 ## パッケージ参照
 
@@ -139,7 +141,7 @@ public sealed class SnapshotCache
 
 この定義がある場合、`snapshot-cache` は `immutable` と `thread-safe` の両方を満たすものとして扱われます。多段・多親の hierarchy 解決に対応し、循環する包含定義は `DCA202` として報告します。
 
-`ContractHierarchy` が包含辺 API です。多親階層は属性の繰り返しで表現できます。target / scope では明示属性を優先します。既定では type-level metadata がない場合に namespace 最終セグメントから fallback 名を推定し、`ReadModel` は `read-model` として扱われます。`dependency_contract_analyzer.namespace_inference_max_segments = 2` を設定すると、`ReadModels.Query` -> `read-models-query` のような trailing 2-segment fallback も推定します。scope は assembly-level `ContractScope` がある場合、それを明示定義として優先し namespace 推定は行いません。current compilation 外の dependency は既定では無視しますが、`dependency_contract_analyzer.external_dependency_policy = metadata` を設定すると、参照先 assembly の explicit provided-contract / target / scope metadata に加えて `ContractHierarchy` の包含辺も読み取ります。参照先包含定義の診断は consumer compilation には出しません。なお undeclared target / scope 判定は引き続き current compilation 内の宣言だけを対象にします。
+`ContractHierarchy` が包含辺 API です。多親階層は属性の繰り返しで表現できます。target / scope では type-level の明示属性を優先し、同種の namespace 推定名は追加しません。既定では type-level metadata がない場合に namespace 最終セグメントから fallback 名を推定し、`ReadModel` は `read-model` として扱われます。`dependency_contract_analyzer.namespace_inference_max_segments = 2` を設定すると、`ReadModels.Query` -> `read-models-query` のような trailing 2-segment fallback も推定します。これより広い namespace 由来の naming heuristic は対象外です。scope では assembly-level `ContractScope` が常にその assembly の型へ適用され、type-level scope はそれに加算されます。namespace ベースの scope 推定は type-level scope がない型に対する fallback としてのみ適用されます。current compilation 外の dependency は既定では無視しますが、`dependency_contract_analyzer.external_dependency_policy = metadata` を設定すると、参照先 assembly の explicit provided-contract / target / scope metadata に加えて `ContractHierarchy` の包含辺も読み取ります。参照先 assembly は namespace 推定には参加せず、参照先包含定義の診断も consumer compilation には出しません。なお undeclared target / scope 判定は引き続き current compilation 内の宣言だけを対象にします。
 
 ## 既定 Severity
 
@@ -164,6 +166,8 @@ public sealed class SnapshotCache
 - `dependency_contract_analyzer.excluded_types`
 - `dependency_contract_analyzer.namespace_inference_max_segments`
 - `dependency_contract_analyzer.external_dependency_policy`
+
+現在サポートする EditorConfig policy surface はこの一覧に限られます。命名 policy の設定化、より広い suppression model、rule family 単位の policy control に対する accepted roadmap はまだありません。
 
 `behavior_preset = default` では、すべての `analyze_*` option は既定で `true` です。コンストラクタ引数は preset に関係なく常に解析対象です。
 
@@ -199,7 +203,7 @@ source-scoped option は partial owner type のすべての宣言ファイルを
 - constructor / method / property / field に付ける `[ExcludeDependencyContractSource]` による member source exclusion
 - owner type に付ける `[SuppressRequiredDependencyContract]` / `[SuppressRequiredTargetContract]` / `[SuppressRequiredScopeContract]` による exact-match suppression
 
-member-level exclusion は dependency source だけを外し、対応する requirement 自体は suppress しません。
+member-level exclusion は dependency source だけを外し、対応する requirement 自体は suppress しません。suppression は exact-match のみで、wildcard、prefix、contract-only form、他の requirement kind への拡張は行いません。
 
 ## 非対象
 
