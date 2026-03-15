@@ -1,6 +1,17 @@
 # DependencyContractAnalyzer Specification
 
-This document captures the currently implemented scope of `DependencyContractAnalyzer`. For the intended end-state design, see `docs/architecture.md`.
+This document captures the currently implemented scope of `DependencyContractAnalyzer`.
+It is the detailed companion to the repository-root `SPECIFICATION.md`,
+which remains the authoritative summary specification.
+
+Use this document for detailed rules, examples, edge cases, long tables,
+and walkthroughs. If this file and `SPECIFICATION.md` disagree,
+`SPECIFICATION.md` wins.
+
+When specification behavior changes, update this file together with
+`SPECIFICATION.md` unless the change is editorial only.
+
+For the intended end-state design, see `docs/architecture.md`.
 
 ## 1. Purpose
 

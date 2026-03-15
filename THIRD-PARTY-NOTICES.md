@@ -1,6 +1,13 @@
 # Third-Party Notices
 
-This repository uses the following third-party component during build/versioning:
+This file tracks all direct third-party dependencies used by this
+repository, including runtime, build-time, and development-time
+dependencies. Transitive dependencies are not listed by default.
+
+Transitive dependencies are audited at least monthly and before each
+release using `dotnet list package --include-transitive`, Dependabot,
+and GitHub security advisories. They are not listed here by default
+unless explicit notice is required.
 
 ## RelaxVersioner
 

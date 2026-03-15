@@ -1,6 +1,14 @@
 # DependencyContractAnalyzer アーキテクチャ
 
 この文書は、`DependencyContractAnalyzer` の最終完成形として想定しているアーキテクチャを整理したものです。
+リポジトリルートの `ARCHITECTURE.md` を原則と制約の正本とし、
+この文書はその詳細版です。
+
+詳細構成、図、依存関係、目標アーキテクチャの説明はこの文書に記載します。
+この文書と `ARCHITECTURE.md` が矛盾する場合は、`ARCHITECTURE.md` の原則を優先します。
+
+アーキテクチャ原則の変更が詳細ガイダンスに影響する場合は、
+`ARCHITECTURE.md` とこの文書を同じ変更で更新してください。
 
 このツールの芯は次です。
 

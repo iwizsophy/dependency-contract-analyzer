@@ -61,6 +61,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Changed
 
+- Formalized repository governance with root specification and architecture summaries, ADR numbering and acceptance rules, synchronized detailed-doc updates, explicit GitHub workflow expectations, a develop-to-main release flow, third-party dependency governance, and publish validation from stable main-based tags
 - Clarified the long-term product direction: the analyzer stays focused on contract fulfillment and implementation consistency rather than becoming a general architecture rule engine
 - Removed the architecture-document roadmap section and moved roadmap ownership to GitHub milestones
 - Product documentation now describes partial-type source-scoped option merge semantics and the exact boundaries of static-member dependency analysis

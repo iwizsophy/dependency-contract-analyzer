@@ -1,6 +1,16 @@
 # DependencyContractAnalyzer 仕様書
 
-この文書は、`DependencyContractAnalyzer` の現在の実装スコープを整理したものです。最終完成形の設計全体は `docs/architecture.ja.md` を参照してください。
+この文書は、`DependencyContractAnalyzer` の現在の実装スコープを整理したものです。
+リポジトリルートの `SPECIFICATION.md` を正本の要約仕様とし、
+この文書はその詳細版です。
+
+詳細ルール、例、長い表、エッジケース、シナリオ説明はこの文書に記載します。
+この文書と `SPECIFICATION.md` が矛盾する場合は、`SPECIFICATION.md` を優先します。
+
+仕様の挙動が変わる場合は、editorial only を除き、
+`SPECIFICATION.md` とこの文書を同じ変更で更新してください。
+
+最終完成形の設計全体は `docs/architecture.ja.md` を参照してください。
 
 ## 1. 目的
 

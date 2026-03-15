@@ -1,6 +1,16 @@
 # DependencyContractAnalyzer Architecture
 
 This document describes the intended end-state architecture of `DependencyContractAnalyzer`.
+It is the detailed companion to the repository-root `ARCHITECTURE.md`,
+which remains the authoritative summary of architectural principles and
+constraints.
+
+Use this document for detailed structure, diagrams, dependency maps, and
+target-state descriptions. If this file and `ARCHITECTURE.md` disagree,
+the root `ARCHITECTURE.md` wins until the detailed document is updated.
+
+When architecture principles change and affect the detailed guidance,
+update this file together with `ARCHITECTURE.md`.
 
 The core principle is:
 

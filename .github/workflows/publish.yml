@@ -5,12 +5,6 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
-    inputs:
-      publish_to_nuget:
-        description: Push generated packages to nuget.org
-        required: true
-        default: false
-        type: boolean
 
 permissions:
   contents: read
@@ -21,11 +15,21 @@ jobs:
     runs-on: windows-latest
     env:
       NUGET_PUBLISH_USER: ${{ vars.NUGET_PUBLISH_USER }}
-      SHOULD_PUBLISH: ${{ github.event_name == 'push' || inputs.publish_to_nuget }}
+      SHOULD_PUBLISH: ${{ github.event_name == 'push' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate manual workflow branch
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          if (@('develop', 'main') -notcontains $env:GITHUB_REF_NAME) {
+            throw "Manual validation runs are allowed only on develop or main."
+          }
 
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v5
@@ -43,6 +47,28 @@ jobs:
         run: |
           if ([string]::IsNullOrWhiteSpace($env:NUGET_PUBLISH_USER)) {
             throw "Repository variable NUGET_PUBLISH_USER must be configured before publishing."
+          }
+
+      - name: Validate release tag format
+        if: env.SHOULD_PUBLISH == 'true'
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "Release tags must use the format v<major>.<minor>.<patch>."
+          }
+
+      - name: Validate tag commit is on main
+        if: env.SHOULD_PUBLISH == 'true'
+        shell: pwsh
+        run: |
+          git fetch origin main --depth=1
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to fetch origin/main."
+          }
+
+          git merge-base --is-ancestor HEAD origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Release tags must point to commits already merged into main."
           }
 
       - name: Restore
