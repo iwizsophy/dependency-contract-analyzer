@@ -34,7 +34,7 @@ This is not only an analyzer for attributes. It is a static architecture verific
 [Rule Engine]
     |
     +-- contract matching
-    +-- alias / implication resolution
+    +-- implication graph resolution
     +-- standard Roslyn suppression, exact requirement suppression, and owner-type exclusions
     +-- diagnostics
 ```
@@ -181,21 +181,6 @@ public sealed class RequiresContractOnScopeAttribute : Attribute
 
 ```csharp
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-public sealed class ContractAliasAttribute : Attribute
-{
-    public string From { get; }
-    public string To { get; }
-
-    public ContractAliasAttribute(string from, string to)
-    {
-        From = from;
-        To = to;
-    }
-}
-```
-
-```csharp
-[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
 public sealed class ContractHierarchyAttribute : Attribute
 {
     public string Child { get; }
@@ -212,8 +197,8 @@ public sealed class ContractHierarchyAttribute : Attribute
 Example:
 
 ```csharp
-[assembly: ContractAlias("immutable", "thread-safe")]
 [assembly: ContractHierarchy("snapshot-cache", "immutable")]
+[assembly: ContractHierarchy("immutable", "thread-safe")]
 ```
 
 Meaning:
@@ -224,12 +209,9 @@ Current semantics:
 
 - `child -> parent` is a contract implication edge
 - repeated attributes allow multiple parents
-- `ContractAlias` remains supported and is treated as the same implication edge model for backward compatibility
-- alias and hierarchy edges are resolved in one combined DAG
-- `DCA202` continues to report cycles across the combined graph
-- contract satisfaction uses the transitive closure of that combined graph
-
-This keeps existing alias behavior intact while providing a clearer API for multi-level and multi-parent contract hierarchies.
+- hierarchy edges are resolved in one DAG
+- `DCA202` reports cycles across that graph
+- contract satisfaction uses the transitive closure of that graph
 
 ## 4. Rule evaluation precedence
 
@@ -330,8 +312,8 @@ If `BillingRepository` does not provide `retry-safe`, the analyzer reports a vio
 ### 6.4 Implication-based requirement
 
 ```csharp
-[assembly: ContractAlias("immutable", "thread-safe")]
 [assembly: ContractHierarchy("snapshot-cache", "immutable")]
+[assembly: ContractHierarchy("immutable", "thread-safe")]
 ```
 
 ```csharp
@@ -450,7 +432,7 @@ Inside that evaluation:
 - `DCA101`: contract naming format violation
 - `DCA102`: duplicate contract declaration
 
-`DCA101` applies only to contract names, requirement-suppression contract arguments, and alias or hierarchy endpoints. It does not apply to target names or scope names, and the enforced v1 format is lower-kebab-case.
+`DCA101` applies only to contract names, requirement-suppression contract arguments, and hierarchy endpoints. It does not apply to target names or scope names, and the enforced v1 format is lower-kebab-case.
 
 ### Rule-definition diagnostics
 

@@ -1,6 +1,5 @@
 <Project>
   <ItemGroup>
-    <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\ContractAliasAttribute.cs" Link="DependencyContractAnalyzer.Attributes\ContractAliasAttribute.cs" Visible="false" />
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\ContractHierarchyAttribute.cs" Link="DependencyContractAnalyzer.Attributes\ContractHierarchyAttribute.cs" Visible="false" />
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\ContractScopeAttribute.cs" Link="DependencyContractAnalyzer.Attributes\ContractScopeAttribute.cs" Visible="false" />
     <Compile Include="$(MSBuildThisFileDirectory)DependencyContractAnalyzer.Attributes\ContractTargetAttribute.cs" Link="DependencyContractAnalyzer.Attributes\ContractTargetAttribute.cs" Visible="false" />

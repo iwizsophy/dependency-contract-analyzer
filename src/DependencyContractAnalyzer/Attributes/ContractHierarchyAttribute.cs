@@ -7,9 +7,8 @@ namespace DependencyContractAnalyzer;
 /// </summary>
 /// <remarks>
 /// This attribute contributes an assembly-level implication edge from <see cref="Child"/>
-/// to <see cref="Parent"/>. Hierarchy edges are resolved together with
-/// <see cref="ContractAliasAttribute"/> edges, so a child contract satisfies every
-/// ancestor reachable through the combined transitive graph.
+/// to <see cref="Parent"/>. A child contract satisfies every ancestor reachable
+/// through the transitive hierarchy graph.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
 public sealed class ContractHierarchyAttribute : Attribute

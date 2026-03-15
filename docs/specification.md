@@ -45,7 +45,6 @@ The following rule families are currently implemented:
 | `RequiresContractOnTarget` | Yes |
 | `ContractScope` | Yes |
 | `RequiresContractOnScope` | Yes |
-| `ContractAlias` | Yes |
 | `ContractHierarchy` | Yes |
 
 Still out of scope:
@@ -152,24 +151,7 @@ public sealed class RequiresContractOnScopeAttribute : Attribute
 }
 ```
 
-### 3.7 Contract alias
-
-```csharp
-[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-public sealed class ContractAliasAttribute : Attribute
-{
-    public string From { get; }
-    public string To { get; }
-
-    public ContractAliasAttribute(string from, string to)
-    {
-        From = from;
-        To = to;
-    }
-}
-```
-
-### 3.8 Contract hierarchy
+### 3.7 Contract hierarchy
 
 ```csharp
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
@@ -186,16 +168,15 @@ public sealed class ContractHierarchyAttribute : Attribute
 }
 ```
 
-### 3.9 Implication semantics
+### 3.8 Implication semantics
 
-- `ContractAlias` and `ContractHierarchy` both declare directed implication edges.
-- Alias edges use `from -> to`; hierarchy edges use `child -> parent`.
-- Contract satisfaction is transitive across the combined implication graph.
-- A contract satisfies itself and every contract reachable through alias or hierarchy edges.
+- `ContractHierarchy` declares directed implication edges using `child -> parent`.
+- Contract satisfaction is transitive across the implication graph.
+- A contract satisfies itself and every contract reachable through hierarchy edges.
 - Repeated hierarchy attributes allow multiple parents for the same contract.
-- Cycles in the combined implication graph are invalid and reported as `DCA202`.
+- Cycles in the implication graph are invalid and reported as `DCA202`.
 
-### 3.10 Custom exclusion attribute
+### 3.9 Custom exclusion attribute
 
 ```csharp
 [AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
@@ -206,7 +187,7 @@ public sealed class ExcludeDependencyContractAnalysisAttribute : Attribute
 
 When applied to an assembly or owner type, analyzer execution for that owner type is skipped.
 
-### 3.11 Requirement suppression attributes
+### 3.10 Requirement suppression attributes
 
 ```csharp
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
@@ -286,7 +267,7 @@ Current behavior:
 - Dependencies outside the current compilation assembly are ignored by default.
 - If `dependency_contract_analyzer.external_dependency_policy = metadata`, the analyzer reads explicit provided-contract metadata from matching external dependency types before evaluating `DCA001`.
 - If `dependency_contract_analyzer.external_dependency_policy = metadata`, `RequiresContractOnTarget` and `RequiresContractOnScope` also read explicit target and scope metadata from matching external dependency types and assemblies.
-- If `dependency_contract_analyzer.external_dependency_policy = metadata`, the analyzer also reads `ContractAlias` and `ContractHierarchy` implication edges from referenced assemblies when expanding provided contracts for external dependencies.
+- If `dependency_contract_analyzer.external_dependency_policy = metadata`, the analyzer also reads `ContractHierarchy` implication edges from referenced assemblies when expanding provided contracts for external dependencies.
 - Namespace fallback inference remains limited to types declared in the current compilation, even in `metadata` mode.
 - `DCA200` and `DCA201` still validate declared targets and scopes against the current compilation only.
 - Diagnostics for referenced implication definitions are not reported in the consuming compilation.
@@ -314,7 +295,7 @@ This applies to:
 - contract names
 - target names
 - scope names
-- alias or hierarchy endpoint names
+- hierarchy endpoint names
 
 ## 6. Dependency discovery
 
@@ -433,7 +414,7 @@ The analyzer currently reads metadata as follows:
 - Provided contracts: from the dependency type itself, implemented interfaces, and base types
 - Targets: from the dependency type itself, implemented interfaces, and base types
 - Scopes: from the dependency type itself, implemented interfaces, base types, and assembly-level scope declarations
-- Implication edges: from assembly-level `ContractAliasAttribute` and `ContractHierarchyAttribute` declarations
+- Implication edges: from assembly-level `ContractHierarchyAttribute` declarations
 
 Provided contracts are expanded through the transitive implication closure before matching requirements.
 
@@ -511,7 +492,7 @@ Explicit per-option settings always override the preset. `report_unused_requirem
 
 - Required format: lower-kebab-case
 - Regex: `^[a-z0-9]+(-[a-z0-9]+)*$`
-- Applies only to contract names and alias or hierarchy endpoints
+- Applies only to contract names and hierarchy endpoints
 - Also applies to the contract name arguments of requirement suppression attributes
 - Does not apply to target names or scope names
 
@@ -524,7 +505,6 @@ Covered names:
 - the contract name argument of `SuppressRequiredDependencyContract`
 - the contract name argument of `SuppressRequiredTargetContract`
 - the contract name argument of `SuppressRequiredScopeContract`
-- both `from` and `to` arguments of `ContractAlias`
 - both `child` and `parent` arguments of `ContractHierarchy`
 
 ### 8.3 Suppression model
@@ -549,7 +529,6 @@ src/
    ├ Analyzers
    │  └ DependencyContractAnalyzer.cs
    ├ Attributes
-   │  ├ ContractAliasAttribute.cs
    │  ├ ContractHierarchyAttribute.cs
    │  ├ ContractScopeAttribute.cs
    │  ├ ContractTargetAttribute.cs
@@ -567,7 +546,7 @@ src/
    ├ Helpers
    │  ├ AnalysisExclusionOptions.cs
    │  ├ BehaviorPresetOptions.cs
-   │  ├ ContractAliasResolver.cs
+   │  ├ ContractImplicationResolver.cs
    │  ├ ContractNameNormalizer.cs
    │  ├ DependencyCollectionOptions.cs
    │  ├ DependencyCollector.cs
@@ -628,7 +607,7 @@ Representative scenarios include:
 - `DCA002` when `RequiresDependencyContract` references an unused dependency type
 - Scope-based matching through type-level and assembly-level scopes
 - Target-based matching through direct and inherited target declarations
-- Implication-based matching through alias, hierarchy, and mixed multi-step chains
+- Implication-based matching through hierarchy and multi-step chains
 - Diagnostics for empty names, duplicate declarations, and cyclic implication graphs
 - No diagnostic when the owner type is excluded through the custom exclusion attribute
 

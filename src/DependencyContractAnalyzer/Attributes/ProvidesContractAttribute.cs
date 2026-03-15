@@ -8,8 +8,8 @@ namespace DependencyContractAnalyzer;
 /// <remarks>
 /// Contract names are normalized by trimming surrounding whitespace and are
 /// compared with ordinal case-insensitive semantics. The declared contract also
-/// participates in transitive implication through <see cref="ContractAliasAttribute"/>
-/// and <see cref="ContractHierarchyAttribute"/>.
+/// participates in transitive implication through
+/// <see cref="ContractHierarchyAttribute"/>.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = true, Inherited = true)]
 public sealed class ProvidesContractAttribute : Attribute

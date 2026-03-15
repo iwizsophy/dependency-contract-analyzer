@@ -154,8 +154,8 @@ public sealed class DependencyContractAnalyzerTests
         const string source = """
             using DependencyContractAnalyzer;
 
-            [assembly: {|#0:ContractAlias("immutable", "ThreadSafe")|}]
-            [assembly: {|#1:ContractAlias("thread_safe", "thread-safe")|}]
+            [assembly: {|#0:ContractHierarchy("immutable", "ThreadSafe")|}]
+            [assembly: {|#1:ContractHierarchy("thread_safe", "thread-safe")|}]
 
             [{|#2:ProvidesContract("ThreadSafe")|}]
             public interface IFoo
@@ -405,7 +405,7 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
-    public async Task ReadsExternalAliasImplicationMetadataWhenMetadataPolicyIsEnabled()
+    public async Task ReadsExternalSingleStepHierarchyImplicationMetadataWhenMetadataPolicyIsEnabled()
     {
         const string source = """
             using DependencyContractAnalyzer;
@@ -420,7 +420,7 @@ public sealed class DependencyContractAnalyzerTests
             }
             """;
         const string externalBody = """
-            [assembly: DependencyContractAnalyzer.ContractAlias("immutable", "thread-safe")]
+            [assembly: DependencyContractAnalyzer.ContractHierarchy("immutable", "thread-safe")]
 
             namespace ExternalContracts
             {
@@ -440,7 +440,7 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
-    public async Task ReadsExternalHierarchyImplicationMetadataWhenMetadataPolicyIsEnabled()
+    public async Task ReadsExternalMultiLevelHierarchyImplicationMetadataWhenMetadataPolicyIsEnabled()
     {
         const string source = """
             using DependencyContractAnalyzer;
@@ -481,7 +481,7 @@ public sealed class DependencyContractAnalyzerTests
             using DependencyContractAnalyzer;
             using ExternalContracts;
 
-            [assembly: ContractAlias("immutable", "thread-safe")]
+            [assembly: ContractHierarchy("immutable", "thread-safe")]
 
             [RequiresDependencyContract(typeof(IExternalWorker), "thread-safe")]
             public sealed class Consumer
@@ -527,7 +527,7 @@ public sealed class DependencyContractAnalyzerTests
             }
             """;
         const string externalBody = """
-            [assembly: DependencyContractAnalyzer.ContractAlias("a", "b")]
+            [assembly: DependencyContractAnalyzer.ContractHierarchy("a", "b")]
             [assembly: DependencyContractAnalyzer.ContractHierarchy("b", "a")]
 
             namespace ExternalContracts
@@ -3484,14 +3484,14 @@ public sealed class DependencyContractAnalyzerTests
                 .WithArguments("repository"));
     }
 
-    // Alias and hierarchy tests exercise the shared implication graph and its validation rules.
+    // Hierarchy tests exercise the implication graph and its validation rules.
     [Fact]
-    public async Task ResolvesAliasForDependencyRequirement()
+    public async Task ResolvesSingleStepHierarchyForDependencyRequirement()
     {
         const string source = """
             using DependencyContractAnalyzer;
 
-            [assembly: ContractAlias("immutable", "thread-safe")]
+            [assembly: ContractHierarchy("immutable", "thread-safe")]
 
             [ProvidesContract("immutable")]
             public interface ICache
@@ -3515,13 +3515,13 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
-    public async Task ResolvesMultiStepAliasForTargetRequirement()
+    public async Task ResolvesMultiStepHierarchyForTargetRequirement()
     {
         const string source = """
             using DependencyContractAnalyzer;
 
-            [assembly: ContractAlias("immutable", "thread-safe")]
-            [assembly: ContractAlias("thread-safe", "retry-safe")]
+            [assembly: ContractHierarchy("immutable", "thread-safe")]
+            [assembly: ContractHierarchy("thread-safe", "retry-safe")]
 
             [ContractTarget("repository")]
             [ProvidesContract("immutable")]
@@ -3598,12 +3598,12 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
-    public async Task ResolvesMixedAliasAndHierarchyForScopeRequirement()
+    public async Task ResolvesMultiStepHierarchyForScopeRequirement()
     {
         const string source = """
             using DependencyContractAnalyzer;
 
-            [assembly: ContractAlias("immutable", "thread-safe")]
+            [assembly: ContractHierarchy("immutable", "thread-safe")]
             [assembly: ContractHierarchy("thread-safe", "resilient")]
 
             [ContractScope("repository")]
@@ -3625,13 +3625,13 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
-    public async Task ReportsDiagnosticWhenAliasNameIsEmpty()
+    public async Task ReportsDiagnosticWhenHierarchyEndpointNameIsEmpty()
     {
         const string source = """
             using DependencyContractAnalyzer;
 
-            [assembly: {|#0:ContractAlias("   ", "thread-safe")|}]
-            [assembly: {|#1:ContractAlias("immutable", "   ")|}]
+            [assembly: {|#0:ContractHierarchy("   ", "thread-safe")|}]
+            [assembly: {|#1:ContractHierarchy("immutable", "   ")|}]
 
             public sealed class Marker
             {
@@ -3665,13 +3665,13 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
-    public async Task ReportsDiagnosticWhenAliasIsDeclaredMultipleTimes()
+    public async Task ReportsDiagnosticWhenHierarchyIsDeclaredMultipleTimes()
     {
         const string source = """
             using DependencyContractAnalyzer;
 
-            [assembly: ContractAlias("immutable", "thread-safe")]
-            [assembly: {|#0:ContractAlias(" IMMUTABLE ", " THREAD-SAFE ")|}]
+            [assembly: ContractHierarchy("immutable", "thread-safe")]
+            [assembly: {|#0:ContractHierarchy(" IMMUTABLE ", " THREAD-SAFE ")|}]
 
             public sealed class Marker
             {
@@ -3716,12 +3716,12 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
-    public async Task ReportsDiagnosticWhenHierarchyDuplicatesAliasDefinition()
+    public async Task ReportsDiagnosticWhenHierarchyDuplicatesNormalizedDefinition()
     {
         const string source = """
             using DependencyContractAnalyzer;
 
-            [assembly: ContractAlias("immutable", "thread-safe")]
+            [assembly: ContractHierarchy("immutable", "thread-safe")]
             [assembly: {|#0:ContractHierarchy("immutable", "thread-safe")|}]
 
             public sealed class Marker
@@ -3737,13 +3737,13 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
-    public async Task ReportsDiagnosticWhenAliasDefinitionIsCyclic()
+    public async Task ReportsDiagnosticWhenHierarchyDefinitionIsCyclic()
     {
         const string source = """
             using DependencyContractAnalyzer;
 
-            [assembly: {|#0:ContractAlias("a", "b")|}]
-            [assembly: {|#1:ContractAlias("b", "a")|}]
+            [assembly: {|#0:ContractHierarchy("a", "b")|}]
+            [assembly: {|#1:ContractHierarchy("b", "a")|}]
 
             public sealed class Marker
             {
@@ -3761,12 +3761,12 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
-    public async Task ReportsDiagnosticWhenAliasAndHierarchyDefinitionAreCyclicTogether()
+    public async Task ReportsDiagnosticWhenHierarchyDefinitionsAreCyclicTogether()
     {
         const string source = """
             using DependencyContractAnalyzer;
 
-            [assembly: {|#0:ContractAlias("a", "b")|}]
+            [assembly: {|#0:ContractHierarchy("a", "b")|}]
             [assembly: {|#1:ContractHierarchy("b", "a")|}]
 
             public sealed class Marker

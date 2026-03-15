@@ -34,15 +34,14 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - `DCA101` contract naming validation for lower-kebab-case contract names and implication endpoints
 - `ContractScopeAttribute` and `RequiresContractOnScopeAttribute` for scope-based contract rules
 - `ContractTargetAttribute` and `RequiresContractOnTargetAttribute` for target-based contract rules
-- `ContractAliasAttribute` for assembly-level contract implication rules
 - `ContractHierarchyAttribute` for explicit assembly-level contract hierarchy edges
 - Scope-based analyzer evaluation, including assembly-level default scopes and empty-scope validation
 - Target-based analyzer evaluation, including inherited target matching and empty-target validation
-- Contract implication resolution, including mixed alias/hierarchy graphs and cycle detection
+- Contract implication resolution, including multi-step hierarchy graphs and cycle detection
 - Rule-definition diagnostics for undeclared and unused target/scope requirements
 - Regression tests for scope matching, duplicate requirements, and assembly/type scope interaction
 - Regression tests for target matching, duplicate requirements, and multi-target declarations
-- Regression tests for alias resolution, duplicate aliases, empty alias names, and cyclic aliases
+- Regression tests for hierarchy resolution, duplicate hierarchy edges, empty hierarchy names, and cyclic hierarchy definitions
 - Regression tests for undeclared and unused target/scope requirements
 - Regression tests for non-constructor method parameter dependencies
 - Regression tests for property-only dependencies across dependency, target, and scope rules
@@ -51,7 +50,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Regression tests for static event usage and enum-member exclusion in static dependency analysis
 - Regression tests for `DCA101` contract naming validation
 - Regression tests for external dependency metadata policy across dependency, target, and scope requirements
-- Regression tests for external alias/hierarchy implication graphs and silent referenced diagnostics
+- Regression tests for external hierarchy implication graphs and silent referenced diagnostics
 - Regression tests for behavior-preset defaults and explicit override precedence
 - Regression tests for unused/undeclared requirement-diagnostic switches
 - Regression tests for editorconfig fallback semantics across behavior presets, namespace inference, and requirement-diagnostic switches
@@ -68,7 +67,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Updated README and development guides to describe the current repository state instead of planned-only wording
 - Kept the runnable sample project warning-free by moving representative invalid cases into sample documentation snippets
 - Expanded public attribute XML documentation to explain normalization, implication, exclusion, and exact-match suppression behavior
-- Clarified current design boundaries for alias semantics, `.editorconfig`, namespace inference, suppression, and `DCA101` naming scope
+- Clarified current design boundaries for hierarchy semantics, `.editorconfig`, namespace inference, suppression, and `DCA101` naming scope
 - Clarified the large regression suite with section comments and targeted notes for tricky metadata/preset/inference cases
 - Consolidated duplicated analyzer-config helper logic and test-verifier compilation setup into shared implementations
 - Consolidated duplicated test attribute-source fixtures into a shared helper for verifier and external-metadata tests
@@ -88,4 +87,4 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Removed
 
-- _None_
+- The pre-release `ContractAliasAttribute` compatibility layer; implication declarations now standardize on `ContractHierarchyAttribute`

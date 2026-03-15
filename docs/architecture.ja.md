@@ -38,7 +38,7 @@
 [Rule Engine]
     |
     +-- 契約一致判定
-    +-- Alias / 包含関係解決
+    +-- 包含グラフ解決
     +-- Roslyn 標準 suppression、exact requirement suppression、owner type exclusion
     +-- Diagnostic 発行
 ```
@@ -187,21 +187,6 @@ public sealed class RequiresContractOnScopeAttribute : Attribute
 
 ```csharp
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-public sealed class ContractAliasAttribute : Attribute
-{
-    public string From { get; }
-    public string To { get; }
-
-    public ContractAliasAttribute(string from, string to)
-    {
-        From = from;
-        To = to;
-    }
-}
-```
-
-```csharp
-[AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
 public sealed class ContractHierarchyAttribute : Attribute
 {
     public string Child { get; }
@@ -218,8 +203,8 @@ public sealed class ContractHierarchyAttribute : Attribute
 例:
 
 ```csharp
-[assembly: ContractAlias("immutable", "thread-safe")]
 [assembly: ContractHierarchy("snapshot-cache", "immutable")]
+[assembly: ContractHierarchy("immutable", "thread-safe")]
 ```
 
 意味:
@@ -230,12 +215,9 @@ public sealed class ContractHierarchyAttribute : Attribute
 
 - `child -> parent` を契約包含の有向辺として扱う
 - 同じ child に対して属性を繰り返すことで多親を表現できる
-- 後方互換のため `ContractAlias` も同じ包含辺モデルとして解釈する
-- alias と hierarchy の辺は 1 つの DAG として解決する
-- `DCA202` は combined graph 全体の cycle を報告する
-- 契約充足判定は combined graph の推移閉包を使う
-
-これにより既存 alias の互換性を維持しつつ、多段・多親の契約階層を明示的に表現できます。
+- hierarchy の辺は 1 つの DAG として解決する
+- `DCA202` はその graph 全体の cycle を報告する
+- 契約充足判定はその graph の推移閉包を使う
 
 ## 4. ルール評価の優先順位
 
@@ -336,8 +318,8 @@ public class BillingRepository : IBillingRepository
 ### 6.4 包含グラフベース requirement
 
 ```csharp
-[assembly: ContractAlias("immutable", "thread-safe")]
 [assembly: ContractHierarchy("snapshot-cache", "immutable")]
+[assembly: ContractHierarchy("immutable", "thread-safe")]
 ```
 
 ```csharp
@@ -456,7 +438,7 @@ Evaluate(consumer, dependency) -> violations
 - `DCA101`: 契約名フォーマット違反
 - `DCA102`: 重複契約指定
 
-`DCA101` は contract 名、requirement suppression の contract 引数、alias / hierarchy endpoint のみを対象とし、target 名 / scope 名には適用しません。v1 で適用する形式は lower-kebab-case です。
+`DCA101` は contract 名、requirement suppression の contract 引数、hierarchy endpoint のみを対象とし、target 名 / scope 名には適用しません。v1 で適用する形式は lower-kebab-case です。
 
 ### ルール定義診断
 

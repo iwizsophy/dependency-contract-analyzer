@@ -8,57 +8,52 @@ using Microsoft.CodeAnalysis;
 
 namespace DependencyContractAnalyzer.Helpers;
 
-internal sealed class ContractAliasResolver
+internal sealed class ContractImplicationResolver
 {
-    private const string ContractAliasAttributeMetadataName = "DependencyContractAnalyzer.ContractAliasAttribute";
     private const string ContractHierarchyAttributeMetadataName = "DependencyContractAnalyzer.ContractHierarchyAttribute";
 
-    private static readonly ContractAliasResolver Empty =
+    private static readonly ContractImplicationResolver Empty =
         new(
             ImmutableDictionary<string, ImmutableHashSet<string>>.Empty.WithComparers(StringComparer.OrdinalIgnoreCase),
             ImmutableArray<Diagnostic>.Empty);
 
-    private readonly ImmutableDictionary<string, ImmutableHashSet<string>> _aliasClosure;
+    private readonly ImmutableDictionary<string, ImmutableHashSet<string>> _implicationClosure;
 
-    private ContractAliasResolver(
-        ImmutableDictionary<string, ImmutableHashSet<string>> aliasClosure,
+    private ContractImplicationResolver(
+        ImmutableDictionary<string, ImmutableHashSet<string>> implicationClosure,
         ImmutableArray<Diagnostic> diagnostics)
     {
-        _aliasClosure = aliasClosure;
+        _implicationClosure = implicationClosure;
         Diagnostics = diagnostics;
     }
 
     public ImmutableArray<Diagnostic> Diagnostics { get; }
 
-    public static ContractAliasResolver Create(
+    public static ContractImplicationResolver Create(
         IAssemblySymbol assembly,
-        INamedTypeSymbol? contractAliasAttributeSymbol,
         INamedTypeSymbol? contractHierarchyAttributeSymbol)
     {
         return CreateCore(
             assembly,
-            contractAliasAttributeSymbol,
             contractHierarchyAttributeSymbol,
             reportDiagnostics: true);
     }
 
-    public static ContractAliasResolver CreateExternal(
+    public static ContractImplicationResolver CreateExternal(
         IAssemblySymbol assembly,
-        INamedTypeSymbol? contractAliasAttributeSymbol,
         INamedTypeSymbol? contractHierarchyAttributeSymbol)
     {
         // Referenced assemblies can contribute implication edges, but their malformed
         // declarations should not surface diagnostics in the consuming compilation.
         return CreateCore(
             assembly,
-            contractAliasAttributeSymbol,
             contractHierarchyAttributeSymbol,
             reportDiagnostics: false);
     }
 
     public static ImmutableHashSet<string> ExpandAcross(
         ImmutableHashSet<string> contracts,
-        IEnumerable<ContractAliasResolver> resolvers)
+        IEnumerable<ContractImplicationResolver> resolvers)
     {
         var expandedContracts = contracts;
 
@@ -87,9 +82,8 @@ internal sealed class ContractAliasResolver
         }
     }
 
-    private static ContractAliasResolver CreateCore(
+    private static ContractImplicationResolver CreateCore(
         IAssemblySymbol assembly,
-        INamedTypeSymbol? contractAliasAttributeSymbol,
         INamedTypeSymbol? contractHierarchyAttributeSymbol,
         bool reportDiagnostics)
     {
@@ -98,26 +92,21 @@ internal sealed class ContractAliasResolver
 
         foreach (var attribute in assembly.GetAttributes())
         {
-            var isAlias = HasMatchingAttributeClass(
-                attribute,
-                contractAliasAttributeSymbol,
-                ContractAliasAttributeMetadataName);
-            var isHierarchy = HasMatchingAttributeClass(
-                attribute,
-                contractHierarchyAttributeSymbol,
-                ContractHierarchyAttributeMetadataName);
-            if (!isAlias && !isHierarchy)
+            if (!HasMatchingAttributeClass(
+                    attribute,
+                    contractHierarchyAttributeSymbol,
+                    ContractHierarchyAttributeMetadataName))
             {
                 continue;
             }
 
-            var hasFrom = TryGetStringArgument(attribute, 0, out var fromName);
-            var hasTo = TryGetStringArgument(attribute, 1, out var toName);
+            var hasChild = TryGetStringArgument(attribute, 0, out var childName);
+            var hasParent = TryGetStringArgument(attribute, 1, out var parentName);
 
-            var normalizedFrom = hasFrom
-                ? ContractNameNormalizer.Normalize(fromName)
+            var normalizedChild = hasChild
+                ? ContractNameNormalizer.Normalize(childName)
                 : null;
-            if (normalizedFrom is null)
+            if (normalizedChild is null)
             {
                 if (reportDiagnostics)
                 {
@@ -128,10 +117,10 @@ internal sealed class ContractAliasResolver
                 }
             }
 
-            var normalizedTo = hasTo
-                ? ContractNameNormalizer.Normalize(toName)
+            var normalizedParent = hasParent
+                ? ContractNameNormalizer.Normalize(parentName)
                 : null;
-            if (normalizedTo is null)
+            if (normalizedParent is null)
             {
                 if (reportDiagnostics)
                 {
@@ -142,12 +131,12 @@ internal sealed class ContractAliasResolver
                 }
             }
 
-            if (normalizedFrom is null || normalizedTo is null)
+            if (normalizedChild is null || normalizedParent is null)
             {
                 continue;
             }
 
-            if (!ContractNameFormat.IsLowerKebabCase(normalizedFrom))
+            if (!ContractNameFormat.IsLowerKebabCase(normalizedChild))
             {
                 if (reportDiagnostics)
                 {
@@ -155,11 +144,11 @@ internal sealed class ContractAliasResolver
                         Diagnostic.Create(
                             DiagnosticDescriptors.ContractNamingFormatViolation,
                             GetAttributeLocation(attribute),
-                            normalizedFrom));
+                            normalizedChild));
                 }
             }
 
-            if (!ContractNameFormat.IsLowerKebabCase(normalizedTo))
+            if (!ContractNameFormat.IsLowerKebabCase(normalizedParent))
             {
                 if (reportDiagnostics)
                 {
@@ -167,12 +156,12 @@ internal sealed class ContractAliasResolver
                         Diagnostic.Create(
                             DiagnosticDescriptors.ContractNamingFormatViolation,
                             GetAttributeLocation(attribute),
-                            normalizedTo));
+                            normalizedParent));
                 }
             }
 
-            var definition = new ImplicationDefinition(attribute, normalizedFrom, normalizedTo);
-            var duplicateKey = normalizedFrom + "|" + normalizedTo;
+            var definition = new ImplicationDefinition(attribute, normalizedChild, normalizedParent);
+            var duplicateKey = normalizedChild + "|" + normalizedParent;
             if (!duplicateCandidates.TryGetValue(duplicateKey, out var definitions))
             {
                 definitions = new List<ImplicationDefinition>();
@@ -192,7 +181,7 @@ internal sealed class ContractAliasResolver
                 continue;
             }
 
-            var displayName = FormatAlias(entry.Value[0].From, entry.Value[0].To);
+            var displayName = FormatImplication(entry.Value[0].Child, entry.Value[0].Parent);
             for (var index = 1; index < entry.Value.Count; index++)
             {
                 diagnostics.Add(
@@ -205,8 +194,8 @@ internal sealed class ContractAliasResolver
 
         if (implicationDefinitions.Count == 0)
         {
-            return new ContractAliasResolver(
-                Empty._aliasClosure,
+            return new ContractImplicationResolver(
+                Empty._implicationClosure,
                 reportDiagnostics ? diagnostics.ToImmutable() : ImmutableArray<Diagnostic>.Empty);
         }
 
@@ -216,14 +205,14 @@ internal sealed class ContractAliasResolver
             ReportCycles(implicationDefinitions, adjacency, diagnostics);
         }
 
-        return new ContractAliasResolver(
+        return new ContractImplicationResolver(
             BuildClosure(adjacency),
             reportDiagnostics ? diagnostics.ToImmutable() : ImmutableArray<Diagnostic>.Empty);
     }
 
     public ImmutableHashSet<string> Expand(ImmutableHashSet<string> contracts)
     {
-        if (contracts.IsEmpty || _aliasClosure.Count == 0)
+        if (contracts.IsEmpty || _implicationClosure.Count == 0)
         {
             return contracts;
         }
@@ -231,7 +220,7 @@ internal sealed class ContractAliasResolver
         var expanded = contracts.ToBuilder();
         foreach (var contract in contracts)
         {
-            if (_aliasClosure.TryGetValue(contract, out var impliedContracts))
+            if (_implicationClosure.TryGetValue(contract, out var impliedContracts))
             {
                 expanded.UnionWith(impliedContracts);
             }
@@ -246,13 +235,13 @@ internal sealed class ContractAliasResolver
 
         foreach (var definition in implicationDefinitions)
         {
-            if (!adjacency.TryGetValue(definition.From, out var targets))
+            if (!adjacency.TryGetValue(definition.Child, out var targets))
             {
                 targets = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
-                adjacency.Add(definition.From, targets);
+                adjacency.Add(definition.Child, targets);
             }
 
-            targets.Add(definition.To);
+            targets.Add(definition.Parent);
         }
 
         return adjacency.ToDictionary(
@@ -266,10 +255,10 @@ internal sealed class ContractAliasResolver
     {
         var closure = ImmutableDictionary.CreateBuilder<string, ImmutableHashSet<string>>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var from in adjacency.Keys)
+        foreach (var child in adjacency.Keys)
         {
             var reachable = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
-            var toVisit = new Stack<string>(adjacency[from]);
+            var toVisit = new Stack<string>(adjacency[child]);
 
             while (toVisit.Count > 0)
             {
@@ -290,8 +279,8 @@ internal sealed class ContractAliasResolver
                 }
             }
 
-            reachable.Remove(from);
-            closure.Add(from, reachable.ToImmutable());
+            reachable.Remove(child);
+            closure.Add(child, reachable.ToImmutable());
         }
 
         return closure.ToImmutable();
@@ -334,8 +323,8 @@ internal sealed class ContractAliasResolver
 
         foreach (var definition in implicationDefinitions)
         {
-            if (!componentByNode.TryGetValue(definition.From, out var component) ||
-                !componentByNode.TryGetValue(definition.To, out var toComponent) ||
+            if (!componentByNode.TryGetValue(definition.Child, out var component) ||
+                !componentByNode.TryGetValue(definition.Parent, out var toComponent) ||
                 component != toComponent ||
                 !cyclicComponents.Contains(component))
             {
@@ -346,7 +335,7 @@ internal sealed class ContractAliasResolver
                 Diagnostic.Create(
                     DiagnosticDescriptors.CyclicAliasDefinition,
                     GetAttributeLocation(definition.Attribute),
-                    FormatAlias(definition.From, definition.To)));
+                    FormatImplication(definition.Child, definition.Parent)));
         }
     }
 
@@ -477,21 +466,21 @@ internal sealed class ContractAliasResolver
         return string.Join(".", parts);
     }
 
-    private static string FormatAlias(string from, string to) => from + " -> " + to;
+    private static string FormatImplication(string child, string parent) => child + " -> " + parent;
 
     private readonly struct ImplicationDefinition
     {
-        public ImplicationDefinition(AttributeData attribute, string from, string to)
+        public ImplicationDefinition(AttributeData attribute, string child, string parent)
         {
             Attribute = attribute;
-            From = from;
-            To = to;
+            Child = child;
+            Parent = parent;
         }
 
         public AttributeData Attribute { get; }
 
-        public string From { get; }
+        public string Child { get; }
 
-        public string To { get; }
+        public string Parent { get; }
     }
 }

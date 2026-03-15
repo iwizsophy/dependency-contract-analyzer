@@ -61,14 +61,6 @@ internal static class TestAttributeSources
             }
 
             [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
-            public sealed class ContractAliasAttribute : Attribute
-            {
-                public ContractAliasAttribute(string from, string to)
-                {
-                }
-            }
-
-            [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
             public sealed class ContractHierarchyAttribute : Attribute
             {
                 public ContractHierarchyAttribute(string child, string parent)
@@ -103,14 +95,6 @@ internal static class TestAttributeSources
             internal sealed class ContractScopeAttribute : System.Attribute
             {
                 public ContractScopeAttribute(string name)
-                {
-                }
-            }
-
-            [System.AttributeUsage(System.AttributeTargets.Assembly, AllowMultiple = true, Inherited = false)]
-            internal sealed class ContractAliasAttribute : System.Attribute
-            {
-                public ContractAliasAttribute(string from, string to)
                 {
                 }
             }

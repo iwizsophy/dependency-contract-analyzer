@@ -10,7 +10,7 @@ Its core concept is:
 
 ## Status
 
-- Implemented analyzer rules: `ProvidesContract`, `RequiresDependencyContract`, `ContractTarget`, `RequiresContractOnTarget`, `ContractScope`, `RequiresContractOnScope`, `ContractAlias`, `ContractHierarchy`
+- Implemented analyzer rules: `ProvidesContract`, `RequiresDependencyContract`, `ContractTarget`, `RequiresContractOnTarget`, `ContractScope`, `RequiresContractOnScope`, `ContractHierarchy`
 - Dependency extraction currently covers constructor parameters, non-constructor method parameters, property types, fields, `new` expressions, static member usage (including static events and `using static` imports, but excluding enum members), base types, and implemented interfaces
 - Package ID: `DependencyContractAnalyzer`
 - Implementation scope for the first release is tracked in [docs/specification.md](docs/specification.md)
@@ -125,11 +125,11 @@ public sealed class OrderService
 
 Target names also use `Trim()` with `StringComparison.OrdinalIgnoreCase`.
 
-Assembly-level implication edges can be declared with either `ContractAlias` or `ContractHierarchy`:
+Assembly-level implication edges are declared with `ContractHierarchy`:
 
 ```csharp
-[assembly: ContractAlias("immutable", "thread-safe")]
 [assembly: ContractHierarchy("snapshot-cache", "immutable")]
+[assembly: ContractHierarchy("immutable", "thread-safe")]
 
 [ProvidesContract("snapshot-cache")]
 public sealed class SnapshotCache
@@ -137,9 +137,9 @@ public sealed class SnapshotCache
 }
 ```
 
-With these declarations, `snapshot-cache` satisfies both `immutable` and `thread-safe`. Mixed alias and hierarchy chains are supported, and cyclic implication definitions are reported as `DCA202`.
+With these declarations, `snapshot-cache` satisfies both `immutable` and `thread-safe`. Multi-step and multi-parent hierarchy chains are supported, and cyclic implication definitions are reported as `DCA202`.
 
-`ContractAlias` remains a backward-compatible implication edge. `ContractHierarchy` is the explicit hierarchy API and supports multi-parent graphs by repeating attributes. For targets and scopes, explicit attributes remain the primary metadata source. By default, the analyzer infers a fallback name from the final namespace segment when type-level metadata is absent, so `ReadModel` becomes `read-model`. With `dependency_contract_analyzer.namespace_inference_max_segments = 2`, trailing two-segment fallbacks such as `ReadModels.Query` -> `read-models-query` are also inferred. For scopes, assembly-level `ContractScope` remains explicit metadata and suppresses namespace inference. Dependencies outside the current compilation are ignored by default; with `dependency_contract_analyzer.external_dependency_policy = metadata`, the analyzer also reads explicit provided-contract, target, and scope metadata plus referenced `ContractAlias` / `ContractHierarchy` edges. Referenced implication diagnostics are not reported in the consuming compilation. Undeclared target and scope validation still uses declarations from the current compilation only.
+`ContractHierarchy` is the implication API and supports multi-parent graphs by repeating attributes. For targets and scopes, explicit attributes remain the primary metadata source. By default, the analyzer infers a fallback name from the final namespace segment when type-level metadata is absent, so `ReadModel` becomes `read-model`. With `dependency_contract_analyzer.namespace_inference_max_segments = 2`, trailing two-segment fallbacks such as `ReadModels.Query` -> `read-models-query` are also inferred. For scopes, assembly-level `ContractScope` remains explicit metadata and suppresses namespace inference. Dependencies outside the current compilation are ignored by default; with `dependency_contract_analyzer.external_dependency_policy = metadata`, the analyzer also reads explicit provided-contract, target, and scope metadata plus referenced `ContractHierarchy` edges. Referenced implication diagnostics are not reported in the consuming compilation. Undeclared target and scope validation still uses declarations from the current compilation only.
 
 ## Default severities
 
@@ -185,7 +185,7 @@ Source-scoped options apply across all declaring files of a partial owner type. 
 
 - Promote `DCA202`, `DCA203`, and `DCA204` to `Error` in CI.
 - Keep `DCA205` and `DCA206` at `Info` unless the codebase is already stable enough to treat stale requirements as build-blocking.
-- `DCA101` validates lower-kebab-case contract names, requirement-suppression contract arguments, and alias or hierarchy endpoints only. It does not apply to target or scope names.
+- `DCA101` validates lower-kebab-case contract names, requirement-suppression contract arguments, and hierarchy endpoints only. It does not apply to target or scope names.
 
 ## Suppression model
 

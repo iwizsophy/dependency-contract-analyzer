@@ -10,7 +10,7 @@
 
 ## 現在の状態
 
-- 実装済み Analyzer ルール: `ProvidesContract`, `RequiresDependencyContract`, `ContractTarget`, `RequiresContractOnTarget`, `ContractScope`, `RequiresContractOnScope`, `ContractAlias`, `ContractHierarchy`
+- 実装済み Analyzer ルール: `ProvidesContract`, `RequiresDependencyContract`, `ContractTarget`, `RequiresContractOnTarget`, `ContractScope`, `RequiresContractOnScope`, `ContractHierarchy`
 - 依存抽出の対象は現在、コンストラクタ引数、コンストラクタ以外のメソッド引数、プロパティ型、フィールド型、`new` 式、static メンバー利用（static event と `using static` を含み、enum member は除外）、継承、実装インタフェースです
 - パッケージ ID は `DependencyContractAnalyzer` です
 - 初期実装スコープは [docs/specification.ja.md](docs/specification.ja.md) にまとめています
@@ -125,11 +125,11 @@ public sealed class OrderService
 
 target 名も `Trim()` 後、`StringComparison.OrdinalIgnoreCase` で比較します。
 
-assembly 単位の包含辺は `ContractAlias` と `ContractHierarchy` のどちらでも宣言できます。
+assembly 単位の包含辺は `ContractHierarchy` で宣言します。
 
 ```csharp
-[assembly: ContractAlias("immutable", "thread-safe")]
 [assembly: ContractHierarchy("snapshot-cache", "immutable")]
+[assembly: ContractHierarchy("immutable", "thread-safe")]
 
 [ProvidesContract("snapshot-cache")]
 public sealed class SnapshotCache
@@ -137,9 +137,9 @@ public sealed class SnapshotCache
 }
 ```
 
-この定義がある場合、`snapshot-cache` は `immutable` と `thread-safe` の両方を満たすものとして扱われます。alias と hierarchy を混在した多段解決に対応し、循環する包含定義は `DCA202` として報告します。
+この定義がある場合、`snapshot-cache` は `immutable` と `thread-safe` の両方を満たすものとして扱われます。多段・多親の hierarchy 解決に対応し、循環する包含定義は `DCA202` として報告します。
 
-`ContractAlias` は後方互換のための包含辺として維持し、`ContractHierarchy` が明示的な階層 API です。多親階層は属性の繰り返しで表現できます。target / scope では明示属性を優先します。既定では type-level metadata がない場合に namespace 最終セグメントから fallback 名を推定し、`ReadModel` は `read-model` として扱われます。`dependency_contract_analyzer.namespace_inference_max_segments = 2` を設定すると、`ReadModels.Query` -> `read-models-query` のような trailing 2-segment fallback も推定します。scope は assembly-level `ContractScope` がある場合、それを明示定義として優先し namespace 推定は行いません。current compilation 外の dependency は既定では無視しますが、`dependency_contract_analyzer.external_dependency_policy = metadata` を設定すると、参照先 assembly の explicit provided-contract / target / scope metadata に加えて `ContractAlias` / `ContractHierarchy` の包含辺も読み取ります。参照先包含定義の診断は consumer compilation には出しません。なお undeclared target / scope 判定は引き続き current compilation 内の宣言だけを対象にします。
+`ContractHierarchy` が包含辺 API です。多親階層は属性の繰り返しで表現できます。target / scope では明示属性を優先します。既定では type-level metadata がない場合に namespace 最終セグメントから fallback 名を推定し、`ReadModel` は `read-model` として扱われます。`dependency_contract_analyzer.namespace_inference_max_segments = 2` を設定すると、`ReadModels.Query` -> `read-models-query` のような trailing 2-segment fallback も推定します。scope は assembly-level `ContractScope` がある場合、それを明示定義として優先し namespace 推定は行いません。current compilation 外の dependency は既定では無視しますが、`dependency_contract_analyzer.external_dependency_policy = metadata` を設定すると、参照先 assembly の explicit provided-contract / target / scope metadata に加えて `ContractHierarchy` の包含辺も読み取ります。参照先包含定義の診断は consumer compilation には出しません。なお undeclared target / scope 判定は引き続き current compilation 内の宣言だけを対象にします。
 
 ## 既定 Severity
 
@@ -185,7 +185,7 @@ source-scoped option は partial owner type のすべての宣言ファイルを
 
 - `DCA202`、`DCA203`、`DCA204` は CI では `Error` へ昇格推奨
 - `DCA205`、`DCA206` は通常は `Info` のまま推奨
-- `DCA101` は lower-kebab-case の contract 名、requirement suppression の contract 引数、alias / hierarchy endpoint のみを対象とし、target / scope 名には適用しません
+- `DCA101` は lower-kebab-case の contract 名、requirement suppression の contract 引数、hierarchy endpoint のみを対象とし、target / scope 名には適用しません
 
 ## Suppression モデル
 

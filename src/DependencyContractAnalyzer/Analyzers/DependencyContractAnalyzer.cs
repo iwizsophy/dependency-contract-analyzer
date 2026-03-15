@@ -17,7 +17,6 @@ namespace DependencyContractAnalyzer.Analyzers;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAnalyzer
 {
-    private const string ContractAliasAttributeMetadataName = "DependencyContractAnalyzer.ContractAliasAttribute";
     private const string ContractHierarchyAttributeMetadataName = "DependencyContractAnalyzer.ContractHierarchyAttribute";
     private const string ContractScopeAttributeMetadataName = "DependencyContractAnalyzer.ContractScopeAttribute";
     private const string ContractTargetAttributeMetadataName = "DependencyContractAnalyzer.ContractTargetAttribute";
@@ -62,8 +61,6 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
 
         context.RegisterCompilationStartAction(static startContext =>
         {
-            var contractAliasAttributeSymbol =
-                startContext.Compilation.GetTypeByMetadataName(ContractAliasAttributeMetadataName);
             var contractHierarchyAttributeSymbol =
                 startContext.Compilation.GetTypeByMetadataName(ContractHierarchyAttributeMetadataName);
             var providesContractAttributeSymbol =
@@ -94,21 +91,19 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 return;
             }
 
-            var contractAliasResolver = ContractAliasResolver.Create(
+            var contractImplicationResolver = ContractImplicationResolver.Create(
                 startContext.Compilation.Assembly,
-                contractAliasAttributeSymbol,
                 contractHierarchyAttributeSymbol);
             // Referenced implication graphs are resolved lazily and cached per assembly.
             // The local compilation still owns diagnostic reporting for implication problems.
             var referencedAssemblyImplicationResolverCache =
-                new ConcurrentDictionary<IAssemblySymbol, ContractAliasResolver>(SymbolEqualityComparer.Default);
-            ContractAliasResolver ResolveReferencedAssemblyImplicationGraph(IAssemblySymbol assembly) =>
+                new ConcurrentDictionary<IAssemblySymbol, ContractImplicationResolver>(SymbolEqualityComparer.Default);
+            ContractImplicationResolver ResolveReferencedAssemblyImplicationGraph(IAssemblySymbol assembly) =>
                 referencedAssemblyImplicationResolverCache.GetOrAdd(
                     assembly,
                     referencedAssembly =>
-                        ContractAliasResolver.CreateExternal(
+                        ContractImplicationResolver.CreateExternal(
                             referencedAssembly,
-                            contractAliasAttributeSymbol,
                             contractHierarchyAttributeSymbol));
             var externalDependencyOptions = ExternalDependencyOptions.Create(startContext.Options.AnalyzerConfigOptionsProvider);
             var namespaceInferenceOptions = NamespaceInferenceOptions.Create(startContext.Options.AnalyzerConfigOptionsProvider);
@@ -119,12 +114,12 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 ? CreateEmptyNameSet()
                 : CollectKnownScopes(startContext.Compilation.Assembly, contractScopeAttributeSymbol, namespaceInferenceOptions);
 
-            if (!contractAliasResolver.Diagnostics.IsDefaultOrEmpty)
+            if (!contractImplicationResolver.Diagnostics.IsDefaultOrEmpty)
             {
                 startContext.RegisterCompilationEndAction(
                     compilationContext =>
                     {
-                        foreach (var diagnostic in contractAliasResolver.Diagnostics)
+                        foreach (var diagnostic in contractImplicationResolver.Diagnostics)
                         {
                             compilationContext.ReportDiagnostic(diagnostic);
                         }
@@ -142,7 +137,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                         excludeDependencyContractSourceAttributeSymbol,
                         externalDependencyOptions,
                         namespaceInferenceOptions,
-                        contractAliasResolver,
+                        contractImplicationResolver,
                         ResolveReferencedAssemblyImplicationGraph,
                         knownScopes,
                         knownTargets,
@@ -166,8 +161,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol? excludeDependencyContractSourceAttributeSymbol,
         ExternalDependencyOptions externalDependencyOptions,
         NamespaceInferenceOptions namespaceInferenceOptions,
-        ContractAliasResolver contractAliasResolver,
-        Func<IAssemblySymbol, ContractAliasResolver> resolveReferencedAssemblyImplicationGraph,
+        ContractImplicationResolver contractImplicationResolver,
+        Func<IAssemblySymbol, ContractImplicationResolver> resolveReferencedAssemblyImplicationGraph,
         ImmutableHashSet<string> knownScopes,
         ImmutableHashSet<string> knownTargets,
         INamedTypeSymbol providesContractAttributeSymbol,
@@ -223,7 +218,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             excludeDependencyContractSourceAttributeSymbol,
             externalDependencyOptions,
             namespaceInferenceOptions,
-            contractAliasResolver,
+            contractImplicationResolver,
             resolveReferencedAssemblyImplicationGraph,
             knownScopes,
             knownTargets,
@@ -363,8 +358,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         INamedTypeSymbol? excludeDependencyContractSourceAttributeSymbol,
         ExternalDependencyOptions externalDependencyOptions,
         NamespaceInferenceOptions namespaceInferenceOptions,
-        ContractAliasResolver contractAliasResolver,
-        Func<IAssemblySymbol, ContractAliasResolver> resolveReferencedAssemblyImplicationGraph,
+        ContractImplicationResolver contractImplicationResolver,
+        Func<IAssemblySymbol, ContractImplicationResolver> resolveReferencedAssemblyImplicationGraph,
         ImmutableHashSet<string> knownScopes,
         ImmutableHashSet<string> knownTargets,
         INamedTypeSymbol providesContractAttributeSymbol,
@@ -614,7 +609,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                     providedContracts = GetProvidedContracts(
                         dependency.Type,
                         providesContractAttributeSymbol,
-                        contractAliasResolver,
+                        contractImplicationResolver,
                         context.Compilation.Assembly,
                         resolveReferencedAssemblyImplicationGraph);
                     providedContractCache.Add(dependency.Type, providedContracts);
@@ -675,7 +670,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                 providedContractCache,
                 ResolveTargets,
                 providesContractAttributeSymbol,
-                contractAliasResolver,
+                contractImplicationResolver,
                 resolveReferencedAssemblyImplicationGraph,
                 DiagnosticDescriptors.UndeclaredRequiredTarget,
                 DiagnosticDescriptors.UnusedRequiredTarget);
@@ -715,7 +710,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             providedContractCache,
             ResolveScopes,
             providesContractAttributeSymbol,
-            contractAliasResolver,
+            contractImplicationResolver,
             resolveReferencedAssemblyImplicationGraph,
             DiagnosticDescriptors.UndeclaredRequiredScope,
             DiagnosticDescriptors.UnusedRequiredScope);
@@ -724,12 +719,12 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
     private static ImmutableHashSet<string> GetProvidedContracts(
         INamedTypeSymbol type,
         INamedTypeSymbol providesContractAttributeSymbol,
-        ContractAliasResolver contractAliasResolver,
+        ContractImplicationResolver contractImplicationResolver,
         IAssemblySymbol compilationAssembly,
-        Func<IAssemblySymbol, ContractAliasResolver> resolveReferencedAssemblyImplicationGraph)
+        Func<IAssemblySymbol, ContractImplicationResolver> resolveReferencedAssemblyImplicationGraph)
     {
         var contracts = ImmutableHashSet.CreateBuilder<string>(StringComparer.OrdinalIgnoreCase);
-        var implicationResolvers = new List<ContractAliasResolver> { contractAliasResolver };
+        var implicationResolvers = new List<ContractImplicationResolver> { contractImplicationResolver };
         var referencedAssemblies = new HashSet<IAssemblySymbol>(SymbolEqualityComparer.Default);
         var toVisit = new Stack<INamedTypeSymbol>();
         var visited = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
@@ -769,7 +764,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             }
         }
 
-        return ContractAliasResolver.ExpandAcross(contracts.ToImmutable(), implicationResolvers);
+        return ContractImplicationResolver.ExpandAcross(contracts.ToImmutable(), implicationResolvers);
     }
 
     private static ImmutableHashSet<string> GetTargets(
@@ -1034,8 +1029,8 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         Dictionary<INamedTypeSymbol, ImmutableHashSet<string>> providedContractCache,
         Func<INamedTypeSymbol, bool, ImmutableHashSet<string>> resolveDependencyNames,
         INamedTypeSymbol providesContractAttributeSymbol,
-        ContractAliasResolver contractAliasResolver,
-        Func<IAssemblySymbol, ContractAliasResolver> resolveReferencedAssemblyImplicationGraph,
+        ContractImplicationResolver contractImplicationResolver,
+        Func<IAssemblySymbol, ContractImplicationResolver> resolveReferencedAssemblyImplicationGraph,
         DiagnosticDescriptor undeclaredDescriptor,
         DiagnosticDescriptor unusedDescriptor)
         where TRequirement : struct, INamedRequirement
@@ -1086,7 +1081,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                     providedContracts = GetProvidedContracts(
                         dependency.Type,
                         providesContractAttributeSymbol,
-                        contractAliasResolver,
+                        contractImplicationResolver,
                         context.Compilation.Assembly,
                         resolveReferencedAssemblyImplicationGraph);
                     providedContractCache.Add(dependency.Type, providedContracts);
