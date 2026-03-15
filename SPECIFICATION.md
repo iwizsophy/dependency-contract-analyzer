@@ -234,6 +234,17 @@ Constructor parameters are always analyzed and are not controlled by
 
 ------------------------------------------------------------------------
 
+# Requirement Suppression Boundary
+
+Requirement suppression remains exact-match only.
+
+Each suppression matches one normalized dependency type or one
+normalized target/scope name together with one normalized contract name.
+Suppression does not broaden across other requirement kinds, wildcards,
+prefixes, or contract-only forms.
+
+------------------------------------------------------------------------
+
 # Product Boundary
 
 DependencyContractAnalyzer remains DI-agnostic.

@@ -495,6 +495,51 @@ This decision adds no new diagnostics.
 
 ------------------------------------------------------------------------
 
+## ADR-008 Requirement suppression remains exact-match only
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+The current suppression attributes already matched one normalized
+dependency type or one normalized target/scope name together with one
+normalized contract name. They also already avoided broadening
+suppression across other requirement kinds. That behavior was documented
+in the detailed specification and attribute remarks, but it had not been
+recorded as an accepted design decision.
+
+### Decision
+
+Requirement suppression remains exact-match only. A suppression matches
+one normalized dependency type or one normalized target/scope name
+together with one normalized contract name.
+
+Suppression does not broaden to wildcards, prefixes, contract-only
+forms, rule-family suppression, or other requirement kinds. Any future
+broader suppression model requires a separate design decision.
+
+This decision adds no new diagnostics.
+
+### Consequences
+
+-   suppression behavior stays predictable and directly attributable to
+    one declared requirement
+-   diagnostics remain transparent because suppression cannot silently
+    swallow adjacent requirement kinds or broader rule families
+-   future broader suppression features remain possible, but they
+    require a separate product decision and additional stale-suppression
+    design work
+
+### Related
+
+-   Issue: #68
+-   Pull Request:
+-   Specification reference: `SPECIFICATION.md`, `docs/specification.md`
+-   Related decisions:
+
+------------------------------------------------------------------------
+
 # Maintenance Rules
 
 -   Each decision should be concise.

@@ -2273,6 +2273,34 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task DoesNotBroadenSuppressionAcrossRequirementKinds()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ContractTarget("repository")]
+            public interface IFoo
+            {
+            }
+
+            [SuppressRequiredTargetContract("repository", "thread-safe")]
+            [{|#0:RequiresDependencyContract(typeof(IFoo), "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.MissingRequiredContract)
+                .WithLocation(0)
+                .WithArguments("IFoo", "thread-safe"));
+    }
+
+    [Fact]
     public async Task ReportsUnusedDependenciesWhenConstructorSourceIsExcluded()
     {
         const string source = """
