@@ -8,7 +8,7 @@ The project itself is intended to build without `DependencyContractAnalyzer` war
 - `ProvidesContract` + `RequiresDependencyContract`
 - `ContractTarget` + `RequiresContractOnTarget`
 - `ContractScope` + `RequiresContractOnScope`
-- `ContractAlias`
+- `ContractHierarchy`
 - dependency extraction through constructor parameters, method parameters, property types, `new` expressions, and static member usage
 
 ## Build

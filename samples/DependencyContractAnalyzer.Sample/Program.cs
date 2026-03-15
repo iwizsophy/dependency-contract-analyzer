@@ -3,7 +3,7 @@ using DependencyContractAnalyzer;
 
 // Keep the runnable sample warning-free so the repository build stays clean.
 // The sample README carries intentionally invalid snippets separately.
-[assembly: ContractAlias("immutable", "thread-safe")]
+[assembly: ContractHierarchy("immutable", "thread-safe")]
 
 Console.WriteLine("DependencyContractAnalyzer sample project");
 

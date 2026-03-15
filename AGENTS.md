@@ -146,9 +146,9 @@ Releases must use a Pull Request from `develop` into `main`.
     only for `develop` and `main`
 -   publish workflow validation enforces annotated release tags
 
-The current required status check is `build-test-pack`. If CI is split
-into multiple jobs later, update the required-check policy at the same
-time.
+The required CI status checks for the split workflow are `build`,
+`test`, `analyzer`, and `pack`. Repository settings must be updated to
+match these checks when the CI split lands.
 
 If a direct push reaches `main` or `develop`, revert it and reintroduce
 the change through the normal Pull Request flow unless a maintainer has

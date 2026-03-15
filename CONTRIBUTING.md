@@ -36,7 +36,7 @@ Thanks for your interest in contributing to DependencyContractAnalyzer.
 - GitHub Releases are created from release tags on `main`.
 - Manual publish workflow dispatches are validation-only and may run only
   for `develop` and `main`.
-- The current required CI check is `build-test-pack`.
+- The required CI checks are `build`, `test`, `analyzer`, and `pack`.
 - New third-party dependency additions require an Issue.
 - Major dependency updates or dependency replacements require an Issue.
 - `THIRD-PARTY-NOTICES.md` must be updated in the same Pull Request when a
