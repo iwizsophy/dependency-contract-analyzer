@@ -2445,7 +2445,7 @@ public sealed class DependencyContractAnalyzerTests
         await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
     }
 
-    // Scope resolution combines explicit declarations, assembly defaults, and namespace inference.
+    // Scope resolution combines explicit declarations, assembly declarations, and fallback inference.
     [Fact]
     public async Task ReportsNoDiagnosticWhenScopedStaticUsageProvidesRequiredContract()
     {
@@ -2679,7 +2679,7 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
-    public async Task PrefersAssemblyScopeOverNamespaceInference()
+    public async Task UsesNamespaceInferenceAlongsideAssemblyScopeWhenTypeHasNoExplicitScope()
     {
         const string source = """
             using DependencyContractAnalyzer;
@@ -2702,15 +2702,11 @@ public sealed class DependencyContractAnalyzerTests
             }
             """;
 
-        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
-            source,
-            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredScope)
-                .WithLocation(0)
-                .WithArguments("repository"));
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(source);
     }
 
     [Fact]
-    public async Task PrefersAssemblyScopeOverConfiguredTrailingNamespaceInference()
+    public async Task UsesConfiguredTrailingNamespaceInferenceAlongsideAssemblyScopeWhenTypeHasNoExplicitScope()
     {
         const string source = """
             using DependencyContractAnalyzer;
@@ -2729,6 +2725,74 @@ public sealed class DependencyContractAnalyzerTests
             {
                 public Consumer(UserRepository repository)
                 {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.namespace_inference_max_segments", "2"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
+    public async Task PrefersExplicitScopeOverNamespaceInference()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            namespace MyCompany.Repository
+            {
+                [ContractScope("storage")]
+                [ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+
+            namespace MyCompany.Application
+            {
+                [{|#0:RequiresContractOnScope("repository", "thread-safe")|}]
+                public sealed class Consumer
+                {
+                    public Consumer(MyCompany.Repository.UserRepository repository)
+                    {
+                    }
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UndeclaredRequiredScope)
+                .WithLocation(0)
+                .WithArguments("repository"));
+    }
+
+    [Fact]
+    public async Task PrefersExplicitScopeOverConfiguredTrailingNamespaceInference()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            namespace MyCompany.ReadModels.Query
+            {
+                [ContractScope("storage")]
+                [ProvidesContract("thread-safe")]
+                public sealed class UserRepository
+                {
+                }
+            }
+
+            namespace MyCompany.Application
+            {
+                [RequiresContractOnScope("read-models-query", "thread-safe")]
+                public sealed class Consumer
+                {
+                    public Consumer(MyCompany.ReadModels.Query.UserRepository repository)
+                    {
+                    }
                 }
             }
             """;
@@ -2899,7 +2963,7 @@ public sealed class DependencyContractAnalyzerTests
                 .WithArguments("repository"));
     }
 
-    // Target resolution mirrors scope behavior, but namespace fallback stays local-only.
+    // Target resolution shares the explicit-over-inference rule used by scope resolution.
     [Fact]
     public async Task ReportsNoDiagnosticWhenTargetedDependencyProvidesRequiredContract()
     {
@@ -3374,6 +3438,49 @@ public sealed class DependencyContractAnalyzerTests
 
         var diagnostic = Assert.Single(diagnostics);
         Assert.Equal(DiagnosticIds.UnusedRequiredTarget, diagnostic.Id);
+        Assert.Equal(DiagnosticSeverity.Info, diagnostic.Severity);
+        Assert.Contains("external-contracts", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task DoesNotInferScopeFromExternalImplementedInterfaceNamespace()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+            using ExternalContracts;
+
+            [ContractScope("external-contracts")]
+            public sealed class ScopeMarker
+            {
+            }
+
+            public sealed class UserRepository : IRepository
+            {
+            }
+
+            [RequiresContractOnScope("external-contracts", "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(UserRepository repository)
+                {
+                }
+            }
+            """;
+        const string externalBody = """
+            namespace ExternalContracts
+            {
+                public interface IRepository
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithSourceDefinedAttributesAndAdditionalReferenceSourcesAsync(
+            source,
+            new[] { TestAttributeSources.CreateExternalAssemblySource(externalBody) });
+
+        var diagnostic = Assert.Single(diagnostics);
+        Assert.Equal(DiagnosticIds.UnusedRequiredScope, diagnostic.Id);
         Assert.Equal(DiagnosticSeverity.Info, diagnostic.Severity);
         Assert.Contains("external-contracts", diagnostic.GetMessage());
     }

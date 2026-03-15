@@ -9,8 +9,8 @@ namespace DependencyContractAnalyzer;
 /// Scopes are matched by <see cref="RequiresContractOnScopeAttribute"/> and are
 /// normalized by trimming surrounding whitespace and comparing with ordinal
 /// case-insensitive semantics. When this attribute is applied at the assembly
-/// level, the declared scope acts as the default explicit scope for types that
-/// do not declare their own scope.
+/// level, the declared scope applies to types in that assembly. Type-level scope
+/// declarations add scopes for the type and do not remove assembly-level scopes.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface | AttributeTargets.Assembly, AllowMultiple = true, Inherited = true)]
 public sealed class ContractScopeAttribute : Attribute

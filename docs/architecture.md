@@ -236,7 +236,7 @@ This precedence is about how a dependency is evaluated, not about release order.
 
 ## 5. Dependency evaluation model
 
-Initially, dependencies can stay limited to strong type relationships:
+Dependencies stay limited to strong type relationships:
 
 ```text
 Consumer Type

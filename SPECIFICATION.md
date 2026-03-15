@@ -181,6 +181,73 @@ first.
 
 ------------------------------------------------------------------------
 
+# Analyzer Metadata Resolution
+
+The analyzer resolves target and scope metadata using these rules:
+
+-   Type-level `ContractTarget` and `ContractScope` declarations take
+    precedence over namespace-based inference for their respective
+    metadata kinds.
+-   Namespace-based inference is fallback-only and applies only when the
+    type has no type-level explicit metadata of that kind.
+-   Assembly-level `ContractScope` declarations always apply to types in
+    the declaring assembly.
+-   Type-level `ContractScope` declarations add scopes for the type and
+    do not remove assembly-level scopes.
+-   Namespace-based scope inference may add fallback scope names
+    alongside assembly-level scopes when the type has no type-level
+    explicit scope declarations.
+-   In `external_dependency_policy = metadata` mode, namespace-based
+    inference remains limited to current-compilation types; referenced
+    assemblies contribute explicit metadata and implication edges only.
+-   `DCA200` and `DCA201` validate declared targets and scopes against
+    the current compilation only, even when external metadata matching
+    is enabled.
+-   Malformed implication definitions from referenced assemblies do not
+    report diagnostics in the consuming compilation; those diagnostics
+    remain owned by the compilation that declares the implication
+    metadata.
+
+------------------------------------------------------------------------
+
+# Dependency Extraction Boundary
+
+Dependency extraction remains limited to strong type relationships.
+
+The analyzer extracts dependencies from:
+
+-   constructor parameters
+-   non-constructor method parameters
+-   property types
+-   field types
+-   object creation
+-   static member usage
+-   base types
+-   implemented interfaces
+
+The analyzer does not extract dependencies from weaker symbol
+relationships such as attribute references, generic constraints,
+`typeof` references, or return types.
+
+------------------------------------------------------------------------
+
+# Product Boundary
+
+DependencyContractAnalyzer remains DI-agnostic.
+
+The product does not analyze:
+
+-   DI registration analysis
+-   runtime dependency resolution
+-   Scrutor-style registration expansion
+-   factory registration behavior
+-   container-specific wiring rules
+
+Contracts must be discoverable from the analyzed type surface and the
+documented metadata model rather than from container configuration.
+
+------------------------------------------------------------------------
+
 # Maintenance
 
 Specification should evolve slowly.

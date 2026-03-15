@@ -146,7 +146,7 @@ Describe the effects of the decision:
 
 # Example
 
-## ADR-001 Diagnostic IDs are stable
+## Example ADR: Diagnostic IDs are stable
 
 Status: Accepted  
 Specification: Updated
@@ -166,6 +166,288 @@ stable.
 Pros: - predictable integrations - stable tooling behavior
 
 Cons: - refactoring diagnostic grouping becomes harder
+
+------------------------------------------------------------------------
+
+## ADR-001 Type-level metadata overrides inference and assembly scopes compose additively
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+The analyzer already documented type-level `ContractTarget` and
+`ContractScope` declarations as the primary metadata source, while
+namespace inference acted as fallback behavior. However, that precedence
+was not recorded as an accepted product decision. The scope model also
+needed an explicit decision for how assembly-level `ContractScope`
+declarations compose with type-level scopes and namespace-based fallback
+resolution.
+
+### Decision
+
+Type-level `ContractTarget` and `ContractScope` declarations remain
+authoritative over namespace-based inference for their respective
+metadata kinds. The analyzer does not add namespace-inferred target or
+scope names for a type when that type already declares explicit metadata
+of the same kind.
+
+Assembly-level `ContractScope` declarations always apply to types in the
+declaring assembly. Type-level `ContractScope` declarations add scopes
+for the type and do not remove assembly-level scopes. Namespace-based
+scope inference remains fallback-only and is applied when the type has
+no type-level explicit scopes, even if assembly-level scopes are
+present.
+
+This decision adds no new diagnostics.
+
+### Consequences
+
+-   target and scope resolution stays predictable because explicit
+    type-level declarations do not mix with inferred names for the same
+    metadata kind
+-   assembly-wide scope classification remains stable because
+    assembly-level scopes cannot be removed by individual type
+    declarations
+-   scope matching can include both assembly-level scopes and
+    namespace-inferred fallback scopes for types without explicit
+    type-level scopes
+-   richer mixed explicit-plus-inferred models remain future work and
+    require separate design discussion
+
+### Related
+
+-   Issue: #69, #71
+-   Pull Request:
+-   Specification reference: `SPECIFICATION.md`, `docs/specification.md`
+-   Related decisions:
+
+------------------------------------------------------------------------
+
+## ADR-002 External metadata mode stays explicit-metadata-only for namespace inference
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+`external_dependency_policy = metadata` already allowed the analyzer to
+consume explicit provided contracts, targets, scopes, and implication
+edges from referenced assemblies. The product also already limited
+namespace-based target and scope inference to the current compilation,
+but that boundary was not recorded as an accepted design decision.
+
+### Decision
+
+In `external_dependency_policy = metadata` mode, referenced assemblies
+contribute explicit metadata and implication edges only. Referenced
+assemblies do not participate in namespace-based target or scope
+inference.
+
+Namespace-based inference remains limited to types declared in the
+current compilation. The analyzer adds no new diagnostics for
+hypothetical disagreements between explicit external metadata and
+would-be inferred external names because inferred external names are not
+part of the product model.
+
+### Consequences
+
+-   external dependency matching remains explicit and predictable
+-   the analyzer avoids heuristic cross-assembly naming guesses that are
+    hard to explain or stabilize
+-   future external inference work remains possible, but it requires a
+    separate design decision and additional diagnostics discussion
+
+### Related
+
+-   Issue: #58
+-   Pull Request:
+-   Specification reference: `SPECIFICATION.md`, `docs/specification.md`
+-   Related decisions: ADR-001
+
+------------------------------------------------------------------------
+
+## ADR-003 Undeclared target and scope validation remains current-compilation-only
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+The analyzer already reported `DCA200` and `DCA201` by validating
+required target and scope names against declarations in the current
+compilation only. Even in `external_dependency_policy = metadata` mode,
+referenced assemblies were used for dependency matching rather than for
+declared-name validation. That boundary was documented, but it had not
+been recorded as an accepted design decision.
+
+### Decision
+
+`DCA200` and `DCA201` remain limited to declarations in the current
+compilation. Referenced assemblies do not contribute declared target or
+scope names for undeclared-requirement validation, even when
+`external_dependency_policy = metadata`.
+
+Disabling `report_undeclared_requirement_diagnostics` continues
+dependency evaluation after the undeclared check, but it does not change
+the declared-name boundary itself.
+
+This decision adds no new diagnostics.
+
+### Consequences
+
+-   undeclared-requirement diagnostics stay deterministic and tied to
+    source that the current compilation owns
+-   external metadata remains a matching aid rather than an authority
+    for declared-name validation
+-   future expansion to cross-assembly declaration validation remains
+    possible, but it requires a separate design decision and additional
+    diagnostic-model work
+
+### Related
+
+-   Issue: #57
+-   Pull Request:
+-   Specification reference: `SPECIFICATION.md`, `docs/specification.md`
+-   Related decisions: ADR-002
+
+------------------------------------------------------------------------
+
+## ADR-004 Referenced implication diagnostics remain silent in consuming compilations
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+In `external_dependency_policy = metadata` mode, referenced assemblies
+already contributed implication edges for dependency matching. The
+analyzer also already avoided reporting malformed referenced implication
+definitions, including cyclic graphs, in the consuming compilation.
+That boundary was documented and covered by regression tests, but it had
+not been recorded as an accepted design decision.
+
+### Decision
+
+Referenced assemblies may contribute implication edges for dependency
+matching in `external_dependency_policy = metadata` mode, but
+diagnostics for malformed referenced implication definitions do not
+surface in the consuming compilation.
+
+Diagnostic reporting for implication-definition problems remains owned
+by the compilation that declares those implication edges. This includes
+`DCA202` and any future implication-definition diagnostics in the same
+family.
+
+This decision adds no new diagnostics.
+
+### Consequences
+
+-   package consumers do not receive diagnostics anchored to metadata
+    they do not compile directly
+-   implication matching can still use referenced metadata without
+    turning package consumption into cross-assembly diagnostic replay
+-   future cross-assembly diagnostic surfacing remains possible, but it
+    requires a separate decision for allowed diagnostic kinds and
+    location semantics
+
+### Related
+
+-   Issue: #66
+-   Pull Request:
+-   Specification reference: `SPECIFICATION.md`, `docs/specification.md`
+-   Related decisions: ADR-002, ADR-003
+
+------------------------------------------------------------------------
+
+## ADR-005 DependencyContractAnalyzer remains DI-agnostic
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+The project documentation already described the analyzer as DI-agnostic
+and listed DI registration analysis, runtime dependency resolution,
+Scrutor behavior, factory registration behavior, and container-specific
+wiring rules as non-goals. That product boundary was visible to users,
+but it had not been recorded as an accepted design decision.
+
+### Decision
+
+DependencyContractAnalyzer remains DI-agnostic. The product does not
+analyze DI container registrations, runtime resolution behavior,
+Scrutor-style registration expansion, factory registration behavior, or
+other container-specific wiring rules.
+
+Contracts must remain discoverable from the analyzed type surface, its
+base types, implemented interfaces, explicit metadata, and the existing
+metadata-only external reference model. Any future container-aware
+features require a separate design decision.
+
+This decision adds no new diagnostics.
+
+### Consequences
+
+-   analysis remains static and source-shape-driven instead of depending
+    on container conventions or runtime composition
+-   users must declare contracts on the types they consume rather than
+    relying on registration-side behavior to satisfy requirements
+-   future DI-aware features remain possible, but they require a
+    separate roadmap decision and a different diagnostic model
+
+### Related
+
+-   Issue: #61
+-   Pull Request:
+-   Specification reference: `SPECIFICATION.md`, `docs/specification.md`
+-   Related decisions:
+
+------------------------------------------------------------------------
+
+## ADR-006 Dependency extraction remains limited to strong type relationships
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+The documentation already described dependency extraction as limited to
+constructor parameters, non-constructor method parameters, property
+types, field types, object creation, static member usage, base types,
+and implemented interfaces. It also framed that set as an intentionally
+narrow initial boundary, but the project had not yet recorded whether
+that boundary was temporary or a stable product decision.
+
+### Decision
+
+Dependency extraction remains limited to strong type relationships. The
+in-scope dependency kinds are constructor parameters, non-constructor
+method parameters, property types, field types, object creation, static
+member usage, base types, and implemented interfaces.
+
+Attribute references, generic constraints, `typeof` references, return
+types, and other weaker symbol relationships remain out of scope. Any
+future expansion beyond this boundary requires a separate design
+decision.
+
+This decision adds no new diagnostics.
+
+### Consequences
+
+-   dependency discovery remains explainable from stable type-shape
+    relationships instead of broader symbol presence
+-   the analyzer stays aligned with its DI-agnostic and predictable
+    static-analysis model
+-   future extraction expansion remains possible, but it requires a
+    separate product decision and additional diagnostic/test work
+
+### Related
+
+-   Issue: #62
+-   Pull Request:
+-   Specification reference: `SPECIFICATION.md`, `docs/specification.md`
+-   Related decisions: ADR-005
 
 ------------------------------------------------------------------------
 

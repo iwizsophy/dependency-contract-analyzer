@@ -11,7 +11,7 @@ Its core concept is:
 ## Status
 
 - Implemented analyzer rules: `ProvidesContract`, `RequiresDependencyContract`, `ContractTarget`, `RequiresContractOnTarget`, `ContractScope`, `RequiresContractOnScope`, `ContractHierarchy`
-- Dependency extraction currently covers constructor parameters, non-constructor method parameters, property types, fields, `new` expressions, static member usage (including static events and `using static` imports, but excluding enum members), base types, and implemented interfaces
+- Dependency extraction covers constructor parameters, non-constructor method parameters, property types, fields, `new` expressions, static member usage (including static events and `using static` imports, but excluding enum members), base types, and implemented interfaces
 - Package ID: `DependencyContractAnalyzer`
 - Implementation scope for the first release is tracked in [docs/specification.md](docs/specification.md)
 - The intended end-state architecture is tracked in [docs/architecture.md](docs/architecture.md)
@@ -25,9 +25,9 @@ Its core concept is:
 
 Modern .NET codebases often depend on design assumptions that are not visible in the type system alone, such as thread safety, side-effect constraints, or infrastructure boundaries. This analyzer makes those assumptions explicit and verifies them against actual type dependencies.
 
-## First release scope
+## Dependency extraction scope
 
-The initial analyzer scope is intentionally narrow:
+Dependency extraction is intentionally limited to strong type relationships:
 
 - Constructor parameters
 - Non-constructor method parameters
@@ -139,7 +139,7 @@ public sealed class SnapshotCache
 
 With these declarations, `snapshot-cache` satisfies both `immutable` and `thread-safe`. Multi-step and multi-parent hierarchy chains are supported, and cyclic implication definitions are reported as `DCA202`.
 
-`ContractHierarchy` is the implication API and supports multi-parent graphs by repeating attributes. For targets and scopes, explicit attributes remain the primary metadata source. By default, the analyzer infers a fallback name from the final namespace segment when type-level metadata is absent, so `ReadModel` becomes `read-model`. With `dependency_contract_analyzer.namespace_inference_max_segments = 2`, trailing two-segment fallbacks such as `ReadModels.Query` -> `read-models-query` are also inferred. For scopes, assembly-level `ContractScope` remains explicit metadata and suppresses namespace inference. Dependencies outside the current compilation are ignored by default; with `dependency_contract_analyzer.external_dependency_policy = metadata`, the analyzer also reads explicit provided-contract, target, and scope metadata plus referenced `ContractHierarchy` edges. Referenced implication diagnostics are not reported in the consuming compilation. Undeclared target and scope validation still uses declarations from the current compilation only.
+`ContractHierarchy` is the implication API and supports multi-parent graphs by repeating attributes. For targets and scopes, type-level explicit attributes remain the primary metadata source, and the analyzer does not add namespace-inferred names for the same kind when explicit type metadata is present. By default, the analyzer infers a fallback name from the final namespace segment when type-level metadata is absent, so `ReadModel` becomes `read-model`. With `dependency_contract_analyzer.namespace_inference_max_segments = 2`, trailing two-segment fallbacks such as `ReadModels.Query` -> `read-models-query` are also inferred. For scopes, assembly-level `ContractScope` declarations always apply to types in the assembly, type-level scopes add to those assembly scopes, and namespace inference still contributes fallback scope names for types without a type-level scope declaration. Dependencies outside the current compilation are ignored by default; with `dependency_contract_analyzer.external_dependency_policy = metadata`, the analyzer also reads explicit provided-contract, target, and scope metadata plus referenced `ContractHierarchy` edges. Referenced implication diagnostics are not reported in the consuming compilation. Undeclared target and scope validation still uses declarations from the current compilation only.
 
 ## Default severities
 

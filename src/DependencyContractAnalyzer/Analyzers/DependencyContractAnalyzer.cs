@@ -792,13 +792,11 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         NamespaceInferenceOptions namespaceInferenceOptions,
         IAssemblySymbol compilationAssembly,
         bool allowNamespaceInference = true)
-    {
-        var hasAssemblyLevelScopes = false;
-        return CollectResolvedHierarchyNames(
+        => CollectResolvedHierarchyNames(
             type,
             compilationAssembly,
             scopeNames =>
-                hasAssemblyLevelScopes = AddNormalizedNames(
+                AddNormalizedNames(
                     type.ContainingAssembly.GetAttributes(),
                     contractScopeAttributeSymbol,
                     ContractScopeAttributeMetadataName,
@@ -811,9 +809,7 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                     ContractScopeAttributeMetadataName,
                     namespaceInferenceOptions,
                     scopeNames,
-                    blockNamespaceInference: hasAssemblyLevelScopes,
                     allowNamespaceInference: allowNamespaceInference && canInferFromNamespace));
-    }
 
     private static ImmutableHashSet<string> CollectKnownTargets(
         IAssemblySymbol assembly,
@@ -834,12 +830,10 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
         IAssemblySymbol assembly,
         INamedTypeSymbol contractScopeAttributeSymbol,
         NamespaceInferenceOptions namespaceInferenceOptions)
-    {
-        var hasAssemblyLevelScopes = false;
-        return CollectKnownNames(
+        => CollectKnownNames(
             assembly,
             knownNames =>
-                hasAssemblyLevelScopes = AddNormalizedNames(
+                AddNormalizedNames(
                     assembly.GetAttributes(),
                     contractScopeAttributeSymbol,
                     ContractScopeAttributeMetadataName,
@@ -851,12 +845,10 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                     contractScopeAttributeSymbol,
                     ContractScopeAttributeMetadataName,
                     namespaceInferenceOptions,
-                    knownNames,
-                    blockNamespaceInference: hasAssemblyLevelScopes));
-    }
+                    knownNames));
 
-    // Target and scope names follow the same inheritance walk; keep that traversal
-    // shared so inference or metadata tweaks land in both modes together.
+    // Target and scope names follow the same inheritance walk; scope resolution
+    // layers assembly declarations on top of the per-type inference gate.
     private static ImmutableHashSet<string> CollectResolvedHierarchyNames(
         INamedTypeSymbol type,
         IAssemblySymbol compilationAssembly,

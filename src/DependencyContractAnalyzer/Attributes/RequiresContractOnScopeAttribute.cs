@@ -6,11 +6,12 @@ namespace DependencyContractAnalyzer;
 /// Declares a contract that dependencies in a specific scope must satisfy.
 /// </summary>
 /// <remarks>
-/// The analyzer resolves dependency scopes from explicit <see cref="ContractScopeAttribute"/>
-/// declarations first. Assembly-level scopes act as default explicit scopes for
-/// types without a type-level scope, and namespace inference is only used when no
-/// explicit scope applies. Scope names are normalized by trimming surrounding
-/// whitespace and are compared with ordinal case-insensitive semantics.
+/// The analyzer resolves dependency scopes from assembly-level and type-level
+/// explicit <see cref="ContractScopeAttribute"/> declarations first. Type-level
+/// scope declarations add scopes for the type without removing assembly-level
+/// scopes, and namespace inference is used only when the type has no type-level
+/// explicit scope. Scope names are normalized by trimming surrounding whitespace
+/// and are compared with ordinal case-insensitive semantics.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
 public sealed class RequiresContractOnScopeAttribute : Attribute

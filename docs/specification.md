@@ -21,7 +21,7 @@ The analyzer inspects type dependencies only and does not depend on DI registrat
 
 ## 2. Current scope
 
-The analyzer currently inspects the following dependency kinds:
+The analyzer inspects the following dependency kinds:
 
 | Dependency kind | Included |
 | --- | --- |
@@ -63,6 +63,10 @@ Still out of scope:
 | Item | Reason |
 | --- | --- |
 | Namespace-based inference beyond trailing 2-segment normalization | The current implementation supports leaf fallback by default and trailing 2-segment fallback through configuration |
+| Attribute references | Dependency discovery remains limited to strong type relationships |
+| Generic constraints | Dependency discovery remains limited to strong type relationships |
+| `typeof` references | Dependency discovery remains limited to strong type relationships |
+| Return types | Dependency discovery remains limited to strong type relationships |
 
 ## 3. Attribute model
 
@@ -283,12 +287,13 @@ Current behavior:
 - `DCA200` and `DCA201` still validate declared targets and scopes against the current compilation only.
 - Diagnostics for referenced implication definitions are not reported in the consuming compilation.
 - If `dependency_contract_analyzer.report_undeclared_requirement_diagnostics = false`, target/scope requirement evaluation continues after the undeclared check instead of stopping at `DCA200` / `DCA201`.
-- Type-level targets and scopes use explicit attributes first.
+- Type-level targets and scopes use explicit attributes first, and v1 does not combine type-level explicit names with namespace-inferred names for the same kind.
 - If a type has no explicit target, the analyzer infers one from the final namespace segment in the current compilation.
 - If `dependency_contract_analyzer.namespace_inference_max_segments = 2`, the analyzer also infers a trailing two-segment fallback target name in the current compilation.
-- If a type has no explicit scope and the assembly has no assembly-level scope, the analyzer infers one from the final namespace segment in the current compilation.
-- If `dependency_contract_analyzer.namespace_inference_max_segments = 2`, the analyzer also infers a trailing two-segment fallback scope name when assembly-level scope is absent.
-- Assembly-level scope remains explicit metadata and suppresses scope inference.
+- Assembly-level scope declarations always apply to types in the current compilation.
+- If a type has an explicit scope, namespace-based scope inference is skipped for that type.
+- If a type has no explicit scope, the analyzer infers one from the final namespace segment in the current compilation even when assembly-level scopes are present.
+- If `dependency_contract_analyzer.namespace_inference_max_segments = 2`, the analyzer also infers a trailing two-segment fallback scope name when the type has no explicit scope.
 - Assembly/type-level `ExcludeDependencyContractAnalysisAttribute` skips analyzer execution for owner types.
 - `ExcludeDependencyContractSourceAttribute` removes dependency sources from matching constructors, methods, properties, and fields after owner-type exclusions are applied.
 - Exact-match requirement suppression attributes skip `DCA001`, `DCA002`, `DCA200`, `DCA201`, `DCA205`, and `DCA206` for the matching requirement only.
@@ -418,6 +423,9 @@ Source:
 
 - `Interfaces`
 
+The analyzer does not treat attribute references, generic constraints,
+`typeof` references, or return types as dependency sources.
+
 ## 7. Metadata discovery
 
 The analyzer currently reads metadata as follows:
@@ -429,7 +437,7 @@ The analyzer currently reads metadata as follows:
 
 Provided contracts are expanded through the transitive implication closure before matching requirements.
 
-Assembly-level scopes act as default scopes in addition to type-level scope declarations.
+Assembly-level scopes always apply to types in the declaring assembly. Type-level scope declarations add to those assembly-level scopes. Namespace-based scope inference contributes additional scope names only when the type has no explicit scope declarations.
 
 When `dependency_contract_analyzer.external_dependency_policy = metadata`, the analyzer also reads explicit provided contracts, targets, scopes, and implication edges from referenced assemblies for dependency matching. Local and referenced implication graphs are applied together until contract expansion reaches a fixed point. Referenced assemblies do not contribute namespace-inferred names, referenced implication diagnostics are not reported in the consuming compilation, and undeclared target/scope validation remains current-compilation-only.
 
