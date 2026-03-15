@@ -450,16 +450,36 @@ Evaluate(consumer, dependency) -> violations
 - `DCA205`: target 要求に一致する依存が存在しない
 - `DCA206`: scope 要求に一致する依存が存在しない
 
-## 11. OSS として強い理由
+## 11. 製品方針
 
-この設計にすると、用途は DI 依存の検証に留まりません。
+`DependencyContractAnalyzer` は、汎用の architecture rule engine を目指すものではありません。
 
-表現できるもの:
+このプロジェクトは、型どうしの関係から導かれる declarative contract と
+implementation consistency の検証に集中します。Analyzer は、実装関係が
+発生したときに必要な contract、attribute、宣言が正しく揃っているかを検証します。
 
-- 依存ごとの契約検証
-- 層ごとの設計ルール
-- カテゴリごとの設計ルール
-- チーム独自規約
-- 将来的な ArchUnit 的拡張
+代表的な関係:
 
-パッケージ名は `DependencyContractAnalyzer` のままで成立しますが、思想としてはかなり Architecture Analyzer 寄りです。
+- dependency usage
+- interface implementation
+- inheritance
+
+スコープ内:
+
+- dependency contract validation
+- 型関係から生じる implementation consistency validation
+- 特定の実装関係が存在するときに明示宣言を要求する relationship-triggered requirements
+
+明示的な非対象:
+
+- layer dependency enforcement
+- namespace / package boundary rules
+- generic forbidden dependency graph rules
+- architectural layer の cycle detection
+- contract と無関係な naming convention analyzer
+- file / directory layout rules
+- project / solution structure validation
+- ArchUnit のような general architecture DSL
+
+設計原則は declarative かつ attribute-based のまま維持します。ルールは
+外部 DSL や巨大な設定系ではなく、コード上の明示宣言で表現されるべきです。

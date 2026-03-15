@@ -207,6 +207,14 @@ Member-level exclusion removes dependency sources only. It does not suppress mat
 - Runtime dependency resolution
 - Scrutor or factory registration behavior
 - Container-specific wiring rules
+- Layer dependency enforcement
+- Namespace or package boundary rules
+- Generic forbidden dependency graph rules
+- Cycle detection for architectural layers
+- Naming analyzers unrelated to contracts
+- File or directory layout rules
+- Project or solution structure validation
+- A general architecture DSL similar to ArchUnit
 
 ## Documentation
 

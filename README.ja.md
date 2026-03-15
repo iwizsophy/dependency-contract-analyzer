@@ -207,6 +207,14 @@ member-level exclusion は dependency source だけを外し、対応する requ
 - runtime 依存解決
 - Scrutor や factory registration の挙動
 - コンテナー固有の配線ルール
+- layer dependency enforcement
+- namespace / package boundary rules
+- generic forbidden dependency graph rules
+- architectural layer の cycle detection
+- contract と無関係な naming analyzer
+- file / directory layout rules
+- project / solution structure validation
+- ArchUnit のような general architecture DSL
 
 ## ドキュメント
 

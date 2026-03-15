@@ -61,6 +61,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Changed
 
+- Clarified the long-term product direction: the analyzer stays focused on contract fulfillment and implementation consistency rather than becoming a general architecture rule engine
 - Removed the architecture-document roadmap section and moved roadmap ownership to GitHub milestones
 - Product documentation now describes partial-type source-scoped option merge semantics and the exact boundaries of static-member dependency analysis
 - Lowered `DCA205` and `DCA206` default severity from `Warning` to `Info`

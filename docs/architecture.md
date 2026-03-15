@@ -444,16 +444,37 @@ Inside that evaluation:
 - `DCA205`: unused target requirement
 - `DCA206`: unused scope requirement
 
-## 11. Why this is strong as OSS
+## 11. Product Direction
 
-With this design, the tool goes beyond DI-specific checks.
+`DependencyContractAnalyzer` is not intended to become a general architecture rule engine.
 
-It can express:
+The project focuses on validating declarative contracts and implementation consistency
+derived from relationships between types. The analyzer verifies that required contracts,
+attributes, or declarations are correctly aligned when implementation relationships occur.
 
-- dependency-level contract validation
-- architecture-layer rules
-- category-level design rules
-- team-specific conventions
-- future ArchUnit-like extensions
+Typical relationships include:
 
-The package name can stay `DependencyContractAnalyzer`, but the design direction is much closer to an architecture analyzer platform.
+- dependency usage
+- interface implementation
+- inheritance
+
+In scope:
+
+- dependency contract validation
+- implementation consistency validation that arises from type relationships
+- relationship-triggered requirements that enforce explicit declarations
+
+Explicit non-goals:
+
+- layer dependency enforcement
+- namespace or package boundary rules
+- generic forbidden dependency graph rules
+- cycle detection for architectural layers
+- naming convention analyzers unrelated to contracts
+- file or directory layout rules
+- project or solution structure validation
+- a general architecture DSL similar to ArchUnit
+
+The design principle remains declarative and attribute-based. Rules should be expressed
+through explicit declarations in code rather than through external DSLs or large
+configuration systems.
