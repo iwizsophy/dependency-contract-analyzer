@@ -122,7 +122,7 @@ Default branch flow:
 -   `chore/*` -> `develop`
 -   `develop` -> `main` for releases
 
-The GitHub default branch should be `develop`.
+The GitHub default branch should be `main`.
 
 Direct pushes to `main` or `develop` are not allowed. All changes must
 be merged via Pull Requests with at least one approval and passing

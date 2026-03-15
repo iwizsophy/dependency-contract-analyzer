@@ -37,8 +37,8 @@
 
 ## ブランチ運用
 
-- `develop`: default branch 兼 integration branch
-- `main`: nuget.org 向け安定版 release branch
+- `main`: default branch 兼 nuget.org 向け安定版 release branch
+- `develop`: integration branch
 
 ## Release チェックリスト
 

@@ -37,8 +37,8 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 
 ## Branching model
 
-- `develop`: default branch and integration branch
-- `main`: stable release branch for nuget.org publishing
+- `main`: default branch and stable release branch for nuget.org publishing
+- `develop`: integration branch
 
 ## Release checklist
 

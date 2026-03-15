@@ -15,8 +15,9 @@ Thanks for your interest in contributing to DependencyContractAnalyzer.
 - Editorial-only governance document changes do not require an Issue, but they
   still require maintainer review.
 - Keep changes focused and small when possible.
-- The GitHub default branch is `develop`.
-- The default Pull Request target is `develop`.
+- The GitHub default branch is `main`.
+- The standard Pull Request target for `feature/*`, `bugfix/*`, and
+  `chore/*` work is `develop`.
 - Use this branch flow:
   `feature/* -> develop`, `bugfix/* -> develop`, `chore/* -> develop`,
   and `develop -> main` for releases.
