@@ -140,10 +140,13 @@ Releases must use a Pull Request from `develop` into `main`.
     `v<major>.<minor>.<patch>`
 -   release tags must be created only from commits already merged into
     `main`
--   publish operations must originate from `main` tags
+-   release publishes to `nuget.org` must originate from `main` tags
 -   GitHub Releases are created from release tags on `main`
--   manual publish workflow dispatches are validation-only and may run
-    only for `develop` and `main`
+-   manual publish workflow dispatches may run only for `develop` and
+    `main`
+-   manual dispatches from `develop` publish to
+    `https://int.nugettest.org/`
+-   manual dispatches from `main` are validation-only and do not publish
 -   publish workflow validation enforces annotated release tags
 
 The required CI status checks for the split workflow are `build`,

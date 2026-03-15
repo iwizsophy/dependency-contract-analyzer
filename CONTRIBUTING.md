@@ -34,8 +34,10 @@ Thanks for your interest in contributing to DependencyContractAnalyzer.
   `v<major>.<minor>.<patch>` and must be created from commits already
   merged into `main`.
 - GitHub Releases are created from release tags on `main`.
-- Manual publish workflow dispatches are validation-only and may run only
-  for `develop` and `main`.
+- Manual publish workflow dispatches may run only for `develop` and
+  `main`.
+- Manual dispatches from `develop` publish to `https://int.nugettest.org/`.
+- Manual dispatches from `main` are validation-only and do not publish.
 - The required CI checks are `build`, `test`, `analyzer`, and `pack`.
 - New third-party dependency additions require an Issue.
 - Major dependency updates or dependency replacements require an Issue.

@@ -15,7 +15,7 @@ jobs:
     runs-on: windows-latest
     env:
       NUGET_PUBLISH_USER: ${{ vars.NUGET_PUBLISH_USER }}
-      SHOULD_PUBLISH: ${{ github.event_name == 'push' }}
+      NUGETTEST_PUBLISH_USER: ${{ vars.NUGETTEST_PUBLISH_USER }}
 
     steps:
       - name: Checkout
@@ -28,7 +28,37 @@ jobs:
         shell: pwsh
         run: |
           if (@('develop', 'main') -notcontains $env:GITHUB_REF_NAME) {
-            throw "Manual validation runs are allowed only on develop or main."
+            throw "Manual publish workflow runs are allowed only on develop or main."
+          }
+
+      - name: Resolve publish target
+        id: publish_target
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_EVENT_NAME -eq 'push') {
+            "should_publish=true" >> $env:GITHUB_OUTPUT
+            "publish_target_name=nuget.org" >> $env:GITHUB_OUTPUT
+            "publish_user=$env:NUGET_PUBLISH_USER" >> $env:GITHUB_OUTPUT
+            "publish_user_variable=NUGET_PUBLISH_USER" >> $env:GITHUB_OUTPUT
+            "token_service_url=https://www.nuget.org/api/v2/token" >> $env:GITHUB_OUTPUT
+            "audience=https://www.nuget.org" >> $env:GITHUB_OUTPUT
+            "package_source=https://www.nuget.org/api/v2/package" >> $env:GITHUB_OUTPUT
+          } elseif ($env:GITHUB_REF_NAME -eq 'develop') {
+            "should_publish=true" >> $env:GITHUB_OUTPUT
+            "publish_target_name=int.nugettest.org" >> $env:GITHUB_OUTPUT
+            "publish_user=$env:NUGETTEST_PUBLISH_USER" >> $env:GITHUB_OUTPUT
+            "publish_user_variable=NUGETTEST_PUBLISH_USER" >> $env:GITHUB_OUTPUT
+            "token_service_url=https://int.nugettest.org/api/v2/token" >> $env:GITHUB_OUTPUT
+            "audience=https://int.nugettest.org" >> $env:GITHUB_OUTPUT
+            "package_source=https://int.nugettest.org/api/v2/package" >> $env:GITHUB_OUTPUT
+          } else {
+            "should_publish=false" >> $env:GITHUB_OUTPUT
+            "publish_target_name=validation-only" >> $env:GITHUB_OUTPUT
+            "publish_user=" >> $env:GITHUB_OUTPUT
+            "publish_user_variable=" >> $env:GITHUB_OUTPUT
+            "token_service_url=" >> $env:GITHUB_OUTPUT
+            "audience=" >> $env:GITHUB_OUTPUT
+            "package_source=" >> $env:GITHUB_OUTPUT
           }
 
       - name: Setup .NET SDK
@@ -42,15 +72,19 @@ jobs:
             tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj
 
       - name: Validate publish configuration
-        if: env.SHOULD_PUBLISH == 'true'
+        if: steps.publish_target.outputs.should_publish == 'true'
         shell: pwsh
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:NUGET_PUBLISH_USER)) {
-            throw "Repository variable NUGET_PUBLISH_USER must be configured before publishing."
+          $publishUser = "${{ steps.publish_target.outputs.publish_user }}"
+          $publishUserVariable = "${{ steps.publish_target.outputs.publish_user_variable }}"
+          $publishTarget = "${{ steps.publish_target.outputs.publish_target_name }}"
+
+          if ([string]::IsNullOrWhiteSpace($publishUser)) {
+            throw "Repository variable $publishUserVariable must be configured before publishing to $publishTarget."
           }
 
       - name: Validate release tag format
-        if: env.SHOULD_PUBLISH == 'true'
+        if: github.event_name == 'push'
         shell: pwsh
         run: |
           if ($env:GITHUB_REF_NAME -notmatch '^v\d+\.\d+\.\d+$') {
@@ -58,7 +92,7 @@ jobs:
           }
 
       - name: Validate release tag is annotated
-        if: env.SHOULD_PUBLISH == 'true'
+        if: github.event_name == 'push'
         shell: pwsh
         run: |
           $tagRef = "refs/tags/$env:GITHUB_REF_NAME"
@@ -78,7 +112,7 @@ jobs:
           }
 
       - name: Validate tag commit is on main
-        if: env.SHOULD_PUBLISH == 'true'
+        if: github.event_name == 'push'
         shell: pwsh
         run: |
           git fetch origin main --depth=1
@@ -111,14 +145,16 @@ jobs:
           if-no-files-found: error
 
       - name: Authenticate to NuGet
-        if: env.SHOULD_PUBLISH == 'true'
+        if: steps.publish_target.outputs.should_publish == 'true'
         id: login
         uses: NuGet/login@v1
         with:
-          user: ${{ env.NUGET_PUBLISH_USER }}
+          user: ${{ steps.publish_target.outputs.publish_user }}
+          token-service-url: ${{ steps.publish_target.outputs.token_service_url }}
+          audience: ${{ steps.publish_target.outputs.audience }}
 
       - name: Publish packages
-        if: env.SHOULD_PUBLISH == 'true'
+        if: steps.publish_target.outputs.should_publish == 'true'
         shell: pwsh
         run: |
           Get-ChildItem artifacts\*.nupkg |
@@ -126,6 +162,6 @@ jobs:
             ForEach-Object {
               dotnet nuget push $_.FullName `
                 --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" `
-                --source https://www.nuget.org/api/v2/package `
+                --source "${{ steps.publish_target.outputs.package_source }}" `
                 --skip-duplicate
             }
