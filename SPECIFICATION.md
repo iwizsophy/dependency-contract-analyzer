@@ -229,6 +229,9 @@ The analyzer does not extract dependencies from weaker symbol
 relationships such as attribute references, generic constraints,
 `typeof` references, or return types.
 
+Constructor parameters are always analyzed and are not controlled by
+`behavior_preset` or any `analyze_*` option.
+
 ------------------------------------------------------------------------
 
 # Product Boundary

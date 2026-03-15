@@ -451,6 +451,50 @@ This decision adds no new diagnostics.
 
 ------------------------------------------------------------------------
 
+## ADR-007 Constructor-parameter analysis remains always enabled
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+The implementation and detailed specification already treated constructor
+parameters as the baseline dependency source even when optional
+dependency-source families were disabled by presets or configuration.
+However, that behavior had not been recorded as an accepted product
+decision.
+
+### Decision
+
+Constructor parameters remain an always-on dependency source.
+Constructor-parameter analysis is not controlled by `behavior_preset` or
+by any `analyze_*` option.
+
+Optional dependency-source families may be disabled, but constructor
+parameters remain part of dependency extraction. Any future
+configurability for constructor-parameter analysis requires a separate
+design decision.
+
+This decision adds no new diagnostics.
+
+### Consequences
+
+-   dependency analysis retains a stable baseline source even in relaxed
+    configurations
+-   presets and optional `analyze_*` switches stay limited to genuinely
+    optional dependency families
+-   future constructor-analysis configurability remains possible, but it
+    requires a separate product decision and test updates
+
+### Related
+
+-   Issue: #67
+-   Pull Request:
+-   Specification reference: `SPECIFICATION.md`, `docs/specification.md`
+-   Related decisions: ADR-006
+
+------------------------------------------------------------------------
+
 # Maintenance Rules
 
 -   Each decision should be concise.

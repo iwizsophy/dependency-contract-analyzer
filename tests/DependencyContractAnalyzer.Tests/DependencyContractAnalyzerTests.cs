@@ -783,6 +783,40 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task OptionalDependencySourceTogglesDoNotDisableConstructorAnalysis()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public interface IFoo
+            {
+            }
+
+            [RequiresDependencyContract(typeof(IFoo), "thread-safe")]
+            public sealed class Consumer
+            {
+                public Consumer(IFoo foo)
+                {
+                }
+            }
+            """;
+
+        var diagnostics = await DependencyContractAnalyzerVerifier.GetAnalyzerDiagnosticsWithOptionsAsync(
+            source,
+            ("dependency_contract_analyzer.behavior_preset", "relaxed"),
+            ("dependency_contract_analyzer.analyze_fields", "false"),
+            ("dependency_contract_analyzer.analyze_base_types", "false"),
+            ("dependency_contract_analyzer.analyze_interface_implementations", "false"),
+            ("dependency_contract_analyzer.analyze_method_parameters", "false"),
+            ("dependency_contract_analyzer.analyze_properties", "false"),
+            ("dependency_contract_analyzer.analyze_object_creation", "false"),
+            ("dependency_contract_analyzer.analyze_static_members", "false"));
+
+        Assert.Empty(diagnostics);
+    }
+
+    [Fact]
     public async Task ExplicitSourceToggleOverridesRelaxedBehaviorPreset()
     {
         const string source = """
