@@ -96,11 +96,9 @@ Ambiguous wording should be avoided.
 
 ------------------------------------------------------------------------
 
-# Diagnostic Specification (Example Section)
+# Diagnostic Specification
 
-For projects that expose diagnostics (e.g. analyzers):
-
-Each diagnostic should define:
+Diagnostics define:
 
 -   **ID**
 -   **Severity**
@@ -108,18 +106,17 @@ Each diagnostic should define:
 -   **Expected fix or guidance**
 -   **Configurability via editorconfig**
 
-Example:
-
 ## Diagnostic: DCA101
 
 ### Description
 
-Detects unsafe lifetime dependency chains.
+Detects contract names that do not use the required lower-kebab-case
+format.
 
 ### Trigger
 
-Occurs when a singleton depends on a scoped or transient service without
-appropriate safety guarantees.
+Occurs when a contract name, implication endpoint name, or
+requirement-suppression contract-name argument is not lower-kebab-case.
 
 ### Default Severity
 
@@ -133,7 +130,8 @@ Warning
 
 ### Expected Fix
 
-Refactor dependency chain or adjust service lifetime.
+Rename the offending contract name to lower-kebab-case. This diagnostic
+does not apply to target names or scope names.
 
 ------------------------------------------------------------------------
 

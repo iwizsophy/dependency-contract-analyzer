@@ -540,6 +540,49 @@ This decision adds no new diagnostics.
 
 ------------------------------------------------------------------------
 
+## ADR-009 DCA101 remains fixed to lower-kebab-case for contract naming
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+The detailed documentation and diagnostics already enforced
+lower-kebab-case for contract names, hierarchy endpoints, and
+requirement-suppression contract-name arguments. They also already left
+target names and scope names outside `DCA101`. That naming boundary was
+user-visible and covered by regression tests, but it had not been
+recorded as an accepted design decision.
+
+### Decision
+
+`DCA101` remains fixed to lower-kebab-case for contract names. The same
+lower-kebab-case rule also applies to hierarchy endpoints and the
+contract-name arguments of requirement suppression attributes.
+
+`DCA101` does not apply to target names or scope names. Any future
+configurability or broader naming-policy change requires a separate
+design decision.
+
+This decision adds no new diagnostics.
+
+### Consequences
+
+-   contract naming stays consistent across provided contracts,
+    implications, and suppression metadata
+-   target and scope naming remain independent of `DCA101`
+-   future naming-policy expansion remains possible, but it requires a
+    separate product decision and compatibility review
+
+### Related
+
+-   Issue: #65
+-   Pull Request:
+-   Specification reference: `SPECIFICATION.md`, `docs/specification.md`
+-   Related decisions:
+
+------------------------------------------------------------------------
+
 # Maintenance Rules
 
 -   Each decision should be concise.
