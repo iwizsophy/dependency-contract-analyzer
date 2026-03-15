@@ -62,7 +62,7 @@ Still out of scope:
 
 | Item | Reason |
 | --- | --- |
-| Namespace-based inference beyond trailing 2-segment normalization | The current implementation supports leaf fallback by default and trailing 2-segment fallback through configuration |
+| Namespace-based inference beyond the current final-segment and optional trailing 2-segment fallback heuristics | Richer namespace-derived naming heuristics remain out of scope |
 | Attribute references | Dependency discovery remains limited to strong type relationships |
 | Generic constraints | Dependency discovery remains limited to strong type relationships |
 | `typeof` references | Dependency discovery remains limited to strong type relationships |
@@ -633,7 +633,7 @@ Representative scenarios include:
 ## 12. Future extensions
 
 - Additional EditorConfig policy categories beyond the current option set
-- Richer namespace metadata inference beyond trailing 2-segment normalization
+- Richer namespace metadata inference beyond the current final-segment and optional trailing 2-segment fallback heuristics
 
 ## 13. Non-goals
 

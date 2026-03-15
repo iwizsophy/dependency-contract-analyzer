@@ -262,6 +262,22 @@ decision.
 
 ------------------------------------------------------------------------
 
+# Namespace Inference Boundary
+
+Namespace-based target and scope inference remains limited to the
+current fallback heuristics.
+
+Supported inference remains:
+
+-   the final namespace segment by default
+-   the trailing two-segment fallback when
+    `namespace_inference_max_segments = 2`
+
+Richer namespace-derived naming heuristics remain out of scope unless a
+separate design decision expands this boundary.
+
+------------------------------------------------------------------------
+
 # Product Boundary
 
 DependencyContractAnalyzer remains DI-agnostic.

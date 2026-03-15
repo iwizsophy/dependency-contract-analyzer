@@ -629,6 +629,51 @@ This decision adds no new diagnostics or configuration keys.
 
 ------------------------------------------------------------------------
 
+## ADR-011 Namespace inference remains limited to the current fallback heuristics
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+The product already supported namespace-based target and scope fallback
+inference using the final namespace segment by default and an optional
+trailing two-segment fallback through
+`namespace_inference_max_segments = 2`. Broader namespace-derived naming
+heuristics remained out of scope, but that boundary had not been
+recorded as an accepted design decision.
+
+### Decision
+
+Namespace-based target and scope inference remains limited to the
+current fallback heuristics. Supported inference remains the final
+namespace segment by default and the trailing two-segment fallback when
+`namespace_inference_max_segments = 2`.
+
+Richer namespace-derived naming heuristics remain out of scope. Any
+future expansion beyond this boundary requires a separate design
+decision.
+
+This decision adds no new diagnostics or configuration keys.
+
+### Consequences
+
+-   namespace inference stays predictable and easy to explain
+-   the current `namespace_inference_max_segments` option remains the
+    complete namespace-inference configuration surface
+-   future richer inference remains possible, but it requires a separate
+    product decision and interaction review with undeclared-name
+    diagnostics
+
+### Related
+
+-   Issue: #53
+-   Pull Request:
+-   Specification reference: `SPECIFICATION.md`, `docs/specification.md`
+-   Related decisions:
+
+------------------------------------------------------------------------
+
 # Maintenance Rules
 
 -   Each decision should be concise.
