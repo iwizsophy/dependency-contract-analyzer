@@ -243,6 +243,25 @@ prefixes, or contract-only forms.
 
 ------------------------------------------------------------------------
 
+# EditorConfig Policy Surface
+
+The EditorConfig policy surface remains limited to the current option
+set.
+
+Supported policy categories are:
+
+-   dependency-source toggles
+-   reporting switches
+-   exclusions
+-   `behavior_preset`
+-   `namespace_inference_max_segments`
+-   `external_dependency_policy`
+
+Any future expansion beyond these categories requires a separate design
+decision.
+
+------------------------------------------------------------------------
+
 # Product Boundary
 
 DependencyContractAnalyzer remains DI-agnostic.

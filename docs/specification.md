@@ -632,7 +632,7 @@ Representative scenarios include:
 
 ## 12. Future extensions
 
-- EditorConfig-based policy control beyond dependency collection toggles
+- Additional EditorConfig policy categories beyond the current option set
 - Richer namespace metadata inference beyond trailing 2-segment normalization
 
 ## 13. Non-goals

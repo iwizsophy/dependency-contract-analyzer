@@ -583,6 +583,52 @@ This decision adds no new diagnostics.
 
 ------------------------------------------------------------------------
 
+## ADR-010 EditorConfig policy surface remains limited to the current option set
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+The product already supported a defined `.editorconfig` surface covering
+dependency-source toggles, reporting switches, exclusions,
+`behavior_preset`, `namespace_inference_max_segments`, and
+`external_dependency_policy`. The detailed specification still hinted at
+future EditorConfig expansion beyond those categories, but no accepted
+roadmap decision existed for additional policy controls.
+
+### Decision
+
+The EditorConfig policy surface remains limited to the current option
+set. Supported policy categories remain dependency-source toggles,
+reporting switches, exclusions, `behavior_preset`,
+`namespace_inference_max_segments`, and
+`external_dependency_policy`.
+
+There is no accepted EditorConfig roadmap for naming-policy
+configuration, broader suppression models, or wider rule-family policy
+controls. Any future expansion of the EditorConfig surface requires a
+separate design decision.
+
+This decision adds no new diagnostics or configuration keys.
+
+### Consequences
+
+-   the supported EditorConfig surface stays explicit and finite
+-   configuration semantics remain coherent with the current
+    source-scoped and compilation-scoped option split
+-   future policy-surface expansion remains possible, but it requires a
+    separate product decision and documentation update
+
+### Related
+
+-   Issue: #60
+-   Pull Request:
+-   Specification reference: `SPECIFICATION.md`, `docs/specification.md`
+-   Related decisions:
+
+------------------------------------------------------------------------
+
 # Maintenance Rules
 
 -   Each decision should be concise.
