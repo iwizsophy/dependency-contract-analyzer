@@ -37,6 +37,11 @@ internal static class DependencyCollector
 
         foreach (var member in type.GetMembers())
         {
+            if (!SupportsSyntaxDependencyCollection(member))
+            {
+                continue;
+            }
+
             if (HasExcludedDependencySource(member, excludeDependencyContractSourceAttributeSymbol))
             {
                 continue;
@@ -122,6 +127,9 @@ internal static class DependencyCollector
     private static bool IsMethodDependencyCandidate(IMethodSymbol method) =>
         !method.IsImplicitlyDeclared &&
         method.MethodKind is MethodKind.Ordinary or MethodKind.ExplicitInterfaceImplementation;
+
+    private static bool SupportsSyntaxDependencyCollection(ISymbol member) =>
+        member is IMethodSymbol or IPropertySymbol or IFieldSymbol or IEventSymbol;
 
     private static bool HasExcludedDependencySource(
         ISymbol member,

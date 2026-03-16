@@ -113,13 +113,22 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
             var knownScopes = contractScopeAttributeSymbol is null
                 ? CreateEmptyNameSet()
                 : CollectKnownScopes(startContext.Compilation.Assembly, contractScopeAttributeSymbol, namespaceInferenceOptions);
+            var assemblyScopeDiagnostics = contractScopeAttributeSymbol is null
+                ? ImmutableArray<Diagnostic>.Empty
+                : CollectAssemblyScopeDiagnostics(startContext.Compilation.Assembly, contractScopeAttributeSymbol);
 
-            if (!contractImplicationResolver.Diagnostics.IsDefaultOrEmpty)
+            if (!contractImplicationResolver.Diagnostics.IsDefaultOrEmpty ||
+                !assemblyScopeDiagnostics.IsDefaultOrEmpty)
             {
                 startContext.RegisterCompilationEndAction(
                     compilationContext =>
                     {
                         foreach (var diagnostic in contractImplicationResolver.Diagnostics)
+                        {
+                            compilationContext.ReportDiagnostic(diagnostic);
+                        }
+
+                        foreach (var diagnostic in assemblyScopeDiagnostics)
                         {
                             compilationContext.ReportDiagnostic(diagnostic);
                         }
@@ -258,6 +267,38 @@ public sealed class DependencyContractAnalyzerDiagnosticAnalyzer : DiagnosticAna
                     DiagnosticDescriptors.EmptyScopeName,
                     GetAttributeLocation(attribute, namedType)));
         }
+    }
+
+    private static ImmutableArray<Diagnostic> CollectAssemblyScopeDiagnostics(
+        IAssemblySymbol assembly,
+        INamedTypeSymbol contractScopeAttributeSymbol)
+    {
+        var diagnostics = ImmutableArray.CreateBuilder<Diagnostic>();
+
+        foreach (var attribute in assembly.GetAttributes())
+        {
+            if (!attribute.AttributeClass.SymbolEquals(contractScopeAttributeSymbol))
+            {
+                continue;
+            }
+
+            if (!TryGetStringArgument(attribute, 0, out var scopeName))
+            {
+                continue;
+            }
+
+            if (ContractNameNormalizer.Normalize(scopeName) is not null)
+            {
+                continue;
+            }
+
+            diagnostics.Add(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.EmptyScopeName,
+                    GetAttributeLocation(attribute, assembly)));
+        }
+
+        return diagnostics.ToImmutable();
     }
 
     private static void AnalyzeDeclaredTargets(

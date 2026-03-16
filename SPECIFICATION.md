@@ -195,6 +195,8 @@ The analyzer resolves target and scope metadata using these rules:
 -   Namespace-based scope inference may add fallback scope names
     alongside assembly-level scopes when the type has no type-level
     explicit scope declarations.
+-   Empty scope names on `ContractScope`, including assembly-level
+    declarations, report `DCA203`.
 -   In `external_dependency_policy = metadata` mode, namespace-based
     inference remains limited to current-compilation types; referenced
     assemblies contribute explicit metadata and implication edges only.

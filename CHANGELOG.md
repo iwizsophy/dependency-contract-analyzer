@@ -87,6 +87,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 - Source-scoped analyzer options now merge deterministically across partial type declarations instead of depending on the first declaring file
 - Aligned invalid `external_dependency_policy` values with the documented preset-derived fallback behavior
+- Stopped nested type bodies from contributing object-creation or static-member dependencies to outer types, and now report `DCA203` for empty assembly-level `ContractScope` declarations
 
 ### Removed
 
