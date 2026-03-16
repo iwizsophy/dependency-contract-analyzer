@@ -31,13 +31,17 @@ Thanks for your interest in contributing to DependencyContractAnalyzer.
 - Release Pull Requests from `develop` into `main` must use merge commits.
 - Feature and bug-fix Pull Requests into `develop` should use squash merges.
 - Release tags must be annotated tags using the format
-  `v<major>.<minor>.<patch>` and must be created from commits already
-  merged into `main`.
+  `v<major>.<minor>.<patch>`.
+- Tag publishes are routed by branch intent: tagged commits reachable
+  only from `main` publish to `nuget.org`, and tagged commits reachable
+  only from `develop` publish to `https://int.nugettest.org/`.
+- Tag publishes fail when the tagged commit is reachable from both
+  `main` and `develop`, or from neither branch.
 - GitHub Releases are created from release tags on `main`.
 - Manual publish workflow dispatches may run only for `develop` and
   `main`.
 - Manual dispatches from `develop` publish to `https://int.nugettest.org/`.
-- Manual dispatches from `main` are validation-only and do not publish.
+- Manual dispatches from `main` publish to `https://www.nuget.org/`.
 - The required CI checks are `build`, `test`, `analyzer`, and `pack`.
 - New third-party dependency additions require an Issue.
 - Major dependency updates or dependency replacements require an Issue.
