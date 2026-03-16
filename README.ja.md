@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/package-icon.png" alt="DependencyContractAnalyzer icon" width="160" />
+</p>
+
 # DependencyContractAnalyzer
 
 英語版 README: [README.md](README.md)
