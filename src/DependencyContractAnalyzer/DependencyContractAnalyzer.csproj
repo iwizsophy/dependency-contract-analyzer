@@ -6,6 +6,7 @@
     <Description>Roslyn analyzer for validating declared dependency contracts on .NET types.</Description>
     <Authors>DependencyContractAnalyzer contributors</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>package-icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageProjectUrl>https://github.com/iwizsophy/dependency-contract-analyzer</PackageProjectUrl>
     <RepositoryUrl>https://github.com/iwizsophy/dependency-contract-analyzer</RepositoryUrl>
@@ -31,6 +32,7 @@
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="..\..\assets\package-icon.png" Pack="true" PackagePath="\" Visible="false" />
     <None Include="Attributes\ContractHierarchyAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ContractHierarchyAttribute.cs" Visible="false" />
     <None Include="Attributes\ContractScopeAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ContractScopeAttribute.cs" Visible="false" />
     <None Include="Attributes\ContractTargetAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ContractTargetAttribute.cs" Visible="false" />
