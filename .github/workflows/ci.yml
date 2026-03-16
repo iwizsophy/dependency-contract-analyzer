@@ -35,7 +35,7 @@ jobs:
         run: dotnet restore DependencyContractAnalyzer.slnx
 
       - name: Build
-        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
+        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -m:1
 
   test:
     runs-on: windows-latest
@@ -47,7 +47,10 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            ${{ env.DOTNET_VERSION }}
           cache: true
           cache-dependency-path: |
             Directory.Build.props
@@ -59,7 +62,7 @@ jobs:
         run: dotnet restore DependencyContractAnalyzer.slnx
 
       - name: Test
-        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-restore --collect "XPlat Code Coverage" --results-directory artifacts/test-results
+        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-restore --collect "XPlat Code Coverage" --results-directory artifacts/test-results -m:1
 
       - name: Upload test results
         uses: actions/upload-artifact@v7
@@ -90,7 +93,7 @@ jobs:
         run: dotnet restore DependencyContractAnalyzer.slnx
 
       - name: Analyzer quality gate
-        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -warnaserror
+        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -warnaserror -m:1
 
   pack:
     runs-on: windows-latest
