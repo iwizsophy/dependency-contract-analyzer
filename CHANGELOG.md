@@ -66,7 +66,6 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Changed
 
-- Refreshed the packaged NuGet icon artwork with the maintainer-provided transparent asset and fixed README icon rendering on NuGet package pages
 - Formalized repository governance with root specification and architecture summaries, ADR numbering and acceptance rules, synchronized detailed-doc updates, explicit GitHub workflow expectations, a develop-to-main release flow, third-party dependency governance, and publish validation from stable main-based tags
 - Clarified the long-term product direction: the analyzer stays focused on contract fulfillment and implementation consistency rather than becoming a general architecture rule engine
 - Removed the architecture-document roadmap section and moved roadmap ownership to GitHub milestones
@@ -79,6 +78,10 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Simplified Trusted Publishing configuration to use a single `NUGET_USER` secret for both nuget.org and `int.nugettest.org`
 - Switched publish routing to branch-based feed selection so `main` always targets nuget.org and `develop` always targets `int.nugettest.org`, regardless of trigger type
 - Clarified the large regression suite with section comments and targeted notes for tricky metadata/preset/inference cases
+
+### Fixed
+
+- Restored the maintainer-provided transparent package icon asset and fixed README icon rendering on NuGet package pages
 - Consolidated duplicated analyzer-config helper logic and test-verifier compilation setup into shared implementations
 - Consolidated duplicated test attribute-source fixtures into a shared helper for verifier and external-metadata tests
 - Consolidated duplicated target/scope requirement collection and evaluation into shared analyzer helpers
