@@ -14,7 +14,7 @@
 4. `develop` publish を有効にする場合は、この GitHub リポジトリを `int.nugettest.org` 側パッケージの Trusted Publisher としても登録します。
 5. nuget.org の Trusted Publishing policy には workflow file 名として `publish.yml` を登録します。`.github/workflows/` のパスは付けません。
 6. `develop` publish を有効にする場合は、`int.nugettest.org` 側の Trusted Publishing policy にも同じ `publish.yml` を登録します。
-7. nuget.org と `int.nugettest.org` の両方で publish 可能なアカウント名を repository variable `NUGET_USER` に設定します。
+7. nuget.org と `int.nugettest.org` の両方で publish 可能なアカウント名を repository secret `NUGET_USER` に設定します。
 9. publish ワークフローで `permissions.id-token: write` を維持します。
 10. annotated tag として `v<major>.<minor>.<patch>` 形式の release tag を
    作成して push します。例: `v0.1.0`
@@ -27,7 +27,7 @@
 - publish 時の認証は `NuGet/login@v1` を利用します。
 - OIDC を使える場合、長期 API キーをリポジトリ secret に置かないでください。
 - push 前に build、test、pack を完了させてください。
-- publish workflow は単一の repository variable `NUGET_USER` を参照し、nuget.org と `int.nugettest.org` の両方で同じ publish アカウント名を使います。
+- publish workflow は単一の repository secret `NUGET_USER` を参照し、nuget.org と `int.nugettest.org` の両方で同じ publish アカウント名を使います。
 - manual の `workflow_dispatch` 実行は `develop` と `main` でのみ許可します。
 - `develop` からの manual 実行は `https://int.nugettest.org/api/v2/package` へ publish します。
 - `main` からの manual 実行は検証専用で、

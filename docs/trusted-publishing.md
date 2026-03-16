@@ -14,7 +14,7 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 4. Add this GitHub repository as a Trusted Publisher for the `int.nugettest.org` package if `develop` publishes are enabled.
 5. Register the `publish.yml` workflow file in the nuget.org Trusted Publishing policy. Use the workflow file name only: `publish.yml`.
 6. Register the same `publish.yml` workflow file in the `int.nugettest.org` Trusted Publishing policy if `develop` publishes are enabled.
-7. Configure the repository variable `NUGET_USER` with the account name that is allowed to publish the package on both nuget.org and `int.nugettest.org`.
+7. Configure the repository secret `NUGET_USER` with the account name that is allowed to publish the package on both nuget.org and `int.nugettest.org`.
 9. Ensure the publish workflow keeps `permissions.id-token: write`.
 10. Create and push an annotated release tag using the format
    `v<major>.<minor>.<patch>`, such as `v0.1.0`.
@@ -27,7 +27,7 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 - The publish workflow authenticates using `NuGet/login@v1`.
 - Avoid storing long-lived API keys in repository secrets when OIDC can be used.
 - Build, test, and pack should run before pushing packages.
-- The publish workflow expects a single repository variable `NUGET_USER`, and it uses the same publishing account name for both nuget.org and `int.nugettest.org`.
+- The publish workflow expects a single repository secret `NUGET_USER`, and it uses the same publishing account name for both nuget.org and `int.nugettest.org`.
 - Manual `workflow_dispatch` runs are allowed only on `develop` and `main`.
 - Manual runs from `develop` publish packages to `https://int.nugettest.org/api/v2/package`.
 - Manual runs from `main` are validation-only, may build/test/pack/upload artifacts, and do not publish packages.
