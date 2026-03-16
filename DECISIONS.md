@@ -778,6 +778,58 @@ without a published host-version matrix.
 
 ------------------------------------------------------------------------
 
+## ADR-014 Dependabot routine version updates remain disabled
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+The repository had been configured to open weekly Dependabot
+version-update Pull Requests for both NuGet packages and GitHub Actions
+against `develop`. That created routine maintenance Pull Requests even
+when no security issue existed.
+
+The repository wants to keep Dependabot security coverage while reducing
+background update churn. GitHub Dependabot security updates continue to
+work when normal version-update Pull Requests are disabled, but those
+security update Pull Requests target the repository default branch
+instead of a custom integration branch.
+
+### Decision
+
+Dependabot remains enabled for NuGet and GitHub Actions security
+updates, but routine version-update Pull Requests are disabled.
+
+The repository keeps explicit Dependabot ecosystem entries with
+`open-pull-requests-limit: 0` so normal version updates stay off while
+security updates remain available through GitHub's repository security
+update feature.
+
+The repository accepts that Dependabot security update Pull Requests
+target the default branch `main`.
+
+### Consequences
+
+-   routine dependency-refresh Pull Requests no longer appear for NuGet
+    packages or GitHub Actions
+-   vulnerability remediation Pull Requests still appear when GitHub
+    identifies a supported security update
+-   maintainers must continue scheduled dependency reviews through the
+    monthly audit process instead of relying on weekly version-update
+    Pull Requests
+-   dependency update Pull Requests now arrive on `main` when they are
+    security-driven
+
+### Related
+
+-   Issue: #119
+-   Pull Request:
+-   Specification reference:
+-   Related decisions:
+
+------------------------------------------------------------------------
+
 # Maintenance Rules
 
 -   Each decision should be concise.
