@@ -4,7 +4,9 @@
 
 ## 前提条件
 
-- .NET SDK がインストールされていること
+- .NET 10 SDK がインストールされていること
+- 完全なテスト実行のために .NET 8、.NET 9、.NET 10 runtime が
+  インストールされていること
 - Roslyn Analyzer 開発の基本知識があること
 - `Microsoft.CodeAnalysis.Testing` ベースの単体テストを実行できること
 
@@ -14,14 +16,17 @@
 
 ```powershell
 dotnet restore DependencyContractAnalyzer.slnx
-dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
-dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
+dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -m:1
+dotnet test DependencyContractAnalyzer.slnx -c Release --no-build -m:1
 ```
+
+この test コマンドは `net8.0`、`net9.0`、`net10.0` の単体テスト
+スイートを実行します。
 
 ローカルで Cobertura 形式の coverage を取得する場合は次を実行します。
 
 ```powershell
-dotnet test tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj -c Release --collect "XPlat Code Coverage"
+dotnet test tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj -c Release --collect "XPlat Code Coverage" -m:1
 ```
 
 coverage ファイルは `tests/DependencyContractAnalyzer.Tests/TestResults/**/coverage.cobertura.xml` に出力されます。

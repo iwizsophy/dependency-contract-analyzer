@@ -6,7 +6,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-03-16
+## [1.0.0]
 
 ### Breaking Changes
 
@@ -80,6 +80,10 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Simplified Trusted Publishing configuration to use a single `NUGET_USER` secret for both nuget.org and `int.nugettest.org`
 - Switched publish routing to branch-based feed selection so `main` always targets nuget.org and `develop` always targets `int.nugettest.org`, regardless of trigger type
 - Clarified the large regression suite with section comments and targeted notes for tricky metadata/preset/inference cases
+- Strengthened analyzer test validation to execute under `net8.0`, `net9.0`, and `net10.0` with explicit current-host reference assemblies instead of implicit defaults
+- Updated local and CI coverage collection to `coverlet.collector` `8.0.0`
+- Updated GitHub Actions workflow dependencies to `actions/checkout@v6` and `actions/upload-artifact@v7`
+- Restricted Dependabot maintenance to security updates only; routine version-update Pull Requests are now disabled
 
 ### Fixed
 
