@@ -20,6 +20,17 @@ Its core concept is:
 - Implementation scope for the first release is tracked in [docs/specification.md](docs/specification.md)
 - The intended end-state architecture is tracked in [docs/architecture.md](docs/architecture.md)
 
+## Supported environments
+
+`DependencyContractAnalyzer` is distributed as a Roslyn analyzer targeting `netstandard2.0`.
+
+It is intended for .NET development environments that:
+
+- support Roslyn analyzers
+- can consume analyzer packages targeting `netstandard2.0`
+
+This repository does not maintain a version-by-version IDE or SDK support matrix.
+
 ## Disclaimer
 
 - Unofficial tool for architecture and dependency contract verification
