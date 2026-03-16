@@ -34,25 +34,71 @@ jobs:
         id: publish_target
         shell: pwsh
         run: |
-          if ($env:GITHUB_EVENT_NAME -eq 'push') {
-            "should_publish=true" >> $env:GITHUB_OUTPUT
-            "publish_target_name=nuget.org" >> $env:GITHUB_OUTPUT
-            "token_service_url=https://www.nuget.org/api/v2/token" >> $env:GITHUB_OUTPUT
-            "audience=https://www.nuget.org" >> $env:GITHUB_OUTPUT
-            "package_source=https://www.nuget.org/api/v2/package" >> $env:GITHUB_OUTPUT
-          } elseif ($env:GITHUB_REF_NAME -eq 'develop') {
-            "should_publish=true" >> $env:GITHUB_OUTPUT
-            "publish_target_name=int.nugettest.org" >> $env:GITHUB_OUTPUT
-            "token_service_url=https://int.nugettest.org/api/v2/token" >> $env:GITHUB_OUTPUT
-            "audience=https://int.nugettest.org" >> $env:GITHUB_OUTPUT
-            "package_source=https://int.nugettest.org/api/v2/package" >> $env:GITHUB_OUTPUT
-          } else {
-            "should_publish=false" >> $env:GITHUB_OUTPUT
-            "publish_target_name=validation-only" >> $env:GITHUB_OUTPUT
-            "token_service_url=" >> $env:GITHUB_OUTPUT
-            "audience=" >> $env:GITHUB_OUTPUT
-            "package_source=" >> $env:GITHUB_OUTPUT
+          function Set-PublishTarget([string]$branchName) {
+            switch ($branchName) {
+              'main' {
+                "should_publish=true" >> $env:GITHUB_OUTPUT
+                "publish_branch=main" >> $env:GITHUB_OUTPUT
+                "publish_target_name=nuget.org" >> $env:GITHUB_OUTPUT
+                "token_service_url=https://www.nuget.org/api/v2/token" >> $env:GITHUB_OUTPUT
+                "audience=https://www.nuget.org" >> $env:GITHUB_OUTPUT
+                "package_source=https://www.nuget.org/api/v2/package" >> $env:GITHUB_OUTPUT
+              }
+              'develop' {
+                "should_publish=true" >> $env:GITHUB_OUTPUT
+                "publish_branch=develop" >> $env:GITHUB_OUTPUT
+                "publish_target_name=int.nugettest.org" >> $env:GITHUB_OUTPUT
+                "token_service_url=https://int.nugettest.org/api/v2/token" >> $env:GITHUB_OUTPUT
+                "audience=https://int.nugettest.org" >> $env:GITHUB_OUTPUT
+                "package_source=https://int.nugettest.org/api/v2/package" >> $env:GITHUB_OUTPUT
+              }
+              default {
+                throw "Publishing is allowed only from main or develop."
+              }
+            }
           }
+
+          function Test-CommitReachableFrom([string]$remoteBranch) {
+            git merge-base --is-ancestor HEAD $remoteBranch
+            if ($LASTEXITCODE -eq 0) {
+              return $true
+            }
+
+            if ($LASTEXITCODE -eq 1) {
+              return $false
+            }
+
+            throw "Failed to evaluate whether HEAD is reachable from $remoteBranch."
+          }
+
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+            Set-PublishTarget $env:GITHUB_REF_NAME
+            exit 0
+          }
+
+          git fetch origin refs/heads/main:refs/remotes/origin/main refs/heads/develop:refs/remotes/origin/develop
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to fetch publish branches."
+          }
+
+          $isOnMain = Test-CommitReachableFrom 'origin/main'
+          $isOnDevelop = Test-CommitReachableFrom 'origin/develop'
+
+          if ($isOnMain -and -not $isOnDevelop) {
+            Set-PublishTarget 'main'
+            exit 0
+          }
+
+          if ($isOnDevelop -and -not $isOnMain) {
+            Set-PublishTarget 'develop'
+            exit 0
+          }
+
+          if ($isOnMain -and $isOnDevelop) {
+            throw "Tagged commit is reachable from both main and develop. Tag publishes must target a commit that belongs to exactly one publish branch."
+          }
+
+          throw "Tagged commit is not reachable from main or develop."
 
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v5
@@ -102,18 +148,12 @@ jobs:
             throw "Release tags must be annotated tags."
           }
 
-      - name: Validate tag commit is on main
+      - name: Validate tag publish branch was resolved
         if: github.event_name == 'push'
         shell: pwsh
         run: |
-          git fetch origin main --depth=1
-          if ($LASTEXITCODE -ne 0) {
-            throw "Failed to fetch origin/main."
-          }
-
-          git merge-base --is-ancestor HEAD origin/main
-          if ($LASTEXITCODE -ne 0) {
-            throw "Release tags must point to commits already merged into main."
+          if ([string]::IsNullOrWhiteSpace("${{ steps.publish_target.outputs.publish_branch }}")) {
+            throw "Failed to resolve publish branch for the tagged commit."
           }
 
       - name: Restore

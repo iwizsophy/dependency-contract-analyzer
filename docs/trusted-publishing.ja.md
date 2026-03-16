@@ -30,18 +30,17 @@
 - publish workflow は単一の repository secret `NUGET_USER` を参照し、nuget.org と `int.nugettest.org` の両方で同じ publish アカウント名を使います。
 - manual の `workflow_dispatch` 実行は `develop` と `main` でのみ許可します。
 - `develop` からの manual 実行は `https://int.nugettest.org/api/v2/package` へ publish します。
-- `main` からの manual 実行は検証専用で、
-  build/test/pack/artifact upload のみを行い、パッケージ publish は行いません。
-- publish 対象の release tag は `main` にマージ済みの commit を指している必要があります。
+- `main` からの manual 実行は `https://www.nuget.org/api/v2/package` へ publish します。
 - publish workflow は release tag が annotated tag であることを検証します。
-- annotated release tag の push は `https://www.nuget.org/api/v2/package` へ publish します。
+- tag push の publish 先は trigger 種別ではなく branch により決まり、`main` の tag は `https://www.nuget.org/api/v2/package`、`develop` の tag は `https://int.nugettest.org/api/v2/package` に publish します。
+- tag 対象 commit が `main` と `develop` の両方から到達可能、またはどちらからも到達不可能な場合は publish を失敗させます。
 - GitHub Release は `main` 上の release tag から作成します。
 - リリースノートは `CHANGELOG.md` と整合させてください。
 
 ## ブランチ運用
 
 - `main`: default branch 兼 `nuget.org` 向け安定版 release branch
-- `develop`: integration branch 兼 `int.nugettest.org` 向け manual publish branch
+- `develop`: integration branch 兼 `int.nugettest.org` 向け publish branch
 
 ## Release チェックリスト
 
@@ -54,4 +53,5 @@
 - breaking-change issue を確認済み
 - release Pull Request を `main` にマージ済み
 - stable version を確認済み
-- annotated tag を `main` から作成済み
+- publish 先に対応する branch を確認済み
+- annotated tag を intended publish branch から作成済み

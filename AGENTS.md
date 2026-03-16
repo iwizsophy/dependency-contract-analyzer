@@ -138,16 +138,20 @@ Releases must use a Pull Request from `develop` into `main`.
 -   feature and bug-fix Pull Requests into `develop` use squash merges
 -   release tags must be annotated tags using the format
     `v<major>.<minor>.<patch>`
--   release tags must be created only from commits already merged into
-    `main`
--   release publishes to `nuget.org` must originate from `main` tags
+-   release tags may target commits reachable from `main` or `develop`
+    only
+-   tag publishes from `main` route to `nuget.org`
+-   tag publishes from `develop` route to `https://int.nugettest.org/`
+-   tag publishes fail when the tagged commit is reachable from both
+    `main` and `develop`, or from neither branch
 -   GitHub Releases are created from release tags on `main`
 -   manual publish workflow dispatches may run only for `develop` and
     `main`
 -   manual dispatches from `develop` publish to
     `https://int.nugettest.org/`
--   manual dispatches from `main` are validation-only and do not publish
--   publish workflow validation enforces annotated release tags
+-   manual dispatches from `main` publish to `https://www.nuget.org/`
+-   publish workflow validation enforces annotated release tags and
+    branch-based feed routing
 
 The required CI status checks for the split workflow are `build`,
 `test`, `analyzer`, and `pack`. Repository settings must be updated to
