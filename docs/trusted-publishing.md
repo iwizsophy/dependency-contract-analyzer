@@ -34,6 +34,8 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 - The publish workflow validates that release tags are annotated tags.
 - Tag pushes publish by branch instead of by trigger type: `main` tags publish to `https://www.nuget.org/api/v2/package`, and `develop` tags publish to `https://int.nugettest.org/api/v2/package`.
 - Tag pushes fail when the tagged commit is reachable from both `main` and `develop`, or from neither branch.
+- The publish-time pack step disables RelaxVersioner's working-directory dirty check so generated build outputs do not silently bump the package version.
+- Tag pushes verify that the generated `.nupkg` filename matches the release tag version before upload.
 - GitHub Releases should be created from release tags on `main`.
 - Release notes should reference `CHANGELOG.md`.
 
