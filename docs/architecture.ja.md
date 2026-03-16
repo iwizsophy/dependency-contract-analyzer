@@ -1,6 +1,14 @@
 # DependencyContractAnalyzer アーキテクチャ
 
 この文書は、`DependencyContractAnalyzer` の最終完成形として想定しているアーキテクチャを整理したものです。
+リポジトリルートの `ARCHITECTURE.md` を原則と制約の正本とし、
+この文書はその詳細版です。
+
+詳細構成、図、依存関係、目標アーキテクチャの説明はこの文書に記載します。
+この文書と `ARCHITECTURE.md` が矛盾する場合は、`ARCHITECTURE.md` の原則を優先します。
+
+アーキテクチャ原則の変更が詳細ガイダンスに影響する場合は、
+`ARCHITECTURE.md` とこの文書を同じ変更で更新してください。
 
 このツールの芯は次です。
 
@@ -38,8 +46,8 @@
 [Rule Engine]
     |
     +-- 契約一致判定
-    +-- Alias / 包含関係解決
-    +-- 除外と suppression
+    +-- 包含グラフ解決
+    +-- Roslyn 標準 suppression、exact requirement suppression、owner type exclusion
     +-- Diagnostic 発行
 ```
 
@@ -183,19 +191,19 @@ public sealed class RequiresContractOnScopeAttribute : Attribute
 }
 ```
 
-### 3.5 契約の別名・包含
+### 3.5 契約包含辺
 
 ```csharp
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-public sealed class ContractAliasAttribute : Attribute
+public sealed class ContractHierarchyAttribute : Attribute
 {
-    public string From { get; }
-    public string To { get; }
+    public string Child { get; }
+    public string Parent { get; }
 
-    public ContractAliasAttribute(string from, string to)
+    public ContractHierarchyAttribute(string child, string parent)
     {
-        From = from;
-        To = to;
+        Child = child;
+        Parent = parent;
     }
 }
 ```
@@ -203,12 +211,21 @@ public sealed class ContractAliasAttribute : Attribute
 例:
 
 ```csharp
-[assembly: ContractAlias("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
+[assembly: ContractHierarchy("immutable", "thread-safe")]
 ```
 
 意味:
 
-`immutable` を提供していれば `thread-safe` 要求を満たすとみなします。
+`snapshot-cache` を提供していれば `immutable` と `thread-safe` の両方を満たすとみなします。
+
+現在のセマンティクス:
+
+- `child -> parent` を契約包含の有向辺として扱う
+- 同じ child に対して属性を繰り返すことで多親を表現できる
+- hierarchy の辺は 1 つの DAG として解決する
+- `DCA202` はその graph 全体の cycle を報告する
+- 契約充足判定はその graph の推移閉包を使う
 
 ## 4. ルール評価の優先順位
 
@@ -217,7 +234,7 @@ public sealed class ContractAliasAttribute : Attribute
 1. `RequiresDependencyContract`
 2. `RequiresContractOnTarget`
 3. `RequiresContractOnScope`
-4. `ContractAlias` 解決
+4. 包含グラフ解決
 
 これは依存評価時の優先順位であり、リリース順とは別です。
 
@@ -228,7 +245,11 @@ public sealed class ContractAliasAttribute : Attribute
 ```text
 Consumer Type
    +-- constructor parameter
+   +-- method parameter
+   +-- property
    +-- field
+   +-- new expression
+   +-- static member usage（`using static` を含む）
    +-- base type
    +-- interface
 ```
@@ -302,15 +323,16 @@ public class BillingRepository : IBillingRepository
 
 `BillingRepository` が `retry-safe` を持たなければ違反です。
 
-### 6.4 Alias
+### 6.4 包含グラフベース requirement
 
 ```csharp
-[assembly: ContractAlias("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
+[assembly: ContractHierarchy("immutable", "thread-safe")]
 ```
 
 ```csharp
-[ProvidesContract("immutable")]
-public class ImmutableStore : IStore
+[ProvidesContract("snapshot-cache")]
+public class SnapshotStore : IStore
 {
 }
 ```
@@ -323,7 +345,7 @@ public class StoreConsumer
 }
 ```
 
-結果: alias により適合です。
+結果: 包含グラフにより適合です。
 
 ## 7. 実装アーキテクチャ
 
@@ -365,7 +387,11 @@ internal enum RequirementKind
 internal enum DependencyKind
 {
     ConstructorParameter,
+    MethodParameter,
+    Property,
     Field,
+    ObjectCreation,
+    StaticMemberAccess,
     BaseType,
     InterfaceImplementation
 }
@@ -404,7 +430,7 @@ Evaluate(consumer, dependency) -> violations
 1. consumer の requirement を列挙する
 2. dependency が requirement の対象に一致するか判定する
 3. required contract を満たすか確認する
-4. 必要なら alias を適用する
+4. 必要なら包含グラフ解決を適用する
 5. それでも満たさなければ diagnostic を発行する
 
 ## 10. 診断体系の最終形
@@ -420,35 +446,48 @@ Evaluate(consumer, dependency) -> violations
 - `DCA101`: 契約名フォーマット違反
 - `DCA102`: 重複契約指定
 
+`DCA101` は contract 名、requirement suppression の contract 引数、hierarchy endpoint のみを対象とし、target 名 / scope 名には適用しません。v1 で適用する形式は lower-kebab-case です。
+
 ### ルール定義診断
 
 - `DCA200`: 存在しない target を要求
 - `DCA201`: 存在しない scope を要求
-- `DCA202`: alias が循環している
+- `DCA202`: 契約包含定義が循環している
+- `DCA203`: scope 名が空
+- `DCA204`: target 名が空
+- `DCA205`: target 要求に一致する依存が存在しない
+- `DCA206`: scope 要求に一致する依存が存在しない
 
-## 11. OSS として強い理由
+## 11. 製品方針
 
-この設計にすると、用途は DI 依存の検証に留まりません。
+`DependencyContractAnalyzer` は、汎用の architecture rule engine を目指すものではありません。
 
-表現できるもの:
+このプロジェクトは、型どうしの関係から導かれる declarative contract と
+implementation consistency の検証に集中します。Analyzer は、実装関係が
+発生したときに必要な contract、attribute、宣言が正しく揃っているかを検証します。
 
-- 依存ごとの契約検証
-- 層ごとの設計ルール
-- カテゴリごとの設計ルール
-- チーム独自規約
-- 将来的な ArchUnit 的拡張
+代表的な関係:
 
-パッケージ名は `DependencyContractAnalyzer` のままで成立しますが、思想としてはかなり Architecture Analyzer 寄りです。
+- dependency usage
+- interface implementation
+- inheritance
 
-## 12. 実装ロードマップ
+スコープ内:
 
-リポジトリの実装ロードマップと、ルールエンジン内の評価優先順位は別の話です。
+- dependency contract validation
+- 型関係から生じる implementation consistency validation
+- 特定の実装関係が存在するときに明示宣言を要求する relationship-triggered requirements
 
-このリポジトリでは、現時点では次の段階的導入を推奨します。
+明示的な非対象:
 
-1. v1: `ProvidesContract`, `RequiresDependencyContract`, 強い依存抽出, `DCA001`, `DCA002`
-2. v2: `ContractScope`, `RequiresContractOnScope`
-3. v3: `ContractTarget`, `RequiresContractOnTarget`
-4. v4: `ContractAlias`, alias 解決, 循環検知
+- layer dependency enforcement
+- namespace / package boundary rules
+- generic forbidden dependency graph rules
+- architectural layer の cycle detection
+- contract と無関係な naming convention analyzer
+- file / directory layout rules
+- project / solution structure validation
+- ArchUnit のような general architecture DSL
 
-実装リスクや需要に応じて v2 と v3 は入れ替えても、最終形のアーキテクチャ自体は変わりません。
+設計原則は declarative かつ attribute-based のまま維持します。ルールは
+外部 DSL や巨大な設定系ではなく、コード上の明示宣言で表現されるべきです。

@@ -1,0 +1,167 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    env:
+      NUGET_PUBLISH_USER: ${{ vars.NUGET_PUBLISH_USER }}
+      NUGETTEST_PUBLISH_USER: ${{ vars.NUGETTEST_PUBLISH_USER }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate manual workflow branch
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          if (@('develop', 'main') -notcontains $env:GITHUB_REF_NAME) {
+            throw "Manual publish workflow runs are allowed only on develop or main."
+          }
+
+      - name: Resolve publish target
+        id: publish_target
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_EVENT_NAME -eq 'push') {
+            "should_publish=true" >> $env:GITHUB_OUTPUT
+            "publish_target_name=nuget.org" >> $env:GITHUB_OUTPUT
+            "publish_user=$env:NUGET_PUBLISH_USER" >> $env:GITHUB_OUTPUT
+            "publish_user_variable=NUGET_PUBLISH_USER" >> $env:GITHUB_OUTPUT
+            "token_service_url=https://www.nuget.org/api/v2/token" >> $env:GITHUB_OUTPUT
+            "audience=https://www.nuget.org" >> $env:GITHUB_OUTPUT
+            "package_source=https://www.nuget.org/api/v2/package" >> $env:GITHUB_OUTPUT
+          } elseif ($env:GITHUB_REF_NAME -eq 'develop') {
+            "should_publish=true" >> $env:GITHUB_OUTPUT
+            "publish_target_name=int.nugettest.org" >> $env:GITHUB_OUTPUT
+            "publish_user=$env:NUGETTEST_PUBLISH_USER" >> $env:GITHUB_OUTPUT
+            "publish_user_variable=NUGETTEST_PUBLISH_USER" >> $env:GITHUB_OUTPUT
+            "token_service_url=https://int.nugettest.org/api/v2/token" >> $env:GITHUB_OUTPUT
+            "audience=https://int.nugettest.org" >> $env:GITHUB_OUTPUT
+            "package_source=https://int.nugettest.org/api/v2/package" >> $env:GITHUB_OUTPUT
+          } else {
+            "should_publish=false" >> $env:GITHUB_OUTPUT
+            "publish_target_name=validation-only" >> $env:GITHUB_OUTPUT
+            "publish_user=" >> $env:GITHUB_OUTPUT
+            "publish_user_variable=" >> $env:GITHUB_OUTPUT
+            "token_service_url=" >> $env:GITHUB_OUTPUT
+            "audience=" >> $env:GITHUB_OUTPUT
+            "package_source=" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: |
+            Directory.Build.props
+            src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj
+            tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj
+
+      - name: Validate publish configuration
+        if: steps.publish_target.outputs.should_publish == 'true'
+        shell: pwsh
+        run: |
+          $publishUser = "${{ steps.publish_target.outputs.publish_user }}"
+          $publishUserVariable = "${{ steps.publish_target.outputs.publish_user_variable }}"
+          $publishTarget = "${{ steps.publish_target.outputs.publish_target_name }}"
+
+          if ([string]::IsNullOrWhiteSpace($publishUser)) {
+            throw "Repository variable $publishUserVariable must be configured before publishing to $publishTarget."
+          }
+
+      - name: Validate release tag format
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "Release tags must use the format v<major>.<minor>.<patch>."
+          }
+
+      - name: Validate release tag is annotated
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $tagRef = "refs/tags/$env:GITHUB_REF_NAME"
+
+          git fetch origin "$tagRef:$tagRef" --force
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to fetch release tag metadata."
+          }
+
+          $objectType = (git cat-file -t $tagRef).Trim()
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to resolve release tag object type."
+          }
+
+          if ($objectType -ne 'tag') {
+            throw "Release tags must be annotated tags."
+          }
+
+      - name: Validate tag commit is on main
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          git fetch origin main --depth=1
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to fetch origin/main."
+          }
+
+          git merge-base --is-ancestor HEAD origin/main
+          if ($LASTEXITCODE -ne 0) {
+            throw "Release tags must point to commits already merged into main."
+          }
+
+      - name: Restore
+        run: dotnet restore DependencyContractAnalyzer.slnx
+
+      - name: Build
+        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
+
+      - name: Pack
+        run: dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+      - name: Authenticate to NuGet
+        if: steps.publish_target.outputs.should_publish == 'true'
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ steps.publish_target.outputs.publish_user }}
+          token-service-url: ${{ steps.publish_target.outputs.token_service_url }}
+          audience: ${{ steps.publish_target.outputs.audience }}
+
+      - name: Publish packages
+        if: steps.publish_target.outputs.should_publish == 'true'
+        shell: pwsh
+        run: |
+          Get-ChildItem artifacts\*.nupkg |
+            Where-Object { $_.Name -notlike "*.symbols.nupkg" } |
+            ForEach-Object {
+              dotnet nuget push $_.FullName `
+                --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" `
+                --source "${{ steps.publish_target.outputs.package_source }}" `
+                --skip-duplicate
+            }

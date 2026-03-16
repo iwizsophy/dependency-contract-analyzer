@@ -1,0 +1,71 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>DependencyContractAnalyzer</AssemblyName>
+    <PackageId>DependencyContractAnalyzer</PackageId>
+    <Description>Roslyn analyzer for validating declared dependency contracts on .NET types.</Description>
+    <Authors>DependencyContractAnalyzer contributors</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageIcon>package-icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/iwizsophy/dependency-contract-analyzer</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/iwizsophy/dependency-contract-analyzer</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>roslyn;analyzer;architecture;dependency;contracts</PackageTags>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <NoWarn>$(NoWarn);RS1032;RS1036;RS2008</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.3.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="..\..\assets\package-icon.png" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="Attributes\ContractHierarchyAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ContractHierarchyAttribute.cs" Visible="false" />
+    <None Include="Attributes\ContractScopeAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ContractScopeAttribute.cs" Visible="false" />
+    <None Include="Attributes\ContractTargetAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ContractTargetAttribute.cs" Visible="false" />
+    <None Include="Attributes\ExcludeDependencyContractAnalysisAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ExcludeDependencyContractAnalysisAttribute.cs" Visible="false" />
+    <None Include="Attributes\ExcludeDependencyContractSourceAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ExcludeDependencyContractSourceAttribute.cs" Visible="false" />
+    <None Include="Attributes\ProvidesContractAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ProvidesContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\RequiresContractOnScopeAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\RequiresContractOnScopeAttribute.cs" Visible="false" />
+    <None Include="Attributes\RequiresContractOnTargetAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\RequiresContractOnTargetAttribute.cs" Visible="false" />
+    <None Include="Attributes\RequiresDependencyContractAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\RequiresDependencyContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredDependencyContractAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\SuppressRequiredDependencyContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredTargetContractAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\SuppressRequiredTargetContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredScopeContractAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\SuppressRequiredScopeContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\ContractHierarchyAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ContractHierarchyAttribute.cs" Visible="false" />
+    <None Include="Attributes\ContractScopeAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ContractScopeAttribute.cs" Visible="false" />
+    <None Include="Attributes\ContractTargetAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ContractTargetAttribute.cs" Visible="false" />
+    <None Include="Attributes\ExcludeDependencyContractAnalysisAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ExcludeDependencyContractAnalysisAttribute.cs" Visible="false" />
+    <None Include="Attributes\ExcludeDependencyContractSourceAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ExcludeDependencyContractSourceAttribute.cs" Visible="false" />
+    <None Include="Attributes\ProvidesContractAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\ProvidesContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\RequiresContractOnScopeAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\RequiresContractOnScopeAttribute.cs" Visible="false" />
+    <None Include="Attributes\RequiresContractOnTargetAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\RequiresContractOnTargetAttribute.cs" Visible="false" />
+    <None Include="Attributes\RequiresDependencyContractAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\RequiresDependencyContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredDependencyContractAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\SuppressRequiredDependencyContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredTargetContractAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\SuppressRequiredTargetContractAttribute.cs" Visible="false" />
+    <None Include="Attributes\SuppressRequiredScopeContractAttribute.cs" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.Attributes\SuppressRequiredScopeContractAttribute.cs" Visible="false" />
+    <None Include="build\DependencyContractAnalyzer.props" Pack="true" PackagePath="build\DependencyContractAnalyzer.props" Visible="false" />
+    <None Include="buildTransitive\DependencyContractAnalyzer.props" Pack="true" PackagePath="buildTransitive\DependencyContractAnalyzer.props" Visible="false" />
+  </ItemGroup>
+
+  <Target Name="PackAnalyzerArtifacts" BeforeTargets="_GetPackageFiles">
+    <ItemGroup>
+      <None Include="$(TargetPath)" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+      <None Include="$(TargetDir)$(AssemblyName).pdb" Pack="true" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" Visible="false" />
+      <None Include="$(TargetDir)$(AssemblyName).xml" Pack="true" PackagePath="analyzers/dotnet/cs" Condition="Exists('$(TargetDir)$(AssemblyName).xml')" Visible="false" />
+    </ItemGroup>
+  </Target>
+</Project>
