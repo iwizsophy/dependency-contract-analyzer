@@ -71,6 +71,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Kept the runnable sample project warning-free by moving representative invalid cases into sample documentation snippets
 - Expanded public attribute XML documentation to explain normalization, implication, exclusion, and exact-match suppression behavior
 - Clarified current design boundaries for hierarchy semantics, `.editorconfig`, namespace inference, suppression, and `DCA101` naming scope
+- Simplified Trusted Publishing configuration to use a single `NUGET_USER` setting for both nuget.org and `int.nugettest.org`
 - Clarified the large regression suite with section comments and targeted notes for tricky metadata/preset/inference cases
 - Consolidated duplicated analyzer-config helper logic and test-verifier compilation setup into shared implementations
 - Consolidated duplicated test attribute-source fixtures into a shared helper for verifier and external-metadata tests
