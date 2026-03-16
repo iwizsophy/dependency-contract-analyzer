@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/package-icon.png" alt="DependencyContractAnalyzer icon" width="160" />
+  <img src="https://raw.githubusercontent.com/iwizsophy/dependency-contract-analyzer/50c87dfcfea9a5f9e0fd59e2392ee7bfb07ea6bd/assets/package-icon.png" alt="DependencyContractAnalyzer icon" width="160" />
 </p>
 
 # DependencyContractAnalyzer
