@@ -134,7 +134,7 @@ jobs:
         run: |
           $tagRef = "refs/tags/$env:GITHUB_REF_NAME"
 
-          git fetch origin "$tagRef:$tagRef" --force
+          git fetch origin "${tagRef}:$tagRef" --force
           if ($LASTEXITCODE -ne 0) {
             throw "Failed to fetch release tag metadata."
           }
