@@ -4,7 +4,8 @@ This document is for maintainers and contributors.
 
 ## Prerequisites
 
-- .NET SDK installed
+- .NET 10 SDK installed
+- .NET 8, .NET 9, and .NET 10 runtimes installed for the full test suite
 - Familiarity with Roslyn analyzer development
 - A local environment that can run unit tests for `Microsoft.CodeAnalysis.Testing`
 
@@ -14,14 +15,16 @@ Run from the repository root:
 
 ```powershell
 dotnet restore DependencyContractAnalyzer.slnx
-dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
-dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
+dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -m:1
+dotnet test DependencyContractAnalyzer.slnx -c Release --no-build -m:1
 ```
+
+This test command executes the unit suite for `net8.0`, `net9.0`, and `net10.0`.
 
 To collect local coverage in Cobertura format:
 
 ```powershell
-dotnet test tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj -c Release --collect "XPlat Code Coverage"
+dotnet test tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj -c Release --collect "XPlat Code Coverage" -m:1
 ```
 
 The coverage file is written under `tests/DependencyContractAnalyzer.Tests/TestResults/**/coverage.cobertura.xml`.

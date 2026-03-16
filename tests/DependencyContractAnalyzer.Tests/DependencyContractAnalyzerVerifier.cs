@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using DependencyContractAnalyzer.Analyzers;
 using Microsoft.CodeAnalysis;
@@ -16,6 +17,8 @@ namespace DependencyContractAnalyzer.Tests;
 
 internal static class DependencyContractAnalyzerVerifier
 {
+    private static readonly ReferenceAssemblies CurrentReferenceAssemblies = CreateCurrentReferenceAssemblies();
+
     private static readonly MetadataReference AnalyzerAssemblyReference =
         MetadataReference.CreateFromFile(typeof(ProvidesContractAttribute).Assembly.Location);
 
@@ -131,7 +134,7 @@ internal static class DependencyContractAnalyzerVerifier
     {
         public Test()
         {
-            ReferenceAssemblies = ReferenceAssemblies.Default;
+            ReferenceAssemblies = CurrentReferenceAssemblies;
         }
     }
 
@@ -276,11 +279,30 @@ internal static class DependencyContractAnalyzerVerifier
 
     private static ImmutableArray<MetadataReference> CreatePlatformMetadataReferences()
     {
-        var trustedPlatformAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries) ??
-            Array.Empty<string>();
-        return trustedPlatformAssemblies
-            .Select(static path => (MetadataReference)MetadataReference.CreateFromFile(path))
-            .ToImmutableArray();
+        return CurrentReferenceAssemblies
+            .ResolveAsync(LanguageNames.CSharp, CancellationToken.None)
+            .GetAwaiter()
+            .GetResult();
+    }
+
+    private static ReferenceAssemblies CreateCurrentReferenceAssemblies()
+    {
+#if NET8_0
+        return CreateNetCoreReferenceAssemblies("net8.0", "8.0.0");
+#elif NET9_0
+        return CreateNetCoreReferenceAssemblies("net9.0", "9.0.0");
+#elif NET10_0
+        return CreateNetCoreReferenceAssemblies("net10.0", "10.0.0");
+#else
+#error Unsupported test target framework.
+#endif
+    }
+
+    private static ReferenceAssemblies CreateNetCoreReferenceAssemblies(string targetFramework, string packageVersion)
+    {
+        return new ReferenceAssemblies(
+            targetFramework,
+            new PackageIdentity("Microsoft.NETCore.App.Ref", packageVersion),
+            Path.Combine("ref", targetFramework));
     }
 }

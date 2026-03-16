@@ -727,6 +727,57 @@ GitHub Releases remain `main`-only release artifacts.
 
 ------------------------------------------------------------------------
 
+## ADR-013 Analyzer tests use explicit current-host reference assemblies
+
+Status: Accepted
+Specification: Pending update
+
+### Context
+
+The repository's analyzer tests had been running under a `net10.0`
+test host while still relying on implicit reference-assembly selection
+in `Microsoft.CodeAnalysis.Testing` and on runtime-provided platform
+assemblies for hand-built compilations. That made the test harness
+sensitive to host-environment drift and allowed dependency updates such
+as `coverlet.collector 8.0.0` to break the suite through reference
+assembly mismatches instead of analyzer regressions.
+
+The repository still does not want to publish a version-by-version host
+support matrix. However, it should validate the analyzer against the
+current .NET host versions used in development and CI.
+
+### Decision
+
+Analyzer tests use explicit `Microsoft.NETCore.App.Ref` reference
+assemblies matching the current test host target framework instead of
+implicit defaults or runtime assembly discovery.
+
+The test project runs on `net8.0`, `net9.0`, and `net10.0`, and CI test
+validation installs current .NET SDK/runtime lines so the full suite
+executes on those host TFMs.
+
+This decision does not change the public support statement for the
+packaged analyzer, which remains a `netstandard2.0` analyzer package
+without a published host-version matrix.
+
+### Consequences
+
+-   test failures are more likely to point at analyzer behavior or test
+    infrastructure changes instead of ambient host-runtime drift
+-   CI now checks the current host-runtime set explicitly, which catches
+    test-host-specific issues earlier
+-   the repository's internal validation grows stricter without
+    broadening the package's external compatibility promise
+
+### Related
+
+-   Issue: #117
+-   Pull Request:
+-   Specification reference:
+-   Related decisions:
+
+------------------------------------------------------------------------
+
 # Maintenance Rules
 
 -   Each decision should be concise.
