@@ -14,7 +14,7 @@ jobs:
   publish:
     runs-on: windows-latest
     env:
-      NUGET_USER: ${{ vars.NUGET_USER }}
+      NUGET_USER: ${{ secrets.NUGET_USER }}
 
     steps:
       - name: Checkout
@@ -71,7 +71,7 @@ jobs:
           $publishTarget = "${{ steps.publish_target.outputs.publish_target_name }}"
 
           if ([string]::IsNullOrWhiteSpace($env:NUGET_USER)) {
-            throw "Repository variable NUGET_USER must be configured before publishing to $publishTarget."
+            throw "Repository secret NUGET_USER must be configured before publishing to $publishTarget."
           }
 
       - name: Validate release tag format
