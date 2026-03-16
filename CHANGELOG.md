@@ -6,7 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
-## Breaking Changes
+## [1.0.0] - 2026-03-16
+
+### Breaking Changes
 
 - Publish destination is now branch-based: `main` always publishes to nuget.org, `develop` always publishes to `int.nugettest.org`, and ambiguous tag commits fail validation instead of defaulting to a feed.
 
@@ -92,9 +94,6 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Merged local and referenced implication graphs when expanding provided contracts for external dependencies
 - Derived dependency-source, namespace-inference, and external-metadata defaults from `behavior_preset` while keeping explicit per-option settings authoritative
 - Allowed target/scope requirement evaluation to continue past undeclared checks when that diagnostic family is disabled via configuration
-
-### Fixed
-
 - Source-scoped analyzer options now merge deterministically across partial type declarations instead of depending on the first declaring file
 - Aligned invalid `external_dependency_policy` values with the documented preset-derived fallback behavior
 - Stopped nested type bodies from contributing object-creation or static-member dependencies to outer types, and now report `DCA203` for empty assembly-level `ContractScope` declarations
