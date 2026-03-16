@@ -439,6 +439,8 @@ Provided contracts are expanded through the transitive implication closure befor
 
 Assembly-level scopes always apply to types in the declaring assembly. Type-level scope declarations add to those assembly-level scopes. Namespace-based scope inference contributes additional scope names only when the type has no explicit scope declarations.
 
+Empty scope names on `ContractScope`, including assembly-level declarations, report `DCA203` and do not contribute resolved scope names.
+
 When `dependency_contract_analyzer.external_dependency_policy = metadata`, the analyzer also reads explicit provided contracts, targets, scopes, and implication edges from referenced assemblies for dependency matching. Local and referenced implication graphs are applied together until contract expansion reaches a fixed point. Referenced assemblies do not contribute namespace-inferred names, referenced implication diagnostics are not reported in the consuming compilation, and undeclared target/scope validation remains current-compilation-only.
 
 ## 8. Diagnostics
@@ -453,7 +455,7 @@ When `dependency_contract_analyzer.external_dependency_policy = metadata`, the a
 | `DCA200` | `Warning` | Required target is undeclared in the compilation |
 | `DCA201` | `Warning` | Required scope is undeclared in the compilation |
 | `DCA202` | `Warning` | Contract implication definition is cyclic |
-| `DCA203` | `Warning` | Scope name is empty |
+| `DCA203` | `Warning` | Scope name is empty, including assembly-level `ContractScope` declarations |
 | `DCA204` | `Warning` | Target name is empty |
 | `DCA205` | `Info` | Required target is not used by any analyzable dependency |
 | `DCA206` | `Info` | Required scope is not used by any analyzable dependency |

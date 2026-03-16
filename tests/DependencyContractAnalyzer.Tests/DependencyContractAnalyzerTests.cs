@@ -1596,6 +1596,37 @@ public sealed class DependencyContractAnalyzerTests
     }
 
     [Fact]
+    public async Task DoesNotTreatNestedTypeObjectCreationAsOuterTypeDependency()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public sealed class Foo
+            {
+            }
+
+            [{|#0:RequiresDependencyContract(typeof(Foo), "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public sealed class NestedHelper
+                {
+                    public Foo Create()
+                    {
+                        return new Foo();
+                    }
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredDependencyType)
+                .WithLocation(0)
+                .WithArguments("Foo"));
+    }
+
+    [Fact]
     public async Task ReportsNoDiagnosticWhenTargetedCreatedTypeProvidesRequiredContract()
     {
         const string source = """
@@ -1727,6 +1758,35 @@ public sealed class DependencyContractAnalyzerTests
         Assert.Equal(DiagnosticIds.UnusedRequiredDependencyType, diagnostic.Id);
         Assert.Equal(DiagnosticSeverity.Warning, diagnostic.Severity);
         Assert.Contains("Clock", diagnostic.GetMessage());
+    }
+
+    [Fact]
+    public async Task DoesNotTreatNestedTypeStaticUsageAsOuterTypeDependency()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [ProvidesContract("thread-safe")]
+            public static class Clock
+            {
+                public static int UtcHour => 12;
+            }
+
+            [{|#0:RequiresDependencyContract(typeof(Clock), "thread-safe")|}]
+            public sealed class Consumer
+            {
+                public sealed class NestedHelper
+                {
+                    public int Read() => Clock.UtcHour;
+                }
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.UnusedRequiredDependencyType)
+                .WithLocation(0)
+                .WithArguments("Clock"));
     }
 
     [Fact]
@@ -2628,6 +2688,24 @@ public sealed class DependencyContractAnalyzerTests
             source,
             DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyScopeName).WithLocation(0),
             DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyContractName).WithLocation(1));
+    }
+
+    [Fact]
+    public async Task ReportsDiagnosticWhenAssemblyLevelScopeNameIsEmpty()
+    {
+        const string source = """
+            using DependencyContractAnalyzer;
+
+            [assembly: {|#0:ContractScope("   ")|}]
+
+            public sealed class Marker
+            {
+            }
+            """;
+
+        await DependencyContractAnalyzerVerifier.VerifyAnalyzerAsync(
+            source,
+            DependencyContractAnalyzerVerifier.Diagnostic(DiagnosticIds.EmptyScopeName).WithLocation(0));
     }
 
     [Fact]
