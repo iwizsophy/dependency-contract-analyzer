@@ -30,17 +30,17 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 - The publish workflow expects a single repository secret `NUGET_USER`, and it uses the same publishing account name for both nuget.org and `int.nugettest.org`.
 - Manual `workflow_dispatch` runs are allowed only on `develop` and `main`.
 - Manual runs from `develop` publish packages to `https://int.nugettest.org/api/v2/package`.
-- Manual runs from `main` are validation-only, may build/test/pack/upload artifacts, and do not publish packages.
-- Published release tags must point to commits already merged into `main`.
+- Manual runs from `main` publish packages to `https://www.nuget.org/api/v2/package`.
 - The publish workflow validates that release tags are annotated tags.
-- Pushes of annotated release tags publish packages to `https://www.nuget.org/api/v2/package`.
+- Tag pushes publish by branch instead of by trigger type: `main` tags publish to `https://www.nuget.org/api/v2/package`, and `develop` tags publish to `https://int.nugettest.org/api/v2/package`.
+- Tag pushes fail when the tagged commit is reachable from both `main` and `develop`, or from neither branch.
 - GitHub Releases should be created from release tags on `main`.
 - Release notes should reference `CHANGELOG.md`.
 
 ## Branching model
 
 - `main`: default branch and stable release branch for `nuget.org` publishing
-- `develop`: integration branch and `int.nugettest.org` manual publish branch
+- `develop`: integration branch and `int.nugettest.org` publish branch
 
 ## Release checklist
 
@@ -53,4 +53,5 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 - breaking-change issues reviewed
 - release Pull Request merged into `main`
 - stable version confirmed
-- annotated tag created from `main`
+- publish target branch confirmed (`main` for nuget.org or `develop` for `int.nugettest.org`)
+- annotated tag created from the intended publish branch

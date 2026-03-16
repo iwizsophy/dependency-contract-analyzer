@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## Breaking Changes
+
+- Publish destination is now branch-based: `main` always publishes to nuget.org, `develop` always publishes to `int.nugettest.org`, and ambiguous tag commits fail validation instead of defaulting to a feed.
+
 ### Added
 
 - OSS documentation foundation for the `DependencyContractAnalyzer` repository
@@ -72,6 +76,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Expanded public attribute XML documentation to explain normalization, implication, exclusion, and exact-match suppression behavior
 - Clarified current design boundaries for hierarchy semantics, `.editorconfig`, namespace inference, suppression, and `DCA101` naming scope
 - Simplified Trusted Publishing configuration to use a single `NUGET_USER` secret for both nuget.org and `int.nugettest.org`
+- Switched publish routing to branch-based feed selection so `main` always targets nuget.org and `develop` always targets `int.nugettest.org`, regardless of trigger type
 - Clarified the large regression suite with section comments and targeted notes for tricky metadata/preset/inference cases
 - Consolidated duplicated analyzer-config helper logic and test-verifier compilation setup into shared implementations
 - Consolidated duplicated test attribute-source fixtures into a shared helper for verifier and external-metadata tests

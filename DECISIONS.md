@@ -674,6 +674,59 @@ This decision adds no new diagnostics or configuration keys.
 
 ------------------------------------------------------------------------
 
+## ADR-012 Publish feed routing is branch-based rather than trigger-based
+
+Status: Accepted
+Specification: Updated
+
+### Context
+
+The repository already supported publishing through both annotated tag
+pushes and manual `workflow_dispatch` runs. However, the publish target
+had been selected partly by trigger type, which allowed tag pushes to
+default to `nuget.org` even when the tagged commit belonged to
+`develop`.
+
+The required release policy is stricter: every publish from `develop`
+must go only to `int.nugettest.org`, and every publish from `main` must
+go only to `nuget.org`, regardless of how publishing is triggered.
+
+### Decision
+
+Publish destination is determined by branch, not by trigger type.
+Manual dispatches from `develop` publish only to
+`int.nugettest.org`. Manual dispatches from `main` publish only to
+`nuget.org`.
+
+Tag-push publishes resolve their destination by tagged-commit branch
+containment. A tagged commit reachable only from `main` publishes only
+to `nuget.org`. A tagged commit reachable only from `develop` publishes
+only to `int.nugettest.org`.
+
+If a tagged commit is reachable from both `main` and `develop`, or from
+neither branch, the workflow fails validation instead of guessing.
+
+GitHub Releases remain `main`-only release artifacts.
+
+### Consequences
+
+-   feed routing now enforces the repository's branch roles across both
+    manual and tag-based publishing
+-   accidental cross-publishing from `develop` to `nuget.org`, or from
+    `main` to `int.nugettest.org`, is blocked by validation
+-   tag publishes now require branch topology to be unambiguous; shared
+    commits must not be tagged for publishing unless the ambiguity is
+    resolved first
+
+### Related
+
+-   Issue: #100
+-   Pull Request:
+-   Specification reference: `AGENTS.md`, `docs/trusted-publishing.md`
+-   Related decisions:
+
+------------------------------------------------------------------------
+
 # Maintenance Rules
 
 -   Each decision should be concise.
