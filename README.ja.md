@@ -20,6 +20,17 @@
 - 初期実装スコープは [docs/specification.ja.md](docs/specification.ja.md) にまとめています
 - 最終完成形の設計は [docs/architecture.ja.md](docs/architecture.ja.md) にまとめています
 
+## サポート環境
+
+`DependencyContractAnalyzer` は `netstandard2.0` を対象とする Roslyn analyzer として配布されます。
+
+次の条件を満たす .NET 開発環境での利用を想定しています。
+
+- Roslyn analyzer をサポートしていること
+- `netstandard2.0` ターゲットの analyzer パッケージを読み込めること
+
+このリポジトリでは、IDE や SDK のバージョンごとのサポートマトリックスは提供しません。
+
 ## 免責事項
 
 - アーキテクチャ検証および依存契約検証を目的とした非公式ツールです
