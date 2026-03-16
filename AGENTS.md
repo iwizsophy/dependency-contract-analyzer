@@ -477,8 +477,10 @@ Record monthly and release-preparation audit results in a dedicated
 GitHub Issue, typically titled `Monthly Dependency Audit`, using
 follow-up comments instead of creating a new Issue each month.
 
-Dependabot should be configured for NuGet and GitHub Actions with a
-weekly schedule against `develop`.
+Dependabot should be configured for NuGet and GitHub Actions with
+security updates enabled. Routine Dependabot version-update Pull
+Requests should remain disabled. GitHub security update Pull Requests
+target the repository default branch.
 
 Dependabot Pull Requests follow the normal Pull Request rules:
 
