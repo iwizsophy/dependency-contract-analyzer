@@ -82,9 +82,9 @@ Thanks for your interest in contributing to DependencyContractAnalyzer.
    Request.
 7. Implement the change with matching analyzer tests or documentation updates.
 8. Run local validation from the repository root once the source projects are present:
-   - `dotnet restore`
-   - `dotnet build -c Release --no-restore`
-   - `dotnet test -c Release --no-build`
+   - `dotnet restore DependencyContractAnalyzer.slnx`
+   - `dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -m:1`
+   - `dotnet test DependencyContractAnalyzer.slnx -c Release --no-build -m:1`
 9. Submit a pull request with:
    - What changed
    - Why it changed
