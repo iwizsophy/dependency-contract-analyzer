@@ -15,10 +15,10 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 5. Register the `publish.yml` workflow file in the nuget.org Trusted Publishing policy. Use the workflow file name only: `publish.yml`.
 6. Register the same `publish.yml` workflow file in the `int.nugettest.org` Trusted Publishing policy if `develop` publishes are enabled.
 7. Configure the repository secret `NUGET_USER` with the account name that is allowed to publish the package on both nuget.org and `int.nugettest.org`.
-9. Ensure the publish workflow keeps `permissions.id-token: write`.
-10. Create and push an annotated release tag using the format
+8. Ensure the publish workflow keeps `permissions.id-token: write`.
+9. Create and push an annotated release tag using the format
    `v<major>.<minor>.<patch>`, such as `v0.1.0`.
-11. Package and assembly versions are resolved from git tags by `RelaxVersioner`.
+10. Package and assembly versions are resolved from git tags by `RelaxVersioner`.
 
 ## Workflow expectations
 

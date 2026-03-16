@@ -15,10 +15,10 @@
 5. nuget.org の Trusted Publishing policy には workflow file 名として `publish.yml` を登録します。`.github/workflows/` のパスは付けません。
 6. `develop` publish を有効にする場合は、`int.nugettest.org` 側の Trusted Publishing policy にも同じ `publish.yml` を登録します。
 7. nuget.org と `int.nugettest.org` の両方で publish 可能なアカウント名を repository secret `NUGET_USER` に設定します。
-9. publish ワークフローで `permissions.id-token: write` を維持します。
-10. annotated tag として `v<major>.<minor>.<patch>` 形式の release tag を
+8. publish ワークフローで `permissions.id-token: write` を維持します。
+9. annotated tag として `v<major>.<minor>.<patch>` 形式の release tag を
    作成して push します。例: `v0.1.0`
-11. パッケージ/アセンブリ バージョンは `RelaxVersioner` により git タグから解決します。
+10. パッケージ/アセンブリ バージョンは `RelaxVersioner` により git タグから解決します。
 
 ## ワークフロー要件
 
