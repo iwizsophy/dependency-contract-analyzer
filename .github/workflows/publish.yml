@@ -1,0 +1,215 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    env:
+      NUGET_USER: ${{ secrets.NUGET_USER }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate manual workflow branch
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          if (@('develop', 'main') -notcontains $env:GITHUB_REF_NAME) {
+            throw "Manual publish workflow runs are allowed only on develop or main."
+          }
+
+      - name: Resolve publish target
+        id: publish_target
+        shell: pwsh
+        run: |
+          function Set-PublishTarget([string]$branchName) {
+            switch ($branchName) {
+              'main' {
+                "should_publish=true" >> $env:GITHUB_OUTPUT
+                "publish_branch=main" >> $env:GITHUB_OUTPUT
+                "publish_target_name=nuget.org" >> $env:GITHUB_OUTPUT
+                "token_service_url=https://www.nuget.org/api/v2/token" >> $env:GITHUB_OUTPUT
+                "audience=https://www.nuget.org" >> $env:GITHUB_OUTPUT
+                "package_source=https://www.nuget.org/api/v2/package" >> $env:GITHUB_OUTPUT
+              }
+              'develop' {
+                "should_publish=true" >> $env:GITHUB_OUTPUT
+                "publish_branch=develop" >> $env:GITHUB_OUTPUT
+                "publish_target_name=int.nugettest.org" >> $env:GITHUB_OUTPUT
+                "token_service_url=https://int.nugettest.org/api/v2/token" >> $env:GITHUB_OUTPUT
+                "audience=https://int.nugettest.org" >> $env:GITHUB_OUTPUT
+                "package_source=https://int.nugettest.org/api/v2/package" >> $env:GITHUB_OUTPUT
+              }
+              default {
+                throw "Publishing is allowed only from main or develop."
+              }
+            }
+          }
+
+          function Test-CommitReachableFrom([string]$remoteBranch) {
+            git merge-base --is-ancestor HEAD $remoteBranch
+            if ($LASTEXITCODE -eq 0) {
+              return $true
+            }
+
+            if ($LASTEXITCODE -eq 1) {
+              return $false
+            }
+
+            throw "Failed to evaluate whether HEAD is reachable from $remoteBranch."
+          }
+
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+            "expected_package_version=" >> $env:GITHUB_OUTPUT
+            Set-PublishTarget $env:GITHUB_REF_NAME
+            exit 0
+          }
+
+          "expected_package_version=$($env:GITHUB_REF_NAME.Substring(1))" >> $env:GITHUB_OUTPUT
+
+          git fetch origin refs/heads/main:refs/remotes/origin/main refs/heads/develop:refs/remotes/origin/develop
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to fetch publish branches."
+          }
+
+          $isOnMain = Test-CommitReachableFrom 'origin/main'
+          $isOnDevelop = Test-CommitReachableFrom 'origin/develop'
+
+          if ($isOnMain -and -not $isOnDevelop) {
+            Set-PublishTarget 'main'
+            exit 0
+          }
+
+          if ($isOnDevelop -and -not $isOnMain) {
+            Set-PublishTarget 'develop'
+            exit 0
+          }
+
+          if ($isOnMain -and $isOnDevelop) {
+            throw "Tagged commit is reachable from both main and develop. Tag publishes must target a commit that belongs to exactly one publish branch."
+          }
+
+          throw "Tagged commit is not reachable from main or develop."
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+          cache: true
+          cache-dependency-path: |
+            Directory.Build.props
+            src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj
+            tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj
+
+      - name: Validate publish configuration
+        if: steps.publish_target.outputs.should_publish == 'true'
+        shell: pwsh
+        run: |
+          $publishTarget = "${{ steps.publish_target.outputs.publish_target_name }}"
+
+          if ([string]::IsNullOrWhiteSpace($env:NUGET_USER)) {
+            throw "Repository secret NUGET_USER must be configured before publishing to $publishTarget."
+          }
+
+      - name: Validate release tag format
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "Release tags must use the format v<major>.<minor>.<patch>."
+          }
+
+      - name: Validate release tag is annotated
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $tagRef = "refs/tags/$env:GITHUB_REF_NAME"
+
+          git fetch origin "${tagRef}:$tagRef" --force
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to fetch release tag metadata."
+          }
+
+          $objectType = (git cat-file -t $tagRef).Trim()
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to resolve release tag object type."
+          }
+
+          if ($objectType -ne 'tag') {
+            throw "Release tags must be annotated tags."
+          }
+
+      - name: Validate tag publish branch was resolved
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace("${{ steps.publish_target.outputs.publish_branch }}")) {
+            throw "Failed to resolve publish branch for the tagged commit."
+          }
+
+      - name: Restore
+        run: dotnet restore DependencyContractAnalyzer.slnx
+
+      - name: Build
+        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
+
+      - name: Pack
+        run: dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -p:RelaxVersionerCheckWorkingDirectoryStatus=false -o artifacts
+
+      - name: Verify package version resolved from release tag
+        if: github.event_name == 'push'
+        shell: pwsh
+        run: |
+          $expectedVersion = "${{ steps.publish_target.outputs.expected_package_version }}"
+          $expectedPackagePath = "artifacts/DependencyContractAnalyzer.$expectedVersion.nupkg"
+
+          if (-not (Test-Path $expectedPackagePath)) {
+            throw "Expected tagged package not found: $expectedPackagePath"
+          }
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+      - name: Authenticate to NuGet
+        if: steps.publish_target.outputs.should_publish == 'true'
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ env.NUGET_USER }}
+          token-service-url: ${{ steps.publish_target.outputs.token_service_url }}
+          audience: ${{ steps.publish_target.outputs.audience }}
+
+      - name: Publish packages
+        if: steps.publish_target.outputs.should_publish == 'true'
+        shell: pwsh
+        run: |
+          Get-ChildItem artifacts\*.nupkg |
+            Where-Object { $_.Name -notlike "*.symbols.nupkg" } |
+            ForEach-Object {
+              dotnet nuget push $_.FullName `
+                --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" `
+                --source "${{ steps.publish_target.outputs.package_source }}" `
+                --skip-duplicate
+            }

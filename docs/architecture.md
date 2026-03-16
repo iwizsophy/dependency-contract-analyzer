@@ -1,6 +1,16 @@
 # DependencyContractAnalyzer Architecture
 
 This document describes the intended end-state architecture of `DependencyContractAnalyzer`.
+It is the detailed companion to the repository-root `ARCHITECTURE.md`,
+which remains the authoritative summary of architectural principles and
+constraints.
+
+Use this document for detailed structure, diagrams, dependency maps, and
+target-state descriptions. If this file and `ARCHITECTURE.md` disagree,
+the root `ARCHITECTURE.md` wins until the detailed document is updated.
+
+When architecture principles change and affect the detailed guidance,
+update this file together with `ARCHITECTURE.md`.
 
 The core principle is:
 
@@ -34,8 +44,8 @@ This is not only an analyzer for attributes. It is a static architecture verific
 [Rule Engine]
     |
     +-- contract matching
-    +-- alias / implication resolution
-    +-- exclusions and suppression
+    +-- implication graph resolution
+    +-- standard Roslyn suppression, exact requirement suppression, and owner-type exclusions
     +-- diagnostics
 ```
 
@@ -177,19 +187,19 @@ public sealed class RequiresContractOnScopeAttribute : Attribute
 }
 ```
 
-### 3.5 Contract aliases
+### 3.5 Contract implication edges
 
 ```csharp
 [AttributeUsage(AttributeTargets.Assembly, AllowMultiple = true)]
-public sealed class ContractAliasAttribute : Attribute
+public sealed class ContractHierarchyAttribute : Attribute
 {
-    public string From { get; }
-    public string To { get; }
+    public string Child { get; }
+    public string Parent { get; }
 
-    public ContractAliasAttribute(string from, string to)
+    public ContractHierarchyAttribute(string child, string parent)
     {
-        From = from;
-        To = to;
+        Child = child;
+        Parent = parent;
     }
 }
 ```
@@ -197,12 +207,21 @@ public sealed class ContractAliasAttribute : Attribute
 Example:
 
 ```csharp
-[assembly: ContractAlias("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
+[assembly: ContractHierarchy("immutable", "thread-safe")]
 ```
 
 Meaning:
 
-`immutable` satisfies `thread-safe`.
+`snapshot-cache` satisfies both `immutable` and `thread-safe`.
+
+Current semantics:
+
+- `child -> parent` is a contract implication edge
+- repeated attributes allow multiple parents
+- hierarchy edges are resolved in one DAG
+- `DCA202` reports cycles across that graph
+- contract satisfaction uses the transitive closure of that graph
 
 ## 4. Rule evaluation precedence
 
@@ -211,18 +230,22 @@ Evaluation precedence inside the rule engine should be explicit:
 1. `RequiresDependencyContract`
 2. `RequiresContractOnTarget`
 3. `RequiresContractOnScope`
-4. `ContractAlias` resolution
+4. implication graph resolution
 
 This precedence is about how a dependency is evaluated, not about release order.
 
 ## 5. Dependency evaluation model
 
-Initially, dependencies can stay limited to strong type relationships:
+Dependencies stay limited to strong type relationships:
 
 ```text
 Consumer Type
    +-- constructor parameter
+   +-- method parameter
+   +-- property
    +-- field
+   +-- new expression
+   +-- static member usage, including `using static` imports
    +-- base type
    +-- interface
 ```
@@ -296,15 +319,16 @@ public class BillingRepository : IBillingRepository
 
 If `BillingRepository` does not provide `retry-safe`, the analyzer reports a violation.
 
-### 6.4 Alias-based requirement
+### 6.4 Implication-based requirement
 
 ```csharp
-[assembly: ContractAlias("immutable", "thread-safe")]
+[assembly: ContractHierarchy("snapshot-cache", "immutable")]
+[assembly: ContractHierarchy("immutable", "thread-safe")]
 ```
 
 ```csharp
-[ProvidesContract("immutable")]
-public class ImmutableStore : IStore
+[ProvidesContract("snapshot-cache")]
+public class SnapshotStore : IStore
 {
 }
 ```
@@ -317,7 +341,7 @@ public class StoreConsumer
 }
 ```
 
-Result: valid because the alias satisfies the requirement.
+Result: valid because the implication graph satisfies the requirement.
 
 ## 7. Suggested internal model
 
@@ -359,7 +383,11 @@ internal enum RequirementKind
 internal enum DependencyKind
 {
     ConstructorParameter,
+    MethodParameter,
+    Property,
     Field,
+    ObjectCreation,
+    StaticMemberAccess,
     BaseType,
     InterfaceImplementation
 }
@@ -398,7 +426,7 @@ Inside that evaluation:
 1. Enumerate the consumer requirements.
 2. Decide whether the dependency matches the requirement subject.
 3. Check whether the dependency satisfies the required contract.
-4. Apply alias resolution when needed.
+4. Apply implication-graph resolution when needed.
 5. Emit diagnostics if the contract is still not satisfied.
 
 ## 10. Diagnostic family
@@ -414,35 +442,49 @@ Inside that evaluation:
 - `DCA101`: contract naming format violation
 - `DCA102`: duplicate contract declaration
 
+`DCA101` applies only to contract names, requirement-suppression contract arguments, and hierarchy endpoints. It does not apply to target names or scope names, and the enforced v1 format is lower-kebab-case.
+
 ### Rule-definition diagnostics
 
 - `DCA200`: unknown target required
 - `DCA201`: unknown scope required
-- `DCA202`: cyclic alias definition
+- `DCA202`: cyclic implication definition
+- `DCA203`: empty scope name
+- `DCA204`: empty target name
+- `DCA205`: unused target requirement
+- `DCA206`: unused scope requirement
 
-## 11. Why this is strong as OSS
+## 11. Product Direction
 
-With this design, the tool goes beyond DI-specific checks.
+`DependencyContractAnalyzer` is not intended to become a general architecture rule engine.
 
-It can express:
+The project focuses on validating declarative contracts and implementation consistency
+derived from relationships between types. The analyzer verifies that required contracts,
+attributes, or declarations are correctly aligned when implementation relationships occur.
 
-- dependency-level contract validation
-- architecture-layer rules
-- category-level design rules
-- team-specific conventions
-- future ArchUnit-like extensions
+Typical relationships include:
 
-The package name can stay `DependencyContractAnalyzer`, but the design direction is much closer to an architecture analyzer platform.
+- dependency usage
+- interface implementation
+- inheritance
 
-## 12. Delivery roadmap
+In scope:
 
-The repository roadmap and the rule engine precedence are separate concerns.
+- dependency contract validation
+- implementation consistency validation that arises from type relationships
+- relationship-triggered requirements that enforce explicit declarations
 
-Current recommended delivery roadmap for this repository:
+Explicit non-goals:
 
-1. v1: `ProvidesContract`, `RequiresDependencyContract`, strong dependency extraction, `DCA001`, `DCA002`
-2. v2: `ContractScope`, `RequiresContractOnScope`
-3. v3: `ContractTarget`, `RequiresContractOnTarget`
-4. v4: `ContractAlias`, alias resolution, cycle detection
+- layer dependency enforcement
+- namespace or package boundary rules
+- generic forbidden dependency graph rules
+- cycle detection for architectural layers
+- naming convention analyzers unrelated to contracts
+- file or directory layout rules
+- project or solution structure validation
+- a general architecture DSL similar to ArchUnit
 
-If delivery risk changes, target and scope can be swapped without changing the end-state architecture.
+The design principle remains declarative and attribute-based. Rules should be expressed
+through explicit declarations in code rather than through external DSLs or large
+configuration systems.

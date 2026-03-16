@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    tags-ignore:
+      - "v*"
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: 10.0.x
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            Directory.Build.props
+            samples/DependencyContractAnalyzer.Sample/DependencyContractAnalyzer.Sample.csproj
+            src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj
+            tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj
+
+      - name: Restore
+        run: dotnet restore DependencyContractAnalyzer.slnx
+
+      - name: Build
+        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -m:1
+
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            Directory.Build.props
+            samples/DependencyContractAnalyzer.Sample/DependencyContractAnalyzer.Sample.csproj
+            src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj
+            tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj
+
+      - name: Restore
+        run: dotnet restore DependencyContractAnalyzer.slnx
+
+      - name: Test
+        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-restore --collect "XPlat Code Coverage" --results-directory artifacts/test-results -m:1
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: artifacts/test-results/**
+          if-no-files-found: error
+
+  analyzer:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            Directory.Build.props
+            samples/DependencyContractAnalyzer.Sample/DependencyContractAnalyzer.Sample.csproj
+            src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj
+            tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj
+
+      - name: Restore
+        run: dotnet restore DependencyContractAnalyzer.slnx
+
+      - name: Analyzer quality gate
+        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -warnaserror -m:1
+
+  pack:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
+          cache-dependency-path: |
+            Directory.Build.props
+            samples/DependencyContractAnalyzer.Sample/DependencyContractAnalyzer.Sample.csproj
+            src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj
+            tests/DependencyContractAnalyzer.Tests/DependencyContractAnalyzer.Tests.csproj
+
+      - name: Restore
+        run: dotnet restore DependencyContractAnalyzer.slnx
+
+      - name: Pack
+        run: dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-restore -o artifacts
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages
+          path: artifacts/*.nupkg
+          if-no-files-found: error
