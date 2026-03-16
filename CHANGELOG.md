@@ -95,6 +95,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Aligned invalid `external_dependency_policy` values with the documented preset-derived fallback behavior
 - Stopped nested type bodies from contributing object-creation or static-member dependencies to outer types, and now report `DCA203` for empty assembly-level `ContractScope` declarations
 - Fixed the publish workflow's annotated-tag validation step so PowerShell parses the tag refspec correctly before fetching tag metadata
+- Fixed the publish workflow so tagged publishes keep the exact tag version instead of incrementing because of generated build outputs
 
 ### Removed
 
