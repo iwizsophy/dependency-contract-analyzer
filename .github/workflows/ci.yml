@@ -20,6 +20,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Validate CI workflow invariants
+        shell: pwsh
+        run: ./scripts/Validate-CiWorkflow.ps1
+
       - name: Validate publish workflow invariants
         shell: pwsh
         run: ./scripts/Validate-PublishWorkflow.ps1
@@ -39,7 +43,7 @@ jobs:
         run: dotnet restore DependencyContractAnalyzer.slnx
 
       - name: Build
-        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -m:1
+        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
 
   test:
     runs-on: ubuntu-24.04
@@ -66,7 +70,7 @@ jobs:
         run: dotnet restore DependencyContractAnalyzer.slnx
 
       - name: Test
-        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-restore --collect "XPlat Code Coverage" --results-directory artifacts/test-results -m:1
+        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-restore --collect "XPlat Code Coverage" --results-directory artifacts/test-results
 
       - name: Upload test results
         uses: actions/upload-artifact@v7
@@ -97,7 +101,7 @@ jobs:
         run: dotnet restore DependencyContractAnalyzer.slnx
 
       - name: Analyzer quality gate
-        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -warnaserror -m:1
+        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -warnaserror
 
   pack:
     runs-on: ubuntu-24.04
