@@ -15,7 +15,7 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 5. Register the `publish.yml` workflow file in the nuget.org Trusted Publishing policy. Use the workflow file name only: `publish.yml`.
 6. Register the same `publish.yml` workflow file in the `int.nugettest.org` Trusted Publishing policy if `develop` publishes are enabled.
 7. Configure the repository secret `NUGET_USER` with the account name that is allowed to publish the package on both nuget.org and `int.nugettest.org`.
-8. Ensure the publish workflow keeps `permissions.id-token: write`.
+8. Ensure the publish workflow keeps `permissions.id-token: write` and `permissions.contents: write`.
 9. Create and push an annotated release tag using the format
    `v<major>.<minor>.<patch>`, such as `v0.1.0`.
 10. Package and assembly versions are resolved from git tags by `RelaxVersioner`.
@@ -36,8 +36,9 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 - Tag pushes fail when the tagged commit is reachable from both `main` and `develop`, or from neither branch.
 - The publish-time pack step disables RelaxVersioner's working-directory dirty check so generated build outputs do not silently bump the package version.
 - Tag pushes verify that the generated `.nupkg` filename matches the release tag version before upload.
-- GitHub Releases should be created from release tags on `main`.
-- Release notes should reference `CHANGELOG.md`.
+- After a successful `main` tag publish, the workflow creates or updates the matching GitHub Release from that tag.
+- `develop` tag publishes and manual `workflow_dispatch` runs do not create GitHub Releases.
+- GitHub Release notes are generated from the matching `## [<version>]` section in `CHANGELOG.md`.
 
 ## Branching model
 
@@ -57,3 +58,4 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 - stable version confirmed
 - publish target branch confirmed (`main` for nuget.org or `develop` for `int.nugettest.org`)
 - annotated tag created from the intended publish branch
+- `CHANGELOG.md` contains a `## [<version>]` section that matches the release tag

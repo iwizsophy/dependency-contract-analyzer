@@ -20,6 +20,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Validate publish workflow invariants
+        shell: pwsh
+        run: ./scripts/Validate-PublishWorkflow.ps1
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v5
         with:

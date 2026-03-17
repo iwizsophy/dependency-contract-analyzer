@@ -15,7 +15,7 @@
 5. nuget.org の Trusted Publishing policy には workflow file 名として `publish.yml` を登録します。`.github/workflows/` のパスは付けません。
 6. `develop` publish を有効にする場合は、`int.nugettest.org` 側の Trusted Publishing policy にも同じ `publish.yml` を登録します。
 7. nuget.org と `int.nugettest.org` の両方で publish 可能なアカウント名を repository secret `NUGET_USER` に設定します。
-8. publish ワークフローで `permissions.id-token: write` を維持します。
+8. publish ワークフローで `permissions.id-token: write` と `permissions.contents: write` を維持します。
 9. annotated tag として `v<major>.<minor>.<patch>` 形式の release tag を
    作成して push します。例: `v0.1.0`
 10. パッケージ/アセンブリ バージョンは `RelaxVersioner` により git タグから解決します。
@@ -36,8 +36,9 @@
 - tag 対象 commit が `main` と `develop` の両方から到達可能、またはどちらからも到達不可能な場合は publish を失敗させます。
 - publish 時の pack step では、生成された build output によって package version が勝手に繰り上がらないように、RelaxVersioner の working-directory dirty check を無効化します。
 - tag push では upload 前に、生成された `.nupkg` のファイル名が release tag の version と一致することを検証します。
-- GitHub Release は `main` 上の release tag から作成します。
-- リリースノートは `CHANGELOG.md` と整合させてください。
+- `main` の tag publish が成功した後、workflow は同じ tag から対応する GitHub Release を作成または更新します。
+- `develop` の tag publish と manual の `workflow_dispatch` 実行では GitHub Release を作成しません。
+- GitHub Release のノートは `CHANGELOG.md` の対応する `## [<version>]` セクションから生成します。
 
 ## ブランチ運用
 
@@ -57,3 +58,4 @@
 - stable version を確認済み
 - publish 先に対応する branch を確認済み
 - annotated tag を intended publish branch から作成済み
+- `CHANGELOG.md` に release tag と一致する `## [<version>]` セクションを用意済み
