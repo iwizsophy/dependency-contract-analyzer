@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
@@ -213,3 +213,39 @@ jobs:
                 --source "${{ steps.publish_target.outputs.package_source }}" `
                 --skip-duplicate
             }
+
+      - name: Create or update GitHub Release
+        if: github.event_name == 'push' && steps.publish_target.outputs.publish_branch == 'main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          $pattern = '(?s)^## \[' + [regex]::Escape($version) + '\]\r?\n(?<body>.*?)(?=^## \[|\z)'
+          $match = [regex]::Match((Get-Content CHANGELOG.md -Raw), $pattern, [System.Text.RegularExpressions.RegexOptions]::Multiline)
+          if (-not $match.Success) {
+            throw "Failed to locate release notes for version $version in CHANGELOG.md."
+          }
+
+          $notesFile = Join-Path $env:RUNNER_TEMP "$($env:GITHUB_REF_NAME)-release-notes.md"
+          $notes = $match.Groups['body'].Value.Trim()
+          Set-Content -Path $notesFile -Value $notes -NoNewline
+
+          gh release view $env:GITHUB_REF_NAME --json tagName *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release edit $env:GITHUB_REF_NAME --title $env:GITHUB_REF_NAME --notes-file $notesFile
+            if ($LASTEXITCODE -ne 0) {
+              throw "Failed to update GitHub Release $env:GITHUB_REF_NAME."
+            }
+
+            exit 0
+          }
+
+          if ($LASTEXITCODE -ne 1) {
+            throw "Failed to query GitHub Release $env:GITHUB_REF_NAME."
+          }
+
+          gh release create $env:GITHUB_REF_NAME --verify-tag --title $env:GITHUB_REF_NAME --notes-file $notesFile
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to create GitHub Release $env:GITHUB_REF_NAME."
+          }
