@@ -14,7 +14,7 @@ env:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -42,7 +42,7 @@ jobs:
         run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -m:1
 
   test:
-    runs-on: windows-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -76,7 +76,7 @@ jobs:
           if-no-files-found: error
 
   analyzer:
-    runs-on: windows-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -100,7 +100,7 @@ jobs:
         run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -warnaserror -m:1
 
   pack:
-    runs-on: windows-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
