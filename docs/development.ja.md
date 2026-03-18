@@ -43,7 +43,7 @@ clean な package directory を前提とし、現在は `net8.0`、`net9.0`、
 
 ```powershell
 dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release -o artifacts/package-smoke-current
-powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/Test-PackedPackageConsumption.ps1 -PackageDirectory artifacts/package-smoke-current
+pwsh -NoProfile -File ./scripts/Test-PackedPackageConsumption.ps1 -PackageDirectory artifacts/package-smoke-current
 ```
 
 ## Analyzer test host 方針

@@ -41,7 +41,7 @@ single `.nupkg` and currently verifies package consumption on `net8.0`,
 
 ```powershell
 dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release -o artifacts/package-smoke-current
-powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/Test-PackedPackageConsumption.ps1 -PackageDirectory artifacts/package-smoke-current
+pwsh -NoProfile -File ./scripts/Test-PackedPackageConsumption.ps1 -PackageDirectory artifacts/package-smoke-current
 ```
 
 ## Analyzer test host policy

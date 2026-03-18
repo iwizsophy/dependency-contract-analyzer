@@ -175,6 +175,7 @@ function Invoke-DotNet {
 
 function Invoke-SelfTest {
     $shimRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('dca-dotnet-shim-' + [System.Guid]::NewGuid().ToString('N'))
+    $originalPath = $null
 
     try {
         New-Item -ItemType Directory -Path $shimRoot | Out-Null
