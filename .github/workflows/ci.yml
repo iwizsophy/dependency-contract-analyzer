@@ -14,16 +14,27 @@ env:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Validate CI workflow invariants
+        shell: pwsh
+        run: ./scripts/Validate-CiWorkflow.ps1
+
+      - name: Validate publish workflow invariants
+        shell: pwsh
+        run: ./scripts/Validate-PublishWorkflow.ps1
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            ${{ env.DOTNET_VERSION }}
           cache: true
           cache-dependency-path: |
             Directory.Build.props
@@ -35,10 +46,10 @@ jobs:
         run: dotnet restore DependencyContractAnalyzer.slnx
 
       - name: Build
-        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -m:1
+        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore
 
   test:
-    runs-on: windows-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -62,7 +73,7 @@ jobs:
         run: dotnet restore DependencyContractAnalyzer.slnx
 
       - name: Test
-        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-restore --collect "XPlat Code Coverage" --results-directory artifacts/test-results -m:1
+        run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-restore --collect "XPlat Code Coverage" --results-directory artifacts/test-results
 
       - name: Upload test results
         uses: actions/upload-artifact@v7
@@ -72,7 +83,7 @@ jobs:
           if-no-files-found: error
 
   analyzer:
-    runs-on: windows-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -81,7 +92,10 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            ${{ env.DOTNET_VERSION }}
           cache: true
           cache-dependency-path: |
             Directory.Build.props
@@ -93,10 +107,10 @@ jobs:
         run: dotnet restore DependencyContractAnalyzer.slnx
 
       - name: Analyzer quality gate
-        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -warnaserror -m:1
+        run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -warnaserror
 
   pack:
-    runs-on: windows-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
@@ -105,7 +119,10 @@ jobs:
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            ${{ env.DOTNET_VERSION }}
           cache: true
           cache-dependency-path: |
             Directory.Build.props
@@ -118,6 +135,14 @@ jobs:
 
       - name: Pack
         run: dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-restore -o artifacts
+
+      - name: Self-test packed package smoke script
+        shell: pwsh
+        run: ./scripts/Test-PackedPackageConsumption.ps1 -SelfTest
+
+      - name: Smoke test packed package consumption
+        shell: pwsh
+        run: ./scripts/Test-PackedPackageConsumption.ps1 -PackageDirectory artifacts
 
       - name: Upload packages
         uses: actions/upload-artifact@v7

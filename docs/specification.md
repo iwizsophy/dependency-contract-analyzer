@@ -632,7 +632,12 @@ Representative scenarios include:
 - Diagnostics for empty names, duplicate declarations, and cyclic implication graphs
 - No diagnostic when the owner type is excluded through the custom exclusion attribute
 
-## 12. Future extensions
+## 12. Future design space
+
+The following items are possible future design space only. They are not
+an accepted roadmap and are not part of the current product boundary.
+Each item requires a separate design decision before it moves into
+scope.
 
 - Additional EditorConfig policy categories beyond the current option set
 - Richer namespace metadata inference beyond the current final-segment and optional trailing 2-segment fallback heuristics

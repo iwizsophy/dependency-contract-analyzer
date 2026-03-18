@@ -260,7 +260,8 @@ Supported policy categories are:
 -   `external_dependency_policy`
 
 Any future expansion beyond these categories requires a separate design
-decision.
+decision. These categories describe the current accepted product
+boundary, not an implied roadmap.
 
 ------------------------------------------------------------------------
 
@@ -276,7 +277,8 @@ Supported inference remains:
     `namespace_inference_max_segments = 2`
 
 Richer namespace-derived naming heuristics remain out of scope unless a
-separate design decision expands this boundary.
+separate design decision expands this boundary. That design space is not
+an accepted roadmap.
 
 ------------------------------------------------------------------------
 

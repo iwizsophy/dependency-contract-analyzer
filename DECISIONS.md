@@ -730,7 +730,7 @@ GitHub Releases remain `main`-only release artifacts.
 ## ADR-013 Analyzer tests use explicit current-host reference assemblies
 
 Status: Accepted
-Specification: Pending update
+Specification: Updated
 
 ### Context
 
@@ -773,7 +773,7 @@ without a published host-version matrix.
 
 -   Issue: #117
 -   Pull Request:
--   Specification reference:
+-   Specification reference: `docs/development.md`, `docs/development.ja.md`
 -   Related decisions:
 
 ------------------------------------------------------------------------
