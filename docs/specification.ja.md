@@ -628,7 +628,11 @@ CompilationStart
 - 空名、重複宣言、循環する包含グラフの診断
 - custom exclusion attribute による owner type 解析スキップ
 
-## 12. 将来拡張
+## 12. 将来の設計余地
+
+次の項目は将来の設計余地にすぎず、accepted roadmap ではありません。
+現在の製品境界にも含まれず、scope に入れるには別の設計判断が必要です。
+
 - 依存抽出トグルを超える EditorConfig ベースのポリシー制御
 - trailing 2-segment 推定を超える namespace ベースのメタデータ推定
 
