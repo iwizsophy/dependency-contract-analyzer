@@ -15,12 +15,16 @@ function Get-LatestPackageFile {
     )
 
     $packageFiles = @(
-        Get-ChildItem -Path $PackageDirectoryPath -Filter 'DependencyContractAnalyzer.*.nupkg' -File |
-            Sort-Object LastWriteTimeUtc -Descending
+        Get-ChildItem -Path $PackageDirectoryPath -Filter 'DependencyContractAnalyzer.*.nupkg' -File
     )
 
     if ($packageFiles.Count -eq 0) {
         throw "No packed DependencyContractAnalyzer package was found in '$PackageDirectoryPath'."
+    }
+
+    if ($packageFiles.Count -gt 1) {
+        $packageList = $packageFiles | ForEach-Object { $_.Name } | Sort-Object
+        throw "Expected exactly one packed DependencyContractAnalyzer package in '$PackageDirectoryPath', but found multiple:`n$($packageList -join [System.Environment]::NewLine)"
     }
 
     return $packageFiles[0]
@@ -69,6 +73,7 @@ function New-SmokeProject {
         [string]$ProjectRoot,
         [string]$ProjectName,
         [string]$PackageVersion,
+        [string]$TargetFramework,
         [string]$SourceCode,
         [switch]$TreatWarningsAsErrors,
         [string]$WarningsAsErrors
@@ -78,7 +83,7 @@ function New-SmokeProject {
 
     $propertyLines = @(
         '  <PropertyGroup>',
-        '    <TargetFramework>net10.0</TargetFramework>',
+        "    <TargetFramework>$TargetFramework</TargetFramework>",
         '    <ImplicitUsings>disable</ImplicitUsings>',
         '    <Nullable>enable</Nullable>'
     )
@@ -110,24 +115,49 @@ function New-SmokeProject {
     return $projectPath
 }
 
+function New-GlobalJson {
+    param(
+        [string]$ProjectRoot,
+        [string]$SdkVersion
+    )
+
+    $globalJsonContent = @"
+{
+  "sdk": {
+    "version": "$SdkVersion",
+    "rollForward": "latestPatch"
+  }
+}
+"@
+
+    Set-Content -Path (Join-Path $ProjectRoot 'global.json') -Value $globalJsonContent
+}
+
 function Invoke-DotNet {
     param(
+        [string]$WorkingDirectory,
         [string[]]$Arguments,
         [switch]$ExpectFailure,
         [string]$ExpectedOutputFragment
     )
 
     Write-Host ("dotnet " + ($Arguments -join ' '))
-    $outputLines = @(& dotnet @Arguments 2>&1 | ForEach-Object { $_.ToString() })
-    $exitCode = $LASTEXITCODE
-    $output = [string]::Join([System.Environment]::NewLine, $outputLines)
+    Push-Location $WorkingDirectory
+    try {
+        $outputLines = @(& dotnet @Arguments 2>&1 | ForEach-Object { $_.ToString() })
+        $exitCode = $LASTEXITCODE
+        $output = [string]::Join([System.Environment]::NewLine, $outputLines)
+    }
+    finally {
+        Pop-Location
+    }
 
     if ($ExpectFailure.IsPresent) {
         if ($exitCode -eq 0) {
             throw "Expected 'dotnet $($Arguments -join ' ')' to fail."
         }
 
-        if (-not [string]::IsNullOrWhiteSpace($ExpectedOutputFragment) -and -not $output.Contains($ExpectedOutputFragment, [System.StringComparison]::Ordinal)) {
+        if (-not [string]::IsNullOrWhiteSpace($ExpectedOutputFragment) -and $output.IndexOf($ExpectedOutputFragment, [System.StringComparison]::Ordinal) -lt 0) {
             throw "Expected 'dotnet $($Arguments -join ' ')' to contain '$ExpectedOutputFragment', but it did not.`n$output"
         }
 
@@ -141,6 +171,35 @@ function Invoke-DotNet {
     return $output
 }
 
+function Assert-TextDoesNotContain {
+    param(
+        [string]$Content,
+        [string]$UnexpectedText,
+        [string]$Context
+    )
+
+    if ($Content.IndexOf($UnexpectedText, [System.StringComparison]::Ordinal) -ge 0) {
+        throw "Did not expect '$UnexpectedText' in $Context.`n$Content"
+    }
+}
+
+function Assert-SelectedSdkMatchesLine {
+    param(
+        [string]$Content,
+        [string]$ExpectedSdkVersion,
+        [string]$Context
+    )
+
+    $selectedSdkVersionText = $Content.Trim()
+    $selectedSdkVersion = [System.Version]::Parse($selectedSdkVersionText)
+    $expectedSdkVersionValue = [System.Version]::Parse($ExpectedSdkVersion)
+
+    if ($selectedSdkVersion.Major -ne $expectedSdkVersionValue.Major -or
+        $selectedSdkVersion.Minor -ne $expectedSdkVersionValue.Minor) {
+        throw "Expected $Context to use SDK line '$($expectedSdkVersionValue.Major).$($expectedSdkVersionValue.Minor)', but got:`n$Content"
+    }
+}
+
 function Assert-FileContains {
     param(
         [string]$Path,
@@ -148,9 +207,30 @@ function Assert-FileContains {
     )
 
     $content = Get-Content -Path $Path -Raw
-    if (-not $content.Contains($ExpectedText, [System.StringComparison]::Ordinal)) {
+    if ($content.IndexOf($ExpectedText, [System.StringComparison]::Ordinal) -lt 0) {
         throw "Expected '$Path' to contain '$ExpectedText'."
     }
+}
+
+function Get-InstalledSdkVersionForMajor {
+    param(
+        [int]$MajorVersion
+    )
+
+    $sdkLine = dotnet --list-sdks |
+        ForEach-Object { $_.ToString().Trim() } |
+        Where-Object { $_ -match "^(?<Version>$MajorVersion\.\d+\.\d+)\s+\[" } |
+        Select-Object -First 1
+
+    if ($null -eq $sdkLine) {
+        throw "Required .NET SDK major version '$MajorVersion' is not installed."
+    }
+
+    if ($sdkLine -notmatch '^(?<Version>\d+\.\d+\.\d+)\s+\[') {
+        throw "Failed to parse SDK version from '$sdkLine'."
+    }
+
+    return $Matches['Version']
 }
 
 $packageDirectoryPath = (Get-Item -LiteralPath $PackageDirectory).FullName
@@ -186,18 +266,6 @@ public sealed class ValidConsumer
 }
 '@
 
-    $validProjectRoot = Join-Path $workingRoot 'ValidConsumer'
-    $validProjectPath = New-SmokeProject -ProjectRoot $validProjectRoot -ProjectName 'ValidConsumer' -PackageVersion $packageVersion -SourceCode $validSourceCode -TreatWarningsAsErrors
-
-    Invoke-DotNet -Arguments @('restore', $validProjectPath, '--configfile', $nuGetConfigPath) | Out-Null
-
-    $assetsFilePath = Join-Path $validProjectRoot 'obj/project.assets.json'
-    Assert-FileContains -Path $assetsFilePath -ExpectedText '"build/DependencyContractAnalyzer.props"'
-    Assert-FileContains -Path $assetsFilePath -ExpectedText '"buildTransitive/DependencyContractAnalyzer.props"'
-    Assert-FileContains -Path $assetsFilePath -ExpectedText '"analyzers/dotnet/cs/DependencyContractAnalyzer.dll"'
-
-    Invoke-DotNet -Arguments @('build', $validProjectPath, '--no-restore') | Out-Null
-
     $invalidSourceCode = @'
 using DependencyContractAnalyzer;
 
@@ -214,11 +282,59 @@ public sealed class InvalidConsumer
 }
 '@
 
-    $invalidProjectRoot = Join-Path $workingRoot 'InvalidConsumer'
-    $invalidProjectPath = New-SmokeProject -ProjectRoot $invalidProjectRoot -ProjectName 'InvalidConsumer' -PackageVersion $packageVersion -SourceCode $invalidSourceCode -WarningsAsErrors 'DCA001'
+    $smokeTargets = @(
+        @{ TargetFramework = 'net8.0'; SdkMajor = 8 },
+        @{ TargetFramework = 'net9.0'; SdkMajor = 9 },
+        @{ TargetFramework = 'net10.0'; SdkMajor = 10 }
+    )
 
-    Invoke-DotNet -Arguments @('restore', $invalidProjectPath, '--configfile', $nuGetConfigPath) | Out-Null
-    Invoke-DotNet -Arguments @('build', $invalidProjectPath, '--no-restore') -ExpectFailure -ExpectedOutputFragment 'DCA001' | Out-Null
+    foreach ($smokeTarget in $smokeTargets) {
+        $targetFramework = [string]$smokeTarget.TargetFramework
+        $sdkMajor = [int]$smokeTarget.SdkMajor
+        $sdkVersion = Get-InstalledSdkVersionForMajor -MajorVersion $sdkMajor
+
+        Write-Host "Smoke-testing packed package on $targetFramework with SDK $sdkVersion."
+
+        $validProjectRoot = Join-Path $workingRoot "ValidConsumer.$targetFramework"
+        $validProjectPath = New-SmokeProject `
+            -ProjectRoot $validProjectRoot `
+            -ProjectName 'ValidConsumer' `
+            -PackageVersion $packageVersion `
+            -TargetFramework $targetFramework `
+            -SourceCode $validSourceCode `
+            -TreatWarningsAsErrors
+        New-GlobalJson -ProjectRoot $validProjectRoot -SdkVersion $sdkVersion
+
+        $selectedValidSdkVersion = Invoke-DotNet -WorkingDirectory $validProjectRoot -Arguments @('--version')
+        Assert-SelectedSdkMatchesLine -Content $selectedValidSdkVersion -ExpectedSdkVersion $sdkVersion -Context "dotnet --version output for $targetFramework valid project"
+
+        Invoke-DotNet -WorkingDirectory $validProjectRoot -Arguments @('restore', $validProjectPath, '--configfile', $nuGetConfigPath) | Out-Null
+
+        $assetsFilePath = Join-Path $validProjectRoot 'obj/project.assets.json'
+        Assert-FileContains -Path $assetsFilePath -ExpectedText '"build/DependencyContractAnalyzer.props"'
+        Assert-FileContains -Path $assetsFilePath -ExpectedText '"buildTransitive/DependencyContractAnalyzer.props"'
+        Assert-FileContains -Path $assetsFilePath -ExpectedText '"analyzers/dotnet/cs/DependencyContractAnalyzer.dll"'
+
+        $validBuildOutput = Invoke-DotNet -WorkingDirectory $validProjectRoot -Arguments @('build', $validProjectPath, '--no-restore')
+        Assert-TextDoesNotContain -Content $validBuildOutput -UnexpectedText 'CS9057' -Context "successful build output for $targetFramework"
+
+        $invalidProjectRoot = Join-Path $workingRoot "InvalidConsumer.$targetFramework"
+        $invalidProjectPath = New-SmokeProject `
+            -ProjectRoot $invalidProjectRoot `
+            -ProjectName 'InvalidConsumer' `
+            -PackageVersion $packageVersion `
+            -TargetFramework $targetFramework `
+            -SourceCode $invalidSourceCode `
+            -WarningsAsErrors 'DCA001'
+        New-GlobalJson -ProjectRoot $invalidProjectRoot -SdkVersion $sdkVersion
+
+        $selectedInvalidSdkVersion = Invoke-DotNet -WorkingDirectory $invalidProjectRoot -Arguments @('--version')
+        Assert-SelectedSdkMatchesLine -Content $selectedInvalidSdkVersion -ExpectedSdkVersion $sdkVersion -Context "dotnet --version output for $targetFramework invalid project"
+
+        Invoke-DotNet -WorkingDirectory $invalidProjectRoot -Arguments @('restore', $invalidProjectPath, '--configfile', $nuGetConfigPath) | Out-Null
+        $invalidBuildOutput = Invoke-DotNet -WorkingDirectory $invalidProjectRoot -Arguments @('build', $invalidProjectPath, '--no-restore') -ExpectFailure -ExpectedOutputFragment 'DCA001'
+        Assert-TextDoesNotContain -Content $invalidBuildOutput -UnexpectedText 'CS9057' -Context "failing build output for $targetFramework"
+    }
 
     Write-Host 'Packed package smoke test passed.'
 }

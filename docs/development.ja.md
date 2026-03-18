@@ -37,6 +37,15 @@ coverage ファイルは `tests/DependencyContractAnalyzer.Tests/TestResults/**/
 dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
 ```
 
+packaged package の smoke validation は、単一の `.nupkg` だけを含む
+clean な package directory を前提とし、現在は `net8.0`、`net9.0`、
+`net10.0` で package 消費を検証します。
+
+```powershell
+dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release -o artifacts/package-smoke-current
+powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/Test-PackedPackageConsumption.ps1 -PackageDirectory artifacts/package-smoke-current
+```
+
 ## Analyzer test host 方針
 
 `tests/DependencyContractAnalyzer.Tests` は `net8.0`、`net9.0`、
@@ -47,9 +56,21 @@ verifier は、実行中の test host target framework に一致する
 platform reference について、`Microsoft.CodeAnalysis.Testing` の
 暗黙既定値や runtime からの assembly 発見には依存しません。
 
+packaged package の互換性検証では、target framework だけを切り替える
+のではなく、project ごとの `global.json` で SDK host line も固定し、
+`.NET 8`、`.NET 9`、`.NET 10` の compiler host で package 消費を
+確認します。
+
 これは development と CI で使う current host line に対する内部検証
-方針です。公開される `netstandard2.0` analyzer package について、
-version ごとの support matrix を示すものではありません。
+方針です。公開される `netstandard2.0` analyzer package の現在の保証
+対象は `.NET 8`、`.NET 9`、`.NET 10` です。この表明を超える
+version ごとの完全な support matrix は公開しません。
+
+技術的には、Roslyn analyzer を読み込めて host compiler と
+packaged analyzer の互換が保たれる限り、現時点の実装は `.NET 5+`
+の build 環境および Visual Studio `2019 16.8+` でも動作する見込み
+です。ただし、これらは保証対象外であり、repository の自動検証
+ポリシーでもテストせず、サポート約束にも含みません。
 
 ## プロジェクト構成
 

@@ -43,7 +43,7 @@ unless explicit notice is required.
 ### Microsoft.CodeAnalysis.CSharp
 
 - Dependency: `Microsoft.CodeAnalysis.CSharp` (NuGet)
-- Version: `5.3.0`
+- Version: `3.9.0`
 - Project: https://github.com/dotnet/roslyn
 - License: MIT License (`MIT`)
 - License text: https://licenses.nuget.org/MIT

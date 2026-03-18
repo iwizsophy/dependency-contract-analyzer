@@ -22,12 +22,20 @@
 
 `DependencyContractAnalyzer` は `netstandard2.0` を対象とする Roslyn analyzer として配布されます。
 
-次の条件を満たす .NET 開発環境での利用を想定しています。
+現在の保証対象は、リリース時点で Microsoft がサポートしている .NET release line です。現行リリースでは次を保証対象とします。
+
+- `.NET 8`
+- `.NET 9`
+- `.NET 10`
+
+これらの release line に含まれる build 環境では、次を前提にします。
 
 - Roslyn analyzer をサポートしていること
 - `netstandard2.0` ターゲットの analyzer パッケージを読み込めること
 
-このリポジトリでは、IDE や SDK のバージョンごとのサポートマトリックスは提供しません。
+このサポート表明を超える IDE / SDK の完全な version ごとのサポートマトリックスは提供しません。
+
+技術的には、Roslyn analyzer の読み込みが可能で、host compiler がパッケージ化された analyzer と互換であれば、現時点の実装は `.NET 5` 以降の build 環境と Visual Studio `2019 16.8` 以降でも動作する見込みです。ただし、これらの環境は保証対象外です。本プロジェクトの検証ポリシーではテストせず、サポート約束も行いません。
 
 ## 免責事項
 

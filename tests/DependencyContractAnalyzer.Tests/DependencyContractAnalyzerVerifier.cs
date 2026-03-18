@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using DependencyContractAnalyzer.Analyzers;
@@ -38,7 +39,7 @@ internal static class DependencyContractAnalyzerVerifier
     {
         var test = new Test
         {
-            TestCode = source,
+            TestCode = NormalizeFileScopedNamespaceForLegacyRoslyn(source),
         };
 
         test.TestState.AdditionalReferences.Add(AnalyzerAssemblyReference);
@@ -211,9 +212,26 @@ internal static class DependencyContractAnalyzerVerifier
 
     private static SyntaxTree ParseSource(string source, string path) =>
         CSharpSyntaxTree.ParseText(
-            source,
+            NormalizeFileScopedNamespaceForLegacyRoslyn(source),
             new CSharpParseOptions(LanguageVersion.Preview),
             path: path);
+
+    private static string NormalizeFileScopedNamespaceForLegacyRoslyn(string source)
+    {
+        var match = Regex.Match(
+            source,
+            @"^(?<indent>\s*)namespace\s+(?<name>[^\r\n;]+);\s*$",
+            RegexOptions.Multiline);
+        if (!match.Success)
+        {
+            return source;
+        }
+
+        var normalizedNamespaceDeclaration =
+            $"{match.Groups["indent"].Value}namespace {match.Groups["name"].Value}{Environment.NewLine}{match.Groups["indent"].Value}{{";
+        return source.Remove(match.Index, match.Length)
+            .Insert(match.Index, normalizedNamespaceDeclaration) + Environment.NewLine + "}";
+    }
 
     private static CSharpCompilation CreateCompilation(
         string assemblyName,
