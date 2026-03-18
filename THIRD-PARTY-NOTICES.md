@@ -15,7 +15,7 @@ unless explicit notice is required.
 ### RelaxVersioner
 
 - Dependency: `RelaxVersioner` (NuGet)
-- Version: `3.21.0`
+- Version: `3.22.0`
 - Project: https://github.com/kekyo/RelaxVersioner
 - License: Apache License 2.0 (`Apache-2.0`)
 - License text: https://licenses.nuget.org/Apache-2.0
@@ -43,7 +43,7 @@ unless explicit notice is required.
 ### Microsoft.CodeAnalysis.CSharp
 
 - Dependency: `Microsoft.CodeAnalysis.CSharp` (NuGet)
-- Version: `5.3.0`
+- Version: `3.9.0`
 - Project: https://github.com/dotnet/roslyn
 - License: MIT License (`MIT`)
 - License text: https://licenses.nuget.org/MIT

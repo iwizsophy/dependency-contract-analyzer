@@ -35,6 +35,43 @@ Local package output:
 dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
 ```
 
+Packed-package smoke validation expects a clean package directory with a
+single `.nupkg` and currently verifies package consumption on `net8.0`,
+`net9.0`, and `net10.0`:
+
+```powershell
+dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release -o artifacts/package-smoke-current
+pwsh -NoProfile -File ./scripts/Test-PackedPackageConsumption.ps1 -PackageDirectory artifacts/package-smoke-current
+```
+
+## Analyzer test host policy
+
+`tests/DependencyContractAnalyzer.Tests` targets `net8.0`, `net9.0`,
+and `net10.0`.
+
+The verifier pins explicit `Microsoft.NETCore.App.Ref` reference
+assemblies that match the active test host target framework. The test
+harness does not rely on implicit `Microsoft.CodeAnalysis.Testing`
+defaults or on runtime assembly discovery for platform references.
+
+Packed-package compatibility validation separately pins SDK host lines
+through per-project `global.json` files so package consumption is
+checked under `.NET 8`, `.NET 9`, and `.NET 10` compiler hosts instead
+of only changing the target framework.
+
+This is an internal validation policy for the current host lines used in
+development and CI. The packaged `netstandard2.0` analyzer's current
+guaranteed public support scope is `.NET 8`, `.NET 9`, and `.NET 10`.
+The repository does not publish a full version-by-version host support
+matrix beyond that statement.
+
+Technically, the current implementation is expected to work on `.NET 5+`
+build environments and Visual Studio `2019 16.8+` when Roslyn analyzer
+loading is available and the host compiler remains compatible with the
+packaged analyzer. However, those environments are outside the
+guaranteed support scope, are not covered by the repository's automated
+validation policy, and are not part of the project's support commitment.
+
 ## Project layout
 
 The repository currently follows this structure:

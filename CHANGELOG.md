@@ -6,6 +6,17 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Changed
+
+- Lowered the analyzer implementation dependency on `Microsoft.CodeAnalysis.CSharp` to `3.9.0` so the packaged analyzer targets a broader compatible Roslyn host floor without changing the public support guarantee
+- Clarified the public support statement in English and Japanese documentation to guarantee `.NET 8`, `.NET 9`, and `.NET 10`, while explicitly marking `.NET 5+` and Visual Studio `2019 16.8+` as technical compatibility expectations that are neither tested nor supported
+
+### Fixed
+
+- Updated the test verifier to normalize file-scoped namespace fixtures for legacy Roslyn compatibility so lower-floor implementation validation can run against the existing regression corpus
+- Expanded packed-package smoke validation to verify analyzer package consumption and `DCA001` execution on `net8.0`, `net9.0`, and `net10.0` without `CS9057`
+- Pinned packed-package smoke validation to `.NET 8`, `.NET 9`, and `.NET 10` SDK host lines via per-project `global.json` files so compatibility checks exercise the intended compiler hosts instead of only the target frameworks
+
 ## [1.0.0]
 
 ### Breaking Changes
