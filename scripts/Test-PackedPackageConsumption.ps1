@@ -1,5 +1,6 @@
 param(
-    [string]$PackageDirectory
+    [string]$PackageDirectory,
+    [switch]$SelfTest
 )
 
 Set-StrictMode -Version Latest
@@ -161,6 +162,7 @@ function Invoke-DotNet {
             throw "Expected 'dotnet $($Arguments -join ' ')' to contain '$ExpectedOutputFragment', but it did not.`n$output"
         }
 
+        $global:LASTEXITCODE = 0
         return $output
     }
 
@@ -169,6 +171,70 @@ function Invoke-DotNet {
     }
 
     return $output
+}
+
+function Invoke-SelfTest {
+    $shimRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('dca-dotnet-shim-' + [System.Guid]::NewGuid().ToString('N'))
+
+    try {
+        New-Item -ItemType Directory -Path $shimRoot | Out-Null
+
+        if ($IsWindows) {
+            $shimPath = Join-Path $shimRoot 'dotnet.cmd'
+            $shimContent = @'
+@echo off
+if "%~1"=="--version" (
+  echo 8.0.123
+  exit /b 0
+)
+
+echo DCA001 simulated failure 1>&2
+exit /b 1
+'@
+        }
+        else {
+            $shimPath = Join-Path $shimRoot 'dotnet'
+            $shimContent = @'
+#!/usr/bin/env sh
+if [ "$1" = "--version" ]; then
+  echo "8.0.123"
+  exit 0
+fi
+
+echo "DCA001 simulated failure" 1>&2
+exit 1
+'@
+        }
+
+        Set-Content -Path $shimPath -Value $shimContent -NoNewline
+
+        if (-not $IsWindows) {
+            & chmod +x $shimPath
+        }
+
+        $originalPath = $env:PATH
+        $env:PATH = $shimRoot + [System.IO.Path]::PathSeparator + $originalPath
+
+        Invoke-DotNet -WorkingDirectory $shimRoot -Arguments @('--version') | Out-Null
+        $failureOutput = Invoke-DotNet -WorkingDirectory $shimRoot -Arguments @('build') -ExpectFailure -ExpectedOutputFragment 'DCA001'
+
+        if ($failureOutput.IndexOf('DCA001', [System.StringComparison]::Ordinal) -lt 0) {
+            throw 'Self-test expected DCA001 output from the dotnet shim.'
+        }
+
+        if ($global:LASTEXITCODE -ne 0) {
+            throw "Self-test expected LASTEXITCODE to be reset to 0, but got '$global:LASTEXITCODE'."
+        }
+    }
+    finally {
+        if ($null -ne $originalPath) {
+            $env:PATH = $originalPath
+        }
+
+        if (Test-Path -LiteralPath $shimRoot) {
+            Remove-Item -LiteralPath $shimRoot -Recurse -Force
+        }
+    }
 }
 
 function Assert-TextDoesNotContain {
@@ -242,6 +308,13 @@ function Get-InstalledSdkVersionForMajor {
     }
 
     return $Matches['Version']
+}
+
+if ($SelfTest.IsPresent) {
+    Invoke-SelfTest
+    Write-Host 'Packed package smoke test self-test passed.'
+    $global:LASTEXITCODE = 0
+    return
 }
 
 $packageDirectoryPath = (Get-Item -LiteralPath $PackageDirectory).FullName
@@ -348,6 +421,7 @@ public sealed class InvalidConsumer
     }
 
     Write-Host 'Packed package smoke test passed.'
+    $global:LASTEXITCODE = 0
 }
 finally {
     if (Test-Path -LiteralPath $workingRoot) {

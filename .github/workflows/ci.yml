@@ -136,6 +136,10 @@ jobs:
       - name: Pack
         run: dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-restore -o artifacts
 
+      - name: Self-test packed package smoke script
+        shell: pwsh
+        run: ./scripts/Test-PackedPackageConsumption.ps1 -SelfTest
+
       - name: Smoke test packed package consumption
         shell: pwsh
         run: ./scripts/Test-PackedPackageConsumption.ps1 -PackageDirectory artifacts
