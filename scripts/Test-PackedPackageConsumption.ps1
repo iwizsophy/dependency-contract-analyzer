@@ -190,7 +190,18 @@ function Assert-SelectedSdkMatchesLine {
         [string]$Context
     )
 
-    $selectedSdkVersionText = $Content.Trim()
+    $selectedSdkVersionLine = $Content -split '\r?\n' |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -match '^(?<Version>\d+\.\d+\.\d+)(?:[-+].*)?$' } |
+        Select-Object -First 1
+
+    if ([string]::IsNullOrWhiteSpace($selectedSdkVersionLine)) {
+        throw "Expected $Context to contain a semantic version line, but got:`n$Content"
+    }
+
+    $selectedSdkVersionText = [System.Text.RegularExpressions.Regex]::Match(
+        $selectedSdkVersionLine,
+        '^(?<Version>\d+\.\d+\.\d+)').Groups['Version'].Value
     $selectedSdkVersion = [System.Version]::Parse($selectedSdkVersionText)
     $expectedSdkVersionValue = [System.Version]::Parse($ExpectedSdkVersion)
 
