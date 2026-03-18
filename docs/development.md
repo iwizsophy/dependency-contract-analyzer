@@ -35,6 +35,20 @@ Local package output:
 dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
 ```
 
+## Analyzer test host policy
+
+`tests/DependencyContractAnalyzer.Tests` targets `net8.0`, `net9.0`,
+and `net10.0`.
+
+The verifier pins explicit `Microsoft.NETCore.App.Ref` reference
+assemblies that match the active test host target framework. The test
+harness does not rely on implicit `Microsoft.CodeAnalysis.Testing`
+defaults or on runtime assembly discovery for platform references.
+
+This is an internal validation policy for the current host lines used in
+development and CI. It does not publish a version-by-version support
+matrix for the packaged `netstandard2.0` analyzer.
+
 ## Project layout
 
 The repository currently follows this structure:

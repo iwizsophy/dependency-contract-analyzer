@@ -37,6 +37,20 @@ coverage ファイルは `tests/DependencyContractAnalyzer.Tests/TestResults/**/
 dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
 ```
 
+## Analyzer test host 方針
+
+`tests/DependencyContractAnalyzer.Tests` は `net8.0`、`net9.0`、
+`net10.0` を対象にしています。
+
+verifier は、実行中の test host target framework に一致する
+`Microsoft.NETCore.App.Ref` reference assembly を明示的に使います。
+platform reference について、`Microsoft.CodeAnalysis.Testing` の
+暗黙既定値や runtime からの assembly 発見には依存しません。
+
+これは development と CI で使う current host line に対する内部検証
+方針です。公開される `netstandard2.0` analyzer package について、
+version ごとの support matrix を示すものではありません。
+
 ## プロジェクト構成
 
 現在のリポジトリ構成は次のとおりです。
