@@ -95,6 +95,39 @@ public sealed class ReleasePrChangelogValidationTests
         Assert.Contains("latest main release tag v1.0.0.", sanitizedMessage, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ValidateReleasePrChangelogSucceedsWhenFetchMustSeeTagBehindShallowBoundaryAndChangelogAdvances()
+    {
+        using TemporaryGitRepository originRepository = TemporaryGitRepository.Create();
+        originRepository.WriteChangelog(
+            """
+            # Changelog
+
+            ## [Unreleased]
+
+            ## [1.1.0]
+
+            ### Added
+
+            - Pending release notes
+
+            ## [1.0.0]
+
+            ### Added
+
+            - Initial release
+            """);
+
+        originRepository.CommitAll("Add changelog");
+        originRepository.CreateAnnotatedTag("v1.0.0", "1.0.0");
+        originRepository.WriteTextFile("README.md", "# Post-release change");
+        originRepository.CommitAll("Advance main past release tag");
+
+        using TemporaryGitRepository shallowClone = TemporaryGitRepository.CloneShallow(originRepository.Path);
+
+        RunValidationScript(shallowClone.Path, skipFetch: false);
+    }
+
     private static void RunValidationScript(string repositoryPath, bool skipFetch = true)
     {
         string scriptPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "scripts", "Validate-ReleasePrChangelog.ps1"));
