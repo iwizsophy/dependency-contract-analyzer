@@ -39,6 +39,9 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 - After a successful `main` tag publish, the workflow creates or updates the matching GitHub Release from that tag.
 - `develop` tag publishes and manual `workflow_dispatch` runs do not create GitHub Releases.
 - GitHub Release notes are generated from the matching `## [<version>]` section in `CHANGELOG.md`.
+- After a release Pull Request is merged into `main`, re-synchronize `develop` with `main` before starting the next development cycle.
+- Prefer a non-destructive synchronization Pull Request from `main` into `develop` instead of rewriting protected branch history.
+- If GitHub branch protection requires Pull Request heads to be up to date with the base branch, skipping this re-sync can block the next release Pull Request from `develop` into `main`.
 
 ## Branching model
 
@@ -55,6 +58,7 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
   dependency audit issue
 - breaking-change issues reviewed
 - release Pull Request merged into `main`
+- `develop` re-synchronized with `main` after the release merge
 - stable version confirmed
 - publish target branch confirmed (`main` for nuget.org or `develop` for `int.nugettest.org`)
 - annotated tag created from the intended publish branch
