@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Runtime.InteropServices;
 using Xunit;
 
@@ -59,7 +60,8 @@ public sealed class ReleasePrChangelogValidationTests
         repository.CreateAnnotatedTag("v1.0.0", "1.0.0");
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => RunValidationScript(repository.Path));
-        Assert.Contains("CHANGELOG.md must contain at least one version section newer than the latest main release tag v1.0.0.", exception.Message, StringComparison.Ordinal);
+        string sanitizedMessage = StripAnsiEscapeSequences(exception.Message);
+        Assert.Contains("CHANGELOG.md must contain at least one version section newer than the latest main release tag v1.0.0.", sanitizedMessage, StringComparison.Ordinal);
     }
 
     private static void RunValidationScript(string repositoryPath)
@@ -101,6 +103,11 @@ public sealed class ReleasePrChangelogValidationTests
     private static string GetPowerShellExecutableName()
     {
         return RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "pwsh.exe" : "pwsh";
+    }
+
+    private static string StripAnsiEscapeSequences(string text)
+    {
+        return Regex.Replace(text, "\u001B\\[[0-9;]*[A-Za-z]", string.Empty);
     }
 
     private sealed class TemporaryGitRepository : IDisposable
