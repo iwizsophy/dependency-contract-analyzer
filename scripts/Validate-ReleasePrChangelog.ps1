@@ -45,13 +45,27 @@ function Get-ChangelogVersions {
     return $versions
 }
 
+function Get-IsShallowRepository {
+    $result = @(Invoke-GitCommand -Arguments @('rev-parse', '--is-shallow-repository'))
+    return $result.Count -gt 0 -and $result[0].Trim().Equals('true', [StringComparison]::OrdinalIgnoreCase)
+}
+
 $resolvedRepositoryRoot = (Resolve-Path $RepositoryRoot).Path
 Push-Location $resolvedRepositoryRoot
 
 try {
     if (-not $SkipFetch) {
         $remoteRefSpec = "refs/heads/$ReleaseBranchName`:refs/remotes/$RemoteName/$ReleaseBranchName"
-        Invoke-GitCommand -Arguments @('fetch', $RemoteName, $remoteRefSpec, '--tags') | Out-Null
+        $fetchArguments = [System.Collections.Generic.List[string]]::new()
+        foreach ($argument in @('fetch', $RemoteName, $remoteRefSpec, '--tags')) {
+            $fetchArguments.Add($argument)
+        }
+
+        if (Get-IsShallowRepository) {
+            $fetchArguments.Add('--unshallow')
+        }
+
+        Invoke-GitCommand -Arguments $fetchArguments.ToArray() | Out-Null
     }
 
     $releaseBranchRef = if ($SkipFetch) { $ReleaseBranchName } else { "$RemoteName/$ReleaseBranchName" }
