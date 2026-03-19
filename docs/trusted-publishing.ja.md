@@ -39,6 +39,9 @@
 - `main` の tag publish が成功した後、workflow は同じ tag から対応する GitHub Release を作成または更新します。
 - `develop` の tag publish と manual の `workflow_dispatch` 実行では GitHub Release を作成しません。
 - GitHub Release のノートは `CHANGELOG.md` の対応する `## [<version>]` セクションから生成します。
+- release Pull Request を `main` にマージした後は、次の開発サイクルを始める前に `develop` を `main` と再同期します。
+- protected branch の履歴を書き換えるのではなく、`main` から `develop` への非破壊な同期 Pull Request を推奨します。
+- GitHub branch protection が Pull Request head の up-to-date を要求する場合、この再同期を省略すると次回の `develop` -> `main` release Pull Request がブロックされることがあります。
 
 ## ブランチ運用
 
@@ -47,6 +50,7 @@
 
 ## Release チェックリスト
 
+- `main` 向け release Pull Request では、`main` から到達可能な最新 release tag より新しい `## [<version>]` セクションを `CHANGELOG.md` に含めている
 - `CHANGELOG.md` を更新済み
 - translation follow-up を確認済み
 - docs-sync を確認済み
@@ -55,6 +59,7 @@
   記録済み
 - breaking-change issue を確認済み
 - release Pull Request を `main` にマージ済み
+- release merge 後に `develop` を `main` と再同期済み
 - stable version を確認済み
 - publish 先に対応する branch を確認済み
 - annotated tag を intended publish branch から作成済み

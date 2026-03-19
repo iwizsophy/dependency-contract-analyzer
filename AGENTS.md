@@ -152,6 +152,16 @@ Releases must use a Pull Request from `develop` into `main`.
 -   manual dispatches from `main` publish to `https://www.nuget.org/`
 -   publish workflow validation enforces annotated release tags and
     branch-based feed routing
+-   after a release Pull Request is merged into `main`, `develop` MUST
+    be re-synchronized with `main` before the next development cycle
+    begins
+-   the preferred re-synchronization method is a non-destructive
+    Pull Request from `main` into `develop`; do not rewrite protected
+    branch history just to re-align release commits
+-   if branch protection requires Pull Request heads to be up to date
+    with the base branch, maintainers MUST complete this re-
+    synchronization before the next `develop` -> `main` release Pull
+    Request is merged
 
 The required CI status checks for the split workflow are `build`,
 `test`, `analyzer`, and `pack`. Repository settings must be updated to
