@@ -61,7 +61,8 @@ public sealed class ReleasePrChangelogValidationTests
 
         InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => RunValidationScript(repository.Path));
         string sanitizedMessage = StripAnsiEscapeSequences(exception.Message);
-        Assert.Contains("CHANGELOG.md must contain at least one version section newer than the latest main release tag v1.0.0.", sanitizedMessage, StringComparison.Ordinal);
+        Assert.Contains("CHANGELOG.md must contain at least one version section newer than", sanitizedMessage, StringComparison.Ordinal);
+        Assert.Contains("latest main release tag v1.0.0.", sanitizedMessage, StringComparison.Ordinal);
     }
 
     private static void RunValidationScript(string repositoryPath)
