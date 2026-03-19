@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Changed
+
+- Documented the required post-release branch re-synchronization flow so `develop` is explicitly synced from `main` after each release merge before the next development cycle begins
+
 ## [1.1.0]
 
 ### Changed
