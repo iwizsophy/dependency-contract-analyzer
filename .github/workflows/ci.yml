@@ -28,6 +28,11 @@ jobs:
         shell: pwsh
         run: ./scripts/Validate-PublishWorkflow.ps1
 
+      - name: Validate release PR changelog advancement
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        shell: pwsh
+        run: ./scripts/Validate-ReleasePrChangelog.ps1
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v5
         with:
