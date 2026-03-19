@@ -50,6 +50,7 @@
 
 ## Release チェックリスト
 
+- `main` 向け release Pull Request では、`main` から到達可能な最新 release tag より新しい `## [<version>]` セクションを `CHANGELOG.md` に含めている
 - `CHANGELOG.md` を更新済み
 - translation follow-up を確認済み
 - docs-sync を確認済み

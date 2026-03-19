@@ -50,6 +50,7 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 
 ## Release checklist
 
+- Release PRs into `main` must advance `CHANGELOG.md` with at least one `## [<version>]` section newer than the latest release tag already reachable from `main`
 - `CHANGELOG.md` updated
 - translation follow-up checked
 - docs-sync checked
