@@ -6,10 +6,6 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
-### Changed
-
-- Documented the required post-release branch re-synchronization flow so `develop` is explicitly synced from `main` after each release merge before the next development cycle begins
-
 ## [1.1.0]
 
 ### Changed
@@ -18,6 +14,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Clarified the public support statement in English and Japanese documentation to guarantee `.NET 8`, `.NET 9`, and `.NET 10`, while explicitly marking `.NET 5+` and Visual Studio `2019 16.8+` as technical compatibility expectations that are neither tested nor supported
 - Updated CI jobs to run on `ubuntu-24.04`
 - Automated GitHub Release creation from release tags on `main`
+- Documented the required post-release branch re-synchronization flow so `develop` is explicitly synced from `main` after each release merge before the next development cycle begins
 
 ### Fixed
 
