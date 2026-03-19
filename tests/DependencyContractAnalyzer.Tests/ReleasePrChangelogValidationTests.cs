@@ -65,7 +65,37 @@ public sealed class ReleasePrChangelogValidationTests
         Assert.Contains("latest main release tag v1.0.0.", sanitizedMessage, StringComparison.Ordinal);
     }
 
-    private static void RunValidationScript(string repositoryPath)
+    [Fact]
+    public void ValidateReleasePrChangelogFailsWhenFetchMustSeeTagBehindShallowBoundary()
+    {
+        using TemporaryGitRepository originRepository = TemporaryGitRepository.Create();
+        originRepository.WriteChangelog(
+            """
+            # Changelog
+
+            ## [Unreleased]
+
+            ## [1.0.0]
+
+            ### Added
+
+            - Initial release
+            """);
+
+        originRepository.CommitAll("Add changelog");
+        originRepository.CreateAnnotatedTag("v1.0.0", "1.0.0");
+        originRepository.WriteTextFile("README.md", "# Post-release change");
+        originRepository.CommitAll("Advance main past release tag");
+
+        using TemporaryGitRepository shallowClone = TemporaryGitRepository.CloneShallow(originRepository.Path);
+
+        InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() => RunValidationScript(shallowClone.Path, skipFetch: false));
+        string sanitizedMessage = StripAnsiEscapeSequences(exception.Message);
+        Assert.Contains("CHANGELOG.md must contain at least one version section newer than", sanitizedMessage, StringComparison.Ordinal);
+        Assert.Contains("latest main release tag v1.0.0.", sanitizedMessage, StringComparison.Ordinal);
+    }
+
+    private static void RunValidationScript(string repositoryPath, bool skipFetch = true)
     {
         string scriptPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "scripts", "Validate-ReleasePrChangelog.ps1"));
         ProcessStartInfo startInfo = new()
@@ -83,7 +113,10 @@ public sealed class ReleasePrChangelogValidationTests
         startInfo.ArgumentList.Add(repositoryPath);
         startInfo.ArgumentList.Add("-ReleaseBranchName");
         startInfo.ArgumentList.Add("main");
-        startInfo.ArgumentList.Add("-SkipFetch");
+
+        if (skipFetch) {
+            startInfo.ArgumentList.Add("-SkipFetch");
+        }
 
         using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start PowerShell process.");
         string standardOutput = process.StandardOutput.ReadToEnd();
@@ -133,14 +166,43 @@ public sealed class ReleasePrChangelogValidationTests
             return repository;
         }
 
+        public static TemporaryGitRepository CloneShallow(string sourceRepositoryPath)
+        {
+            string clonePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "dca-release-pr-" + Guid.NewGuid().ToString("N"));
+            Uri sourceRepositoryUri = new(AppendDirectorySeparator(sourceRepositoryPath));
+
+            RunGitInWorkingDirectory(
+                Directory.GetCurrentDirectory(),
+                "clone",
+                "--depth",
+                "1",
+                "--branch",
+                "main",
+                sourceRepositoryUri.AbsoluteUri,
+                clonePath);
+
+            return new TemporaryGitRepository(clonePath);
+        }
+
         public void WriteChangelog(string content)
         {
             File.WriteAllText(System.IO.Path.Combine(Path, "CHANGELOG.md"), content.ReplaceLineEndings("\n"));
         }
 
+        public void WriteTextFile(string relativePath, string content)
+        {
+            string fullPath = System.IO.Path.Combine(Path, relativePath);
+            string? directoryPath = System.IO.Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrEmpty(directoryPath)) {
+                Directory.CreateDirectory(directoryPath);
+            }
+
+            File.WriteAllText(fullPath, content.ReplaceLineEndings("\n"));
+        }
+
         public void CommitAll(string message)
         {
-            RunGit("add", "CHANGELOG.md");
+            RunGit("add", "--all");
             RunGit("commit", "-m", message);
         }
 
@@ -162,10 +224,15 @@ public sealed class ReleasePrChangelogValidationTests
 
         private void RunGit(params string[] arguments)
         {
+            RunGitInWorkingDirectory(Path, arguments);
+        }
+
+        private static void RunGitInWorkingDirectory(string workingDirectory, params string[] arguments)
+        {
             ProcessStartInfo startInfo = new()
             {
                 FileName = "git",
-                WorkingDirectory = Path,
+                WorkingDirectory = workingDirectory,
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
             };
@@ -188,6 +255,13 @@ public sealed class ReleasePrChangelogValidationTests
                 new[] { standardOutput, standardError }.Where(static text => !string.IsNullOrWhiteSpace(text)));
 
             throw new InvalidOperationException($"git {string.Join(' ', arguments)} failed.{Environment.NewLine}{combinedOutput}");
+        }
+
+        private static string AppendDirectorySeparator(string path)
+        {
+            return path.EndsWith(System.IO.Path.DirectorySeparatorChar)
+                ? path
+                : path + System.IO.Path.DirectorySeparatorChar;
         }
     }
 }
