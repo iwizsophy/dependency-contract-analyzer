@@ -10,6 +10,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 - Lowered the analyzer implementation dependency on `Microsoft.CodeAnalysis.CSharp` to `3.9.0` so the packaged analyzer targets a broader compatible Roslyn host floor without changing the public support guarantee
 - Clarified the public support statement in English and Japanese documentation to guarantee `.NET 8`, `.NET 9`, and `.NET 10`, while explicitly marking `.NET 5+` and Visual Studio `2019 16.8+` as technical compatibility expectations that are neither tested nor supported
+- Documented the required post-release branch re-synchronization flow so `develop` is explicitly synced from `main` after each release merge before the next development cycle begins
 
 ### Fixed
 
