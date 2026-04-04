@@ -32,6 +32,7 @@
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="..\..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="\" Visible="false" />
     <None Include="..\..\assets\package-icon.png" Pack="true" PackagePath="\" Visible="false" />
     <None Include="Attributes\ContractHierarchyAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ContractHierarchyAttribute.cs" Visible="false" />
     <None Include="Attributes\ContractScopeAttribute.cs" Pack="true" PackagePath="build\DependencyContractAnalyzer.Attributes\ContractScopeAttribute.cs" Visible="false" />

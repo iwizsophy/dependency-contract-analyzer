@@ -35,6 +35,9 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 - Tag pushes publish by branch instead of by trigger type: `main` tags publish to `https://www.nuget.org/api/v2/package`, and `develop` tags publish to `https://int.nugettest.org/api/v2/package`.
 - Tag pushes fail when the tagged commit is reachable from both `main` and `develop`, or from neither branch.
 - The publish-time pack step disables RelaxVersioner's working-directory dirty check so generated build outputs do not silently bump the package version.
+- The pack workflow path uses `Syft` `v1.42.3` to generate a CycloneDX
+  SBOM from the packed package contents and embeds it as
+  `sbom.cdx.json` in the `.nupkg`.
 - Tag pushes verify that the generated `.nupkg` filename matches the release tag version before upload.
 - After a successful `main` tag publish, the workflow creates or updates the matching GitHub Release from that tag.
 - `develop` tag publishes and manual `workflow_dispatch` runs do not create GitHub Releases.

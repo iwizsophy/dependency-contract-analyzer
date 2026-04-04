@@ -6,6 +6,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+$script:EmbeddedSbomFileName = 'sbom.cdx.json'
+
 if ([string]::IsNullOrWhiteSpace($PackageDirectory)) {
     $PackageDirectory = Join-Path (Join-Path $PSScriptRoot '..') 'artifacts'
 }
@@ -290,6 +294,39 @@ function Assert-FileContains {
     }
 }
 
+function Assert-PackageContainsEmbeddedSbom {
+    param(
+        [System.IO.FileInfo]$PackageFile
+    )
+
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($PackageFile.FullName)
+    try {
+        $sbomEntry = $archive.Entries |
+            Where-Object { $_.FullName -eq $script:EmbeddedSbomFileName } |
+            Select-Object -First 1
+
+        if ($null -eq $sbomEntry) {
+            throw "Expected packed package '$($PackageFile.FullName)' to contain '$script:EmbeddedSbomFileName'."
+        }
+
+        $reader = New-Object System.IO.StreamReader($sbomEntry.Open())
+        try {
+            $sbomContent = $reader.ReadToEnd()
+        }
+        finally {
+            $reader.Dispose()
+        }
+
+        if ($sbomContent.IndexOf('"bomFormat":"CycloneDX"', [System.StringComparison]::OrdinalIgnoreCase) -lt 0 -and
+            $sbomContent.IndexOf('"bomFormat": "CycloneDX"', [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
+            throw "Expected '$script:EmbeddedSbomFileName' in '$($PackageFile.FullName)' to be a CycloneDX document."
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
 function Get-InstalledSdkVersionForMajor {
     param(
         [int]$MajorVersion
@@ -323,6 +360,7 @@ $packageFile = Get-LatestPackageFile -PackageDirectoryPath $packageDirectoryPath
 $packageVersion = Get-PackageVersion -PackageFile $packageFile
 
 Write-Host "Using packed package '$($packageFile.FullName)'."
+Assert-PackageContainsEmbeddedSbom -PackageFile $packageFile
 
 # Keep the smoke project outside the repo so repository-wide MSBuild props do not affect the package test.
 $workingRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('dca-packed-package-smoke-' + [System.Guid]::NewGuid().ToString('N'))
