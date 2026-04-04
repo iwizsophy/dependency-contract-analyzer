@@ -14,6 +14,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+Add-Type -AssemblyName System.Runtime
 
 $script:EmbeddedSbomFileName = 'sbom.cdx.json'
 
@@ -43,19 +44,94 @@ function Get-SyftDownloadAssetName {
         [string]$VersionWithoutPrefix
     )
 
+    $architectureSuffix = switch ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture) {
+        ([System.Runtime.InteropServices.Architecture]::X64) { 'amd64' }
+        ([System.Runtime.InteropServices.Architecture]::Arm64) { 'arm64' }
+        default { throw "Syft auto-download is not supported for process architecture '$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture)'." }
+    }
+
     if ($IsWindows) {
-        return "syft_${VersionWithoutPrefix}_windows_amd64.zip"
+        return "syft_${VersionWithoutPrefix}_windows_${architectureSuffix}.zip"
     }
 
     if ($IsLinux) {
-        return "syft_${VersionWithoutPrefix}_linux_amd64.tar.gz"
+        return "syft_${VersionWithoutPrefix}_linux_${architectureSuffix}.tar.gz"
     }
 
     if ($IsMacOS) {
-        return "syft_${VersionWithoutPrefix}_darwin_amd64.tar.gz"
+        return "syft_${VersionWithoutPrefix}_darwin_${architectureSuffix}.tar.gz"
     }
 
     throw 'Syft auto-download is not supported on this operating system.'
+}
+
+function Get-SyftVersion {
+    param(
+        [string]$ExecutablePath
+    )
+
+    $versionOutput = & $ExecutablePath 'version' '--output' 'json' 2>$null
+    if ($LASTEXITCODE -eq 0) {
+        try {
+            $parsedVersion = $versionOutput | ConvertFrom-Json
+            if (-not [string]::IsNullOrWhiteSpace($parsedVersion.version)) {
+                return [string]$parsedVersion.version
+            }
+        }
+        catch {
+        }
+    }
+
+    $versionOutput = & $ExecutablePath 'version' 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to determine the version of Syft executable '$ExecutablePath'."
+    }
+
+    foreach ($outputLine in $versionOutput) {
+        if ($outputLine -match 'Version:\s*(?<Version>\S+)') {
+            return $Matches['Version']
+        }
+    }
+
+    throw "Failed to parse the version of Syft executable '$ExecutablePath'."
+}
+
+function Get-FileSha256 {
+    param(
+        [string]$Path
+    )
+
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Assert-DownloadedFileMatchesChecksum {
+    param(
+        [string]$ArchivePath,
+        [string]$ChecksumsPath,
+        [string]$AssetName
+    )
+
+    $expectedChecksum = $null
+    foreach ($checksumLine in Get-Content -LiteralPath $ChecksumsPath) {
+        $trimmedLine = $checksumLine.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmedLine)) {
+            continue
+        }
+
+        if ($trimmedLine -match '^(?<Checksum>[0-9A-Fa-f]{64})\s+[* ](?<Name>.+)$' -and $Matches['Name'] -eq $AssetName) {
+            $expectedChecksum = $Matches['Checksum'].ToLowerInvariant()
+            break
+        }
+    }
+
+    if ($null -eq $expectedChecksum) {
+        throw "Failed to locate checksum entry for '$AssetName' in '$ChecksumsPath'."
+    }
+
+    $actualChecksum = Get-FileSha256 -Path $ArchivePath
+    if ($actualChecksum -ne $expectedChecksum) {
+        throw "Checksum verification failed for '$AssetName'. Expected '$expectedChecksum', got '$actualChecksum'."
+    }
 }
 
 function Install-SyftIfNeeded {
@@ -67,7 +143,16 @@ function Install-SyftIfNeeded {
 
     $resolvedCommand = Get-Command $RequestedSyftPath -ErrorAction SilentlyContinue
     if ($null -ne $resolvedCommand) {
-        return $resolvedCommand.Source
+        if ([string]::IsNullOrWhiteSpace($RequestedSyftVersion)) {
+            return $resolvedCommand.Source
+        }
+
+        $resolvedVersion = Get-SyftVersion -ExecutablePath $resolvedCommand.Source
+        if ($resolvedVersion -eq $RequestedSyftVersion.TrimStart('v')) {
+            return $resolvedCommand.Source
+        }
+
+        Write-Host "Found Syft '$resolvedVersion' on PATH, but '$RequestedSyftVersion' is required. Downloading the pinned release."
     }
 
     if (-not $AllowDownload.IsPresent) {
@@ -80,32 +165,51 @@ function Install-SyftIfNeeded {
 
     $versionWithoutPrefix = $RequestedSyftVersion.TrimStart('v')
     $assetName = Get-SyftDownloadAssetName -VersionWithoutPrefix $versionWithoutPrefix
+    $checksumsFileName = "syft_${versionWithoutPrefix}_checksums.txt"
     $downloadUrl = "https://github.com/anchore/syft/releases/download/$RequestedSyftVersion/$assetName"
-    $installRoot = Join-Path ([System.IO.Path]::GetTempPath()) "dca-syft-$versionWithoutPrefix"
-    $archivePath = Join-Path ([System.IO.Path]::GetTempPath()) $assetName
+    $checksumsUrl = "https://github.com/anchore/syft/releases/download/$RequestedSyftVersion/$checksumsFileName"
+    $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("dca-syft-$versionWithoutPrefix-" + [System.Guid]::NewGuid().ToString('N'))
+    $installRoot = Join-Path $tempRoot 'install'
+    $archivePath = Join-Path $tempRoot $assetName
+    $checksumsPath = Join-Path $tempRoot $checksumsFileName
 
-    if (Test-Path -LiteralPath $installRoot) {
-        Remove-Item -LiteralPath $installRoot -Recurse -Force
+    New-Item -ItemType Directory -Path $installRoot -Force | Out-Null
+
+    try {
+        Write-Host "Downloading Syft $RequestedSyftVersion from $downloadUrl"
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+        Invoke-WebRequest -Uri $checksumsUrl -OutFile $checksumsPath
+        Assert-DownloadedFileMatchesChecksum -ArchivePath $archivePath -ChecksumsPath $checksumsPath -AssetName $assetName
+
+        if ($IsWindows) {
+            Expand-Archive -Path $archivePath -DestinationPath $installRoot -Force
+            $syftExecutablePath = Join-Path $installRoot 'syft.exe'
+        }
+        else {
+            Invoke-CommandChecked -ExecutablePath 'tar' -Arguments @('-xzf', $archivePath, '-C', $installRoot)
+            $syftExecutablePath = Join-Path $installRoot 'syft'
+        }
+
+        if (-not (Test-Path -LiteralPath $syftExecutablePath)) {
+            throw "Syft executable was not found after extraction: $syftExecutablePath"
+        }
+
+        $downloadedVersion = Get-SyftVersion -ExecutablePath $syftExecutablePath
+        if ($downloadedVersion -ne $versionWithoutPrefix) {
+            throw "Downloaded Syft version '$downloadedVersion' does not match requested version '$RequestedSyftVersion'."
+        }
+
+        return $syftExecutablePath
     }
+    finally {
+        if (Test-Path -LiteralPath $archivePath) {
+            Remove-Item -LiteralPath $archivePath -Force
+        }
 
-    New-Item -ItemType Directory -Path $installRoot | Out-Null
-    Write-Host "Downloading Syft $RequestedSyftVersion from $downloadUrl"
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
-
-    if ($IsWindows) {
-        Expand-Archive -Path $archivePath -DestinationPath $installRoot -Force
-        $syftExecutablePath = Join-Path $installRoot 'syft.exe'
+        if (Test-Path -LiteralPath $checksumsPath) {
+            Remove-Item -LiteralPath $checksumsPath -Force
+        }
     }
-    else {
-        Invoke-CommandChecked -ExecutablePath 'tar' -Arguments @('-xzf', $archivePath, '-C', $installRoot)
-        $syftExecutablePath = Join-Path $installRoot 'syft'
-    }
-
-    if (-not (Test-Path -LiteralPath $syftExecutablePath)) {
-        throw "Syft executable was not found after extraction: $syftExecutablePath"
-    }
-
-    return $syftExecutablePath
 }
 
 function Get-PackageFile {
