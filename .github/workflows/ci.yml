@@ -11,6 +11,7 @@ permissions:
 
 env:
   DOTNET_VERSION: 10.0.x
+  SYFT_VERSION: v1.42.3
 
 jobs:
   build:
@@ -139,7 +140,8 @@ jobs:
         run: dotnet restore DependencyContractAnalyzer.slnx
 
       - name: Pack
-        run: dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-restore -o artifacts
+        shell: pwsh
+        run: ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -AdditionalDotNetPackArguments '--no-restore' -SyftVersion ${{ env.SYFT_VERSION }} -DownloadSyftIfMissing
 
       - name: Self-test packed package smoke script
         shell: pwsh

@@ -10,6 +10,13 @@ release using `dotnet list package --include-transitive`, Dependabot,
 and GitHub security advisories. They are not listed here by default
 unless explicit notice is required.
 
+## Trademark Notices
+
+Microsoft, NuGet, and Roslyn are trademarks of the Microsoft group of
+companies.
+
+GitHub is a trademark of GitHub, Inc.
+
 ## NuGet Packages
 
 ### RelaxVersioner
@@ -66,6 +73,19 @@ unless explicit notice is required.
   collection.
 - Usage note: Referenced with `PrivateAssets="all"` and not published as
   a package dependency.
+
+### Syft
+
+- Dependency: `Syft` (CLI tool)
+- Version: `1.42.3`
+- Project: https://github.com/anchore/syft
+- License: Apache License 2.0 (`Apache-2.0`)
+- License text: https://github.com/anchore/syft/blob/v1.42.3/LICENSE
+- Copyright:
+  Copyright Anchore, Inc.
+- Usage note: Used in CI and publish workflows to generate a CycloneDX
+  SBOM for the distributed NuGet package and embed it into the packaged
+  artifact.
 
 ### Microsoft.CodeAnalysis.CSharp.Analyzer.Testing.XUnit
 

@@ -8,7 +8,8 @@ $requiredFragments = [ordered]@{
     'build validation command' = 'run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore'
     'test validation command' = 'run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-restore --collect "XPlat Code Coverage" --results-directory artifacts/test-results'
     'analyzer validation command' = 'run: dotnet build DependencyContractAnalyzer.slnx -c Release --no-restore -warnaserror'
-    'pack validation command' = 'run: dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-restore -o artifacts'
+    'Syft version environment' = 'SYFT_VERSION: v1.42.3'
+    'pack validation command' = 'run: ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -AdditionalDotNetPackArguments ''--no-restore'' -SyftVersion ${{ env.SYFT_VERSION }} -DownloadSyftIfMissing'
     'release PR changelog validation step name' = '- name: Validate release PR changelog advancement'
     'release PR changelog validation condition' = "if: github.event_name == 'pull_request' && github.base_ref == 'main'"
     'release PR changelog validation command' = 'run: ./scripts/Validate-ReleasePrChangelog.ps1'

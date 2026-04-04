@@ -8,6 +8,8 @@ $requiredFragments = [ordered]@{
     'contents write permission' = 'contents: write'
     'NuGet.org package routing' = 'package_source=https://www.nuget.org/api/v2/package'
     'int.nugettest.org package routing' = 'package_source=https://int.nugettest.org/api/v2/package'
+    'Syft version environment' = 'SYFT_VERSION: v1.42.3'
+    'pack with SBOM command' = 'run: ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -AdditionalDotNetPackArguments ''--no-build'', ''-p:RelaxVersionerCheckWorkingDirectoryStatus=false'' -SyftVersion ${{ env.SYFT_VERSION }} -DownloadSyftIfMissing'
     'release notes step name' = '- name: Prepare GitHub Release notes'
     'release notes step id' = 'id: github_release_notes'
     'release step name' = '- name: Create or update GitHub Release'

@@ -15,6 +15,7 @@ jobs:
     runs-on: windows-latest
     env:
       NUGET_USER: ${{ secrets.NUGET_USER }}
+      SYFT_VERSION: v1.42.3
 
     steps:
       - name: Checkout
@@ -172,7 +173,8 @@ jobs:
         run: dotnet test DependencyContractAnalyzer.slnx -c Release --no-build
 
       - name: Pack
-        run: dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -p:RelaxVersionerCheckWorkingDirectoryStatus=false -o artifacts
+        shell: pwsh
+        run: ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -AdditionalDotNetPackArguments '--no-build', '-p:RelaxVersionerCheckWorkingDirectoryStatus=false' -SyftVersion ${{ env.SYFT_VERSION }} -DownloadSyftIfMissing
 
       - name: Verify package version resolved from release tag
         if: github.event_name == 'push'
