@@ -17,7 +17,7 @@
 7. nuget.org と `int.nugettest.org` の両方で publish 可能なアカウント名を repository secret `NUGET_USER` に設定します。
 8. publish ワークフローで `permissions.id-token: write` と `permissions.contents: write` を維持します。
 9. annotated tag として `v<major>.<minor>.<patch>` 形式の release tag を
-   作成して push します。例: `v0.1.0`
+   作成して push します。例: `v1.2.0`
 10. パッケージ/アセンブリ バージョンは `RelaxVersioner` により git タグから解決します。
 
 ## ワークフロー要件

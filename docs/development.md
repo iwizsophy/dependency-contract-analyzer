@@ -34,7 +34,7 @@ The coverage file is written under `tests/DependencyContractAnalyzer.Tests/TestR
 Local package output:
 
 ```powershell
-pwsh -NoProfile -File ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -AdditionalDotNetPackArguments '--no-build' -SyftVersion v1.42.3 -DownloadSyftIfMissing
+pwsh -NoProfile -File ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -NoBuild -SyftVersion v1.42.3 -DownloadSyftIfMissing
 ```
 
 The package build script generates a CycloneDX SBOM with `Syft` from the

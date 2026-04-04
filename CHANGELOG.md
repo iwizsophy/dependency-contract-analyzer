@@ -6,6 +6,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.2.0]
+
 ### Added
 
 - Embedded a `Syft`-generated CycloneDX SBOM as `sbom.cdx.json` in the

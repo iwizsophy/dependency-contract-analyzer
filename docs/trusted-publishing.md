@@ -17,7 +17,7 @@ Use NuGet Trusted Publishing with GitHub Actions and OpenID Connect instead of l
 7. Configure the repository secret `NUGET_USER` with the account name that is allowed to publish the package on both nuget.org and `int.nugettest.org`.
 8. Ensure the publish workflow keeps `permissions.id-token: write` and `permissions.contents: write`.
 9. Create and push an annotated release tag using the format
-   `v<major>.<minor>.<patch>`, such as `v0.1.0`.
+   `v<major>.<minor>.<patch>`, such as `v1.2.0`.
 10. Package and assembly versions are resolved from git tags by `RelaxVersioner`.
 
 ## Workflow expectations

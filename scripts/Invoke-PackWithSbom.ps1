@@ -2,7 +2,9 @@ param(
     [string]$ProjectPath = 'src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj',
     [string]$Configuration = 'Release',
     [string]$OutputDirectory = 'artifacts',
-    [string[]]$AdditionalDotNetPackArguments = @(),
+    [switch]$NoBuild,
+    [switch]$NoRestore,
+    [string[]]$PackProperties = @(),
     [string]$SyftPath = 'syft',
     [string]$SyftVersion,
     [switch]$DownloadSyftIfMissing
@@ -193,14 +195,28 @@ if (-not (Test-Path -LiteralPath $resolvedOutputDirectory)) {
     New-Item -ItemType Directory -Path $resolvedOutputDirectory | Out-Null
 }
 
-Invoke-CommandChecked -ExecutablePath 'dotnet' -Arguments @(
+$dotNetPackArguments = @(
     'pack',
     $resolvedProjectPath,
     '-c',
     $Configuration,
     '-o',
     $resolvedOutputDirectory
-) + $AdditionalDotNetPackArguments
+)
+
+if ($NoBuild.IsPresent) {
+    $dotNetPackArguments += '--no-build'
+}
+
+if ($NoRestore.IsPresent) {
+    $dotNetPackArguments += '--no-restore'
+}
+
+foreach ($packProperty in $PackProperties) {
+    $dotNetPackArguments += "-p:$packProperty"
+}
+
+Invoke-CommandChecked -ExecutablePath 'dotnet' -Arguments $dotNetPackArguments
 
 $packageFile = Get-PackageFile -PackageOutputDirectory $resolvedOutputDirectory
 Add-SbomToPackage -PackageFile $packageFile -ResolvedSyftPath $resolvedSyftPath

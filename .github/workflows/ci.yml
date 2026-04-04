@@ -141,7 +141,7 @@ jobs:
 
       - name: Pack
         shell: pwsh
-        run: ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -AdditionalDotNetPackArguments '--no-restore' -SyftVersion ${{ env.SYFT_VERSION }} -DownloadSyftIfMissing
+        run: ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -NoRestore -SyftVersion ${{ env.SYFT_VERSION }} -DownloadSyftIfMissing
 
       - name: Self-test packed package smoke script
         shell: pwsh

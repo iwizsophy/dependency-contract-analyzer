@@ -36,7 +36,7 @@ coverage ファイルは `tests/DependencyContractAnalyzer.Tests/TestResults/**/
 ローカルでの pack:
 
 ```powershell
-pwsh -NoProfile -File ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -AdditionalDotNetPackArguments '--no-build' -SyftVersion v1.42.3 -DownloadSyftIfMissing
+pwsh -NoProfile -File ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -NoBuild -SyftVersion v1.42.3 -DownloadSyftIfMissing
 ```
 
 この package build script は、pack 後の package 内容に対して `Syft`
