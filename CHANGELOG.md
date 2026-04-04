@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [1.2.0]
+
+### Added
+
+- Embedded a `Syft`-generated CycloneDX SBOM as `sbom.cdx.json` in the
+  distributed `.nupkg` artifact
+
+### Changed
+
+- Routed CI and publish package generation through a shared SBOM-aware
+  pack script and extended packed-package smoke validation to assert the
+  embedded SBOM is present
+
 ## [1.1.0]
 
 ### Changed

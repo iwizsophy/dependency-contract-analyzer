@@ -17,7 +17,7 @@
 7. nuget.org と `int.nugettest.org` の両方で publish 可能なアカウント名を repository secret `NUGET_USER` に設定します。
 8. publish ワークフローで `permissions.id-token: write` と `permissions.contents: write` を維持します。
 9. annotated tag として `v<major>.<minor>.<patch>` 形式の release tag を
-   作成して push します。例: `v0.1.0`
+   作成して push します。例: `v1.2.0`
 10. パッケージ/アセンブリ バージョンは `RelaxVersioner` により git タグから解決します。
 
 ## ワークフロー要件
@@ -35,6 +35,9 @@
 - tag push の publish 先は trigger 種別ではなく branch により決まり、`main` の tag は `https://www.nuget.org/api/v2/package`、`develop` の tag は `https://int.nugettest.org/api/v2/package` に publish します。
 - tag 対象 commit が `main` と `develop` の両方から到達可能、またはどちらからも到達不可能な場合は publish を失敗させます。
 - publish 時の pack step では、生成された build output によって package version が勝手に繰り上がらないように、RelaxVersioner の working-directory dirty check を無効化します。
+- pack 経路では `Syft` `v1.42.3` を使って pack 後の package 内容から
+  CycloneDX SBOM を生成し、`.nupkg` に `sbom.cdx.json` として同梱
+  します。
 - tag push では upload 前に、生成された `.nupkg` のファイル名が release tag の version と一致することを検証します。
 - `main` の tag publish が成功した後、workflow は同じ tag から対応する GitHub Release を作成または更新します。
 - `develop` の tag publish と manual の `workflow_dispatch` 実行では GitHub Release を作成しません。

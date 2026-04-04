@@ -8,6 +8,8 @@ This document is for maintainers and contributors.
 - .NET 8, .NET 9, and .NET 10 runtimes installed for the full test suite
 - Familiarity with Roslyn analyzer development
 - A local environment that can run unit tests for `Microsoft.CodeAnalysis.Testing`
+- `Syft` available on `PATH`, or network access available for the SBOM
+  pack script to download the pinned release automatically
 
 ## Typical local validation
 
@@ -32,15 +34,19 @@ The coverage file is written under `tests/DependencyContractAnalyzer.Tests/TestR
 Local package output:
 
 ```powershell
-dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
+pwsh -NoProfile -File ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -NoBuild -SyftVersion v1.42.3 -DownloadSyftIfMissing
 ```
+
+The package build script generates a CycloneDX SBOM with `Syft` from the
+packed package contents and embeds it as `sbom.cdx.json` in the `.nupkg`
+root.
 
 Packed-package smoke validation expects a clean package directory with a
 single `.nupkg` and currently verifies package consumption on `net8.0`,
 `net9.0`, and `net10.0`:
 
 ```powershell
-dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release -o artifacts/package-smoke-current
+pwsh -NoProfile -File ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts/package-smoke-current -SyftVersion v1.42.3 -DownloadSyftIfMissing
 pwsh -NoProfile -File ./scripts/Test-PackedPackageConsumption.ps1 -PackageDirectory artifacts/package-smoke-current
 ```
 
@@ -92,6 +98,7 @@ The repository currently follows this structure:
 ## Release
 
 - CI validation is defined in `.github/workflows/ci.yml`.
-- CI uploads both package artifacts and `dotnet test` coverage/test-result artifacts.
+- CI uploads both SBOM-embedded package artifacts and `dotnet test`
+  coverage/test-result artifacts.
 - NuGet.org publishing guidance is documented in `docs/trusted-publishing.md`.
 - Release publishing is defined in `.github/workflows/publish.yml`.

@@ -9,6 +9,8 @@
   インストールされていること
 - Roslyn Analyzer 開発の基本知識があること
 - `Microsoft.CodeAnalysis.Testing` ベースの単体テストを実行できること
+- `Syft` が `PATH` 上にあること、または SBOM 付き pack script が
+  pin された release を自動取得できる network access があること
 
 ## 典型的なローカル検証
 
@@ -34,15 +36,19 @@ coverage ファイルは `tests/DependencyContractAnalyzer.Tests/TestResults/**/
 ローカルでの pack:
 
 ```powershell
-dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release --no-build -o artifacts
+pwsh -NoProfile -File ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts -NoBuild -SyftVersion v1.42.3 -DownloadSyftIfMissing
 ```
+
+この package build script は、pack 後の package 内容に対して `Syft`
+で CycloneDX SBOM を生成し、`.nupkg` ルートへ `sbom.cdx.json` として
+同梱します。
 
 packaged package の smoke validation は、単一の `.nupkg` だけを含む
 clean な package directory を前提とし、現在は `net8.0`、`net9.0`、
 `net10.0` で package 消費を検証します。
 
 ```powershell
-dotnet pack src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -c Release -o artifacts/package-smoke-current
+pwsh -NoProfile -File ./scripts/Invoke-PackWithSbom.ps1 -ProjectPath src/DependencyContractAnalyzer/DependencyContractAnalyzer.csproj -Configuration Release -OutputDirectory artifacts/package-smoke-current -SyftVersion v1.42.3 -DownloadSyftIfMissing
 pwsh -NoProfile -File ./scripts/Test-PackedPackageConsumption.ps1 -PackageDirectory artifacts/package-smoke-current
 ```
 
@@ -92,6 +98,7 @@ packaged analyzer の互換が保たれる限り、現時点の実装は `.NET 5
 ## リリース
 
 - CI 検証は `.github/workflows/ci.yml` で定義しています。
-- CI では package artifact に加えて `dotnet test` の test result / coverage artifact も保存します。
+- CI では SBOM を同梱した package artifact に加えて `dotnet test`
+  の test result / coverage artifact も保存します。
 - NuGet.org への公開方針は `docs/trusted-publishing.ja.md` を参照してください。
 - リリース publish は `.github/workflows/publish.yml` で定義しています。
