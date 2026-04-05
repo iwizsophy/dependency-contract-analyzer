@@ -44,7 +44,25 @@ Technically, the current implementation is expected to work on `.NET 5` and late
 
 ## Why
 
-Modern .NET codebases often depend on design assumptions that are not visible in the type system alone, such as thread safety, side-effect constraints, or infrastructure boundaries. This analyzer makes those assumptions explicit and verifies them against actual type dependencies.
+In .NET application design, important assumptions such as thread safety and object lifetime are often treated as implicit understanding rather than something made explicit in code.
+
+In real development work, I ran into a case where a class managed as a singleton through DI ended up holding, through its constructor, a dependency object that had not been designed to live as a singleton.
+
+As a result, an object that should have been short-lived was effectively treated as a singleton, which caused memory growth over long-running execution.
+
+This problem produced neither a compiler error nor a warning, and because the design intent was not expressed in the code, it was easy to miss in review and difficult to detect until the issue had already surfaced.
+
+Also, because DI-based validation depends on the runtime configuration, it is difficult to statically verify whether the dependency relationships in the code itself satisfy the intended design.
+
+In other words, dependency correctness was left to human attention and experience, without any mechanical way to guarantee it.
+
+That experience made me strongly feel the need for a mechanism that makes design intent for dependencies explicit in code as contracts and verifies them statically, which is why I built this tool.
+
+`DependencyContractAnalyzer` declaratively attaches contracts to dependencies between types and verifies through static analysis whether those contracts are satisfied.
+
+This makes it possible to represent design assumptions that were previously handled implicitly directly in code, enabling consistent validation in reviews, automated analysis, and AI-assisted development.
+
+Because the build can mechanically determine whether dependency relationships satisfy the intended design, the tool helps detect design mistakes that would otherwise go unnoticed and improves both code safety and maintainability.
 
 ## Dependency extraction scope
 
